@@ -1,0 +1,53 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using FireCalc.Api.Auth;
+using FireCalc.Api.Data;
+using FireCalc.Api.Endpoints;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<FireCalcDbContext>(o =>
+    o.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+
+builder.Services.ConfigureHttpJsonOptions(o =>
+{
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+    o.SerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
+});
+
+builder.Services.AddProblemDetails();
+builder.Services.AddGoogleAuth(builder.Configuration);
+
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
+    .WithOrigins(allowedOrigins)
+    .AllowAnyHeader()
+    .AllowAnyMethod()));
+
+var app = builder.Build();
+
+if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
+{
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<FireCalcDbContext>().Database.MigrateAsync();
+}
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapGet("/healthz", () => Results.Ok("ok"));
+
+var api = app.MapGroup("/api").RequireAuthorization(AuthSetup.OwnerPolicy);
+api.MapMeEndpoints();
+api.MapAccountEndpoints();
+api.MapSnapshotEndpoints();
+api.MapGoalEndpoints();
+api.MapDashboardEndpoints();
+
+app.Run();
+
+public partial class Program;

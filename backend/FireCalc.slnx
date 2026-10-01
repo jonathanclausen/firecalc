@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FireCalc.Api/FireCalc.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FireCalc.Api.Tests/FireCalc.Api.Tests.csproj" />
+  </Folder>
+</Solution>
