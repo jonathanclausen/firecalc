@@ -1,0 +1,50 @@
+# Runs the whole app locally: Postgres, the .NET API and the Angular SSR frontend.
+#
+#   docker compose up --build      then open http://localhost:4000 (API on http://localhost:5080)
+#   docker compose down            stop (add -v to also wipe the database)
+#
+# To call /api you need a Google OAuth client id and your email on the allow-list.
+# Put them in backend/.env.local (git-ignored):
+#   Auth__GoogleClientId=1234-abc.apps.googleusercontent.com
+#   Auth__AllowedEmails__0=you@gmail.com
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: firecalc
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  api:
+    build: ./backend
+    env_file:
+      - path: ./backend/.env.local
+        required: false
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=db;Port=5432;Database=firecalc;Username=postgres;Password=postgres
+      Cors__AllowedOrigins__0: http://localhost:4000
+      Cors__AllowedOrigins__1: http://localhost:4200
+    ports:
+      - "5080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./frontend
+    ports:
+      - "4000:4000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

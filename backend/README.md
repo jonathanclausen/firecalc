@@ -36,12 +36,27 @@ Account types are `investment`, `savings` and `cash`.
 
 ## Run locally
 
+Whole app (Postgres, API and frontend) with Docker, from the repo root:
+
 ```sh
-docker compose up -d                       # Postgres on localhost:5432
-dotnet run --project src/FireCalc.Api      # Development settings point at it
+docker compose up --build    # frontend http://localhost:4000, API http://localhost:5080
 ```
 
-Set `Auth:GoogleClientId` and `Auth:AllowedEmails` with `dotnet user-secrets` or env vars to call `/api`.
+To call `/api`, put your Google client id and email in `backend/.env.local` (git-ignored):
+
+```
+Auth__GoogleClientId=1234-abc.apps.googleusercontent.com
+Auth__AllowedEmails__0=you@gmail.com
+```
+
+For quick backend iteration, run only the database in Docker and the API with hot reload:
+
+```sh
+docker compose up -d db
+dotnet watch --project src/FireCalc.Api    # Development settings point at localhost:5432
+```
+
+Here, set `Auth:GoogleClientId` and `Auth:AllowedEmails` with `dotnet user-secrets` instead.
 
 ## Tests
 
