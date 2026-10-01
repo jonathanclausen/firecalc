@@ -1,25 +1,134 @@
 @let t = i18n.t().planner;
 @switch (auth.state()) {
   @case ('signedIn') {
-    <div class="subnav">
-      <nav [attr.aria-label]="t.tabs">
-        <a
-          routerLink="/planner"
-          routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: true }"
-        >
-          {{ t.overview }}
+    <ng-template #icon let-name>
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        @switch (name) {
+          @case ('overview') {
+            <path d="M4 19V10M10 19V5M16 19v-7M21 19H3" />
+          }
+          @case ('snapshot') {
+            <path d="M12 5v14M5 12h14" />
+          }
+          @case ('accounts') {
+            <rect x="3" y="6" width="18" height="13" rx="2.5" />
+            <path d="M3 10h18M16 15h2" />
+          }
+          @case ('goal') {
+            <circle cx="12" cy="12" r="8" />
+            <circle cx="12" cy="12" r="3.5" />
+          }
+          @case ('calculator') {
+            <rect x="5" y="3" width="14" height="18" rx="2.5" />
+            <path
+              d="M8.5 7.5h7M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01"
+            />
+          }
+          @case ('signOut') {
+            <path
+              d="M14 4h3.5A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5H14M10 8l-4 4 4 4M6 12h10"
+            />
+          }
+        }
+      </svg>
+    </ng-template>
+
+    <div class="app">
+      <aside class="sidebar">
+        <a class="brand" routerLink="/planner">
+          <app-brand-mark />
+          <span>FireCalc</span>
         </a>
-        <a routerLink="/planner/snapshot" routerLinkActive="active">{{ t.newSnapshot }}</a>
-        <a routerLink="/planner/accounts" routerLinkActive="active">{{ t.accounts }}</a>
-        <a routerLink="/planner/goal" routerLinkActive="active">{{ t.goal }}</a>
-      </nav>
-      <div class="who">
-        <span>{{ t.signedInAs(auth.user()?.email ?? '') }}</span>
-        <button type="button" class="link-button" (click)="auth.signOut()">{{ t.signOut }}</button>
+
+        <nav class="sidenav" [attr.aria-label]="t.tabs">
+          @for (item of nav; track item.path) {
+            <a
+              [routerLink]="item.path"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: item.exact }"
+            >
+              <ng-container *ngTemplateOutlet="icon; context: { $implicit: item.icon }" />
+              {{ t[item.label] }}
+            </a>
+          }
+        </nav>
+
+        <p class="sidenav__heading">{{ t.tools }}</p>
+        <nav class="sidenav" [attr.aria-label]="t.tools">
+          <a routerLink="/compound-interest">
+            <ng-container *ngTemplateOutlet="icon; context: { $implicit: 'calculator' }" />
+            {{ i18n.t().nav.compoundInterest }}
+          </a>
+        </nav>
+
+        <div class="sidebar__footer">
+          <app-lang-switch />
+          <div class="user" [attr.aria-label]="t.account">
+            <span class="avatar" aria-hidden="true">{{ initial() }}</span>
+            <span class="user__text">
+              @if (auth.user()?.name; as name) {
+                <strong>{{ name }}</strong>
+              }
+              <span [title]="auth.user()?.email ?? ''">{{ auth.user()?.email }}</span>
+            </span>
+            <button
+              type="button"
+              class="icon-button"
+              [title]="t.signOut"
+              [attr.aria-label]="t.signOut"
+              (click)="auth.signOut()"
+            >
+              <ng-container *ngTemplateOutlet="icon; context: { $implicit: 'signOut' }" />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <header class="appbar">
+        <a class="brand" routerLink="/planner">
+          <app-brand-mark />
+          <span>FireCalc</span>
+        </a>
+        <div class="appbar__actions">
+          <app-lang-switch />
+          <a
+            class="icon-button"
+            routerLink="/compound-interest"
+            [title]="i18n.t().nav.compoundInterest"
+            [attr.aria-label]="i18n.t().nav.compoundInterest"
+          >
+            <ng-container *ngTemplateOutlet="icon; context: { $implicit: 'calculator' }" />
+          </a>
+          <button
+            type="button"
+            class="icon-button"
+            [title]="t.signOut"
+            [attr.aria-label]="t.signOut"
+            (click)="auth.signOut()"
+          >
+            <ng-container *ngTemplateOutlet="icon; context: { $implicit: 'signOut' }" />
+          </button>
+        </div>
+      </header>
+
+      <div class="app__main">
+        <router-outlet />
+        <p class="app__footer">{{ i18n.t().footer }}</p>
       </div>
+
+      <nav class="tabbar" [attr.aria-label]="t.tabs">
+        @for (item of nav; track item.path) {
+          <a
+            [routerLink]="item.path"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: item.exact }"
+          >
+            <ng-container *ngTemplateOutlet="icon; context: { $implicit: item.icon }" />
+            <span>{{ t[item.label] }}</span>
+          </a>
+        }
+      </nav>
     </div>
-    <router-outlet />
   }
   @case ('loading') {
     <p class="muted gate-loading">{{ t.loading }}</p>

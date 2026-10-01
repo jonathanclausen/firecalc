@@ -126,6 +126,8 @@ const da = {
     delete: 'Slet',
     signedInAs: (email: string) => `Logget ind som ${email}`,
     signOut: 'Log ud',
+    tools: 'Værktøjer',
+    account: 'Din konto',
     types: {
       investment: 'Investering',
       savings: 'Opsparing',
@@ -371,6 +373,8 @@ const en: Translations = {
     delete: 'Delete',
     signedInAs: (email) => `Signed in as ${email}`,
     signOut: 'Sign out',
+    tools: 'Tools',
+    account: 'Your account',
     types: {
       investment: 'Investment',
       savings: 'Savings',

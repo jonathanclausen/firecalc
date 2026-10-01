@@ -1,5 +1,7 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
+  computed,
   DestroyRef,
   ElementRef,
   afterNextRender,
@@ -10,11 +12,15 @@ import {
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Auth } from '../../core/auth/auth';
 import { I18n } from '../../core/i18n/i18n';
+import { BrandMark } from '../../shared/brand-mark';
+import { LangSwitch } from '../../shared/lang-switch';
 
-/** Frame for the "My finances" pages: sign-in gate, sub navigation and the active page. */
+type NavLabel = 'overview' | 'newSnapshot' | 'accounts' | 'goal';
+
+/** Frame for the "My finances" pages: sign-in gate, then an app shell (sidebar, or app bar and tab bar on phones). */
 @Component({
   selector: 'app-planner-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgTemplateOutlet, BrandMark, LangSwitch],
   templateUrl: './planner-shell.html',
   styleUrl: './planner-shell.scss',
   host: { class: 'planner' },
@@ -22,6 +28,15 @@ import { I18n } from '../../core/i18n/i18n';
 export class PlannerShell {
   protected readonly auth = inject(Auth);
   protected readonly i18n = inject(I18n);
+  protected readonly nav: { path: string; label: NavLabel; icon: string; exact: boolean }[] = [
+    { path: '/planner', label: 'overview', icon: 'overview', exact: true },
+    { path: '/planner/snapshot', label: 'newSnapshot', icon: 'snapshot', exact: false },
+    { path: '/planner/accounts', label: 'accounts', icon: 'accounts', exact: false },
+    { path: '/planner/goal', label: 'goal', icon: 'goal', exact: false },
+  ];
+  protected readonly initial = computed(() =>
+    (this.auth.user()?.name || this.auth.user()?.email || '?').charAt(0).toUpperCase(),
+  );
   private readonly button = viewChild<ElementRef<HTMLElement>>('googleButton');
 
   constructor() {
