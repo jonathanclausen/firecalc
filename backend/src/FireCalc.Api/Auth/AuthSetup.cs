@@ -5,6 +5,11 @@ namespace FireCalc.Api.Auth;
 
 public class AuthOptions
 {
+    public const string Google = "https://accounts.google.com";
+
+    /// <summary>OpenID Connect issuer whose ID tokens are accepted. Google unless overridden for local testing.</summary>
+    public string Authority { get; set; } = Google;
+
     /// <summary>OAuth client id of the Google project; Google ID tokens must be issued for it.</summary>
     public string GoogleClientId { get; set; } = "";
 
@@ -25,9 +30,12 @@ public static class AuthSetup
             .AddJwtBearer(o =>
             {
                 // The frontend signs in with Google Identity Services and sends the ID token as a bearer token.
-                o.Authority = "https://accounts.google.com";
+                o.Authority = options.Authority;
+                o.RequireHttpsMetadata = options.Authority.StartsWith("https://", StringComparison.Ordinal);
                 o.MapInboundClaims = false;
-                o.TokenValidationParameters.ValidIssuers = ["https://accounts.google.com", "accounts.google.com"];
+                o.TokenValidationParameters.ValidIssuers = options.Authority == AuthOptions.Google
+                    ? [AuthOptions.Google, "accounts.google.com"]
+                    : [options.Authority];
                 o.TokenValidationParameters.ValidAudience = options.GoogleClientId;
                 o.TokenValidationParameters.NameClaimType = "email";
             });

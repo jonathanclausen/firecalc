@@ -1,0 +1,169 @@
+:host {
+  display: block;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 6px;
+  vertical-align: -1px;
+
+  .legend & {
+    margin-right: 0;
+  }
+
+  &--investment {
+    background: var(--series-contrib);
+  }
+  &--savings {
+    background: var(--series-interest);
+  }
+  &--cash {
+    background: var(--series-cash);
+  }
+}
+
+.chart__plot {
+  position: relative;
+  width: 100%;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    touch-action: pan-y;
+    outline: none;
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-ring);
+      outline-offset: 4px;
+      border-radius: 6px;
+    }
+  }
+}
+
+.grid {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+
+.axis-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.area {
+  fill-opacity: 0.28;
+
+  &--investment {
+    fill: var(--series-contrib);
+  }
+  &--savings {
+    fill: var(--series-interest);
+  }
+  &--cash {
+    fill: var(--series-cash);
+  }
+}
+
+.gap {
+  fill: none;
+  stroke: var(--surface-card);
+  stroke-width: 4;
+}
+
+.line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+
+  &--investment {
+    stroke: var(--series-contrib);
+  }
+  &--savings {
+    stroke: var(--series-interest);
+  }
+  &--cash {
+    stroke: var(--series-cash);
+  }
+}
+
+.marker {
+  fill: var(--text-primary);
+  stroke: var(--surface-card);
+  stroke-width: 2;
+
+  &--active {
+    fill: var(--accent);
+  }
+}
+
+.crosshair {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.tooltip {
+  position: absolute;
+  min-width: 200px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  font-size: 0.8125rem;
+  pointer-events: none;
+
+  &--flipped {
+    transform: translateX(-100%);
+  }
+}
+
+.tooltip__title {
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.tooltip__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 0;
+  color: var(--text-secondary);
+  white-space: nowrap;
+
+  strong {
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  &--total {
+    padding-bottom: 6px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+}

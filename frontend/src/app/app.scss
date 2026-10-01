@@ -149,8 +149,14 @@
   .topbar__inner {
     gap: 12px;
   }
+  .topbar__inner {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
   .nav {
-    display: none;
+    order: 3;
+    flex-basis: 100%;
+    overflow-x: auto;
   }
   .settings {
     margin-left: auto;

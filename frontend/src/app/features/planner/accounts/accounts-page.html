@@ -1,0 +1,150 @@
+@let t = i18n.t().planner;
+@let a = t.accountsPage;
+<section class="intro">
+  <div>
+    <p class="eyebrow">{{ t.eyebrow }}</p>
+    <h1>{{ a.title }}</h1>
+    <p class="lede">{{ a.lede }}</p>
+  </div>
+</section>
+
+<div class="stack">
+  <form class="card add" (submit)="add($event)">
+    <h2>{{ a.add }}</h2>
+    <div class="add__row">
+      <label class="form-field add__name">
+        <span>{{ a.name }}</span>
+        <input
+          type="text"
+          maxlength="100"
+          required
+          [placeholder]="a.namePlaceholder"
+          [value]="newName()"
+          (input)="newName.set($any($event.target).value)"
+        />
+      </label>
+      <label class="form-field">
+        <span>{{ a.type }}</span>
+        <select (change)="newType.set($any($event.target).value)">
+          @for (type of types; track type) {
+            <option [value]="type" [selected]="type === newType()">{{ t.types[type] }}</option>
+          }
+        </select>
+      </label>
+      <button type="submit" class="btn btn--primary" [disabled]="busy() || !newName().trim()">
+        {{ a.addButton }}
+      </button>
+    </div>
+  </form>
+
+  <section class="card">
+    <div class="card__header">
+      <h2>{{ a.title }}</h2>
+      @if (hasArchived()) {
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [checked]="showArchived()"
+            (change)="showArchived.set($any($event.target).checked)"
+          />
+          {{ a.showArchived }}
+        </label>
+      }
+    </div>
+
+    @if (error(); as message) {
+      <p class="alert" role="alert">{{ message }}</p>
+    }
+
+    @if (accounts.error()) {
+      <p class="alert" role="alert">{{ t.error }}</p>
+    } @else if (!accounts.hasValue()) {
+      <p class="muted">{{ t.loading }}</p>
+    } @else if (visible().length === 0) {
+      <p class="muted">{{ a.empty }}</p>
+    } @else {
+      <ul class="list">
+        @for (acc of visible(); track acc.id) {
+          <li [class.archived]="acc.archived">
+            @if (editing()?.id === acc.id) {
+              <form class="edit" (submit)="saveEdit(acc, $event)">
+                <label class="form-field">
+                  <span class="visually-hidden">{{ a.name }}</span>
+                  <input
+                    type="text"
+                    maxlength="100"
+                    required
+                    [value]="editing()!.name"
+                    (input)="
+                      editing.set({
+                        id: acc.id,
+                        name: $any($event.target).value,
+                        type: editing()!.type,
+                      })
+                    "
+                  />
+                </label>
+                <label class="form-field">
+                  <span class="visually-hidden">{{ a.type }}</span>
+                  <select
+                    (change)="
+                      editing.set({
+                        id: acc.id,
+                        name: editing()!.name,
+                        type: $any($event.target).value,
+                      })
+                    "
+                  >
+                    @for (type of types; track type) {
+                      <option [value]="type" [selected]="type === editing()!.type">
+                        {{ t.types[type] }}
+                      </option>
+                    }
+                  </select>
+                </label>
+                <button type="submit" class="btn btn--primary" [disabled]="busy()">
+                  {{ t.save }}
+                </button>
+                <button type="button" class="link-button" (click)="editing.set(null)">
+                  {{ t.cancel }}
+                </button>
+              </form>
+            } @else {
+              <span class="name">
+                <i class="type-dot type-dot--{{ acc.type }}"></i>
+                <span>
+                  {{ acc.name }}
+                  <small>{{ t.types[acc.type] }}</small>
+                </span>
+                @if (acc.archived) {
+                  <em class="badge">{{ a.archivedBadge }}</em>
+                }
+              </span>
+              <span class="actions">
+                <button type="button" class="link-button" (click)="startEdit(acc)">
+                  {{ t.edit }}
+                </button>
+                <button
+                  type="button"
+                  class="link-button"
+                  [disabled]="busy()"
+                  (click)="setArchived(acc, !acc.archived)"
+                >
+                  {{ acc.archived ? a.unarchive : a.archive }}
+                </button>
+                <button
+                  type="button"
+                  class="link-button link-button--danger"
+                  [disabled]="busy()"
+                  (click)="remove(acc)"
+                >
+                  {{ t.delete }}
+                </button>
+              </span>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</div>

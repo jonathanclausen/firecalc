@@ -1,0 +1,70 @@
+@let t = i18n.t().planner;
+@let g = t.goalPage;
+<section class="intro">
+  <div>
+    <p class="eyebrow">{{ t.eyebrow }}</p>
+    <h1>{{ g.title }}</h1>
+    <p class="lede">{{ g.lede }}</p>
+  </div>
+</section>
+
+@if (goal.error()) {
+  <p class="alert" role="alert">{{ t.error }}</p>
+} @else if (!goal.hasValue()) {
+  <p class="muted">{{ t.loading }}</p>
+} @else {
+  <form class="card goal-form" (submit)="save($event)">
+    @if (error(); as message) {
+      <p class="alert" role="alert">{{ message }}</p>
+    }
+    <label class="form-field">
+      <span>{{ g.targetAmount }} ({{ currency() }})</span>
+      <input
+        type="number"
+        inputmode="decimal"
+        min="1"
+        step="any"
+        required
+        placeholder="5000000"
+        [value]="targetAmount()"
+        (input)="targetAmount.set($any($event.target).value)"
+      />
+    </label>
+    <label class="form-field">
+      <span>{{ g.targetDate }}</span>
+      <input
+        type="date"
+        [value]="targetDate()"
+        (input)="targetDate.set($any($event.target).value)"
+      />
+    </label>
+    <label class="form-field">
+      <span>{{ g.expectedReturn }}</span>
+      <input
+        type="number"
+        inputmode="decimal"
+        min="-100"
+        max="100"
+        step="0.1"
+        [value]="expectedReturn()"
+        (input)="expectedReturn.set($any($event.target).value)"
+      />
+      <small>{{ g.returnHint }}</small>
+    </label>
+
+    <div class="goal-form__buttons">
+      <button type="submit" class="btn btn--primary" [disabled]="saving()">{{ g.save }}</button>
+      <a class="btn btn--secondary" routerLink="/planner">{{ t.cancel }}</a>
+      @if (goal.value()) {
+        <button
+          type="button"
+          class="link-button link-button--danger"
+          [disabled]="saving()"
+          (click)="remove()"
+        >
+          {{ g.remove }}
+        </button>
+      }
+    </div>
+  </form>
+}

@@ -13,5 +13,9 @@ export const routes: Routes = [
         (m) => m.CompoundInterestPage,
       ),
   },
+  {
+    path: 'planner',
+    loadChildren: () => import('./features/planner/planner.routes').then((m) => m.plannerRoutes),
+  },
   { path: '**', redirectTo: 'compound-interest' },
 ];

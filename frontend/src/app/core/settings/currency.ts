@@ -44,8 +44,13 @@ export class CurrencySettings {
     if (match) this.current.set(match);
   }
 
-  format(value: number, options: { compact?: boolean } = {}) {
-    const { code, locale } = this.current();
+  /**
+   * Formats in the selected currency, or in `options.currency` for amounts that are stored
+   * in a fixed currency (the planner keeps balances in the account's own currency).
+   */
+  format(value: number, options: { compact?: boolean; currency?: string } = {}) {
+    const fixed = options.currency && CURRENCIES.find((c) => c.code === options.currency);
+    const { code, locale } = fixed || this.current();
     return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: code,

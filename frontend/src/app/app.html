@@ -12,11 +12,9 @@
 
     <nav class="nav" [attr.aria-label]="t.nav.main">
       <a routerLink="/compound-interest" routerLinkActive="active">{{ t.nav.compoundInterest }}</a>
+      <a routerLink="/planner" routerLinkActive="active">{{ t.nav.planner }}</a>
       <span class="nav__soon" [title]="t.nav.comingSoon">
         {{ t.nav.scenarios }} <em>{{ t.nav.soon }}</em>
-      </span>
-      <span class="nav__soon" [title]="t.nav.comingSoon">
-        {{ t.nav.tracking }} <em>{{ t.nav.soon }}</em>
       </span>
     </nav>
 
