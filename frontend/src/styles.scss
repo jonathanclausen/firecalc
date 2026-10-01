@@ -125,6 +125,25 @@ input {
   font-family: inherit;
 }
 
+// iOS Safari zooms the page when a field under 16px gets focus, and stays zoomed after.
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
+// iOS gives date fields an intrinsic width that ignores width: 100%.
+input[type='date'] {
+  min-width: 0;
+  appearance: none;
+
+  &::-webkit-date-and-time-value {
+    text-align: left;
+  }
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

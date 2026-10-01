@@ -18,6 +18,8 @@
 }
 
 fieldset {
+  // Fieldsets default to min-content width, which pushed the balance fields past the card on phones.
+  min-width: 0;
   margin: 24px 0 0;
   padding: 0;
   border: 0;
@@ -40,6 +42,17 @@ legend {
   gap: 16px;
   padding: 12px 0;
   border-bottom: 1px solid var(--border);
+
+  // On phones the name sits above a full-width field, so long names don't squeeze it.
+  @media (max-width: 560px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+
+    .balance__input {
+      flex: none;
+    }
+  }
 }
 
 .balance__name {
@@ -60,6 +73,7 @@ legend {
   display: flex;
   align-items: center;
   flex: 0 1 240px;
+  min-width: 0;
   background: var(--surface-input);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
