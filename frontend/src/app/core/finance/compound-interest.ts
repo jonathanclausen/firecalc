@@ -15,11 +15,19 @@ export const PERIODS_PER_YEAR: Record<CompoundingFrequency, number> = {
   annually: 1,
 };
 
+/** From `fromYear` (1-based, inclusive) the recurring deposit becomes `amount`. */
+export interface ContributionChange {
+  fromYear: number;
+  amount: number;
+}
+
 export interface CompoundInterestInput {
   /** Starting balance. */
   initialAmount: number;
   /** Recurring deposit per contribution period (negative values are treated as 0). */
   contribution: number;
+  /** Later changes to the deposit, e.g. a lower amount from year 6. */
+  contributionChanges?: ContributionChange[];
   contributionFrequency: Frequency;
   /** Whether deposits land at the start or end of each contribution period. */
   contributionTiming: ContributionTiming;
@@ -28,7 +36,10 @@ export interface CompoundInterestInput {
   compounding: CompoundingFrequency;
   /** Investment horizon in whole years. */
   years: number;
-  /** Yearly increase of the recurring deposit in percent (e.g. salary growth). */
+  /**
+   * Yearly increase of the recurring deposit in percent (e.g. salary growth). It compounds
+   * from the start of whichever deposit period is active.
+   */
   contributionGrowth: number;
   /** Expected yearly inflation in percent, used for the real (today's money) value. */
   inflation: number;
@@ -61,6 +72,15 @@ export interface CompoundInterestResult {
 
 const MONTHS_PER_YEAR = 12;
 
+/** The deposit amount and the year it took effect, for a given 1-based year. */
+export function activeContribution(input: CompoundInterestInput, year: number) {
+  let active = { fromYear: 1, amount: input.contribution };
+  for (const change of input.contributionChanges ?? []) {
+    if (change.fromYear <= year && change.fromYear >= active.fromYear) active = change;
+  }
+  return active;
+}
+
 /** Effective monthly rate that matches the nominal annual rate at the given compounding. */
 export function effectiveMonthlyRate(annualRatePct: number, compounding: CompoundingFrequency) {
   const n = PERIODS_PER_YEAR[compounding];
@@ -70,7 +90,6 @@ export function effectiveMonthlyRate(annualRatePct: number, compounding: Compoun
 export function calculateCompoundInterest(input: CompoundInterestInput): CompoundInterestResult {
   const years = Math.max(0, Math.floor(input.years));
   const initial = Math.max(0, input.initialAmount);
-  const baseContribution = Math.max(0, input.contribution);
   const monthlyRate = effectiveMonthlyRate(input.annualRate, input.compounding);
   const monthsPerContribution = MONTHS_PER_YEAR / PERIODS_PER_YEAR[input.contributionFrequency];
   const growth = input.contributionGrowth / 100;
@@ -84,7 +103,8 @@ export function calculateCompoundInterest(input: CompoundInterestInput): Compoun
 
   for (let year = 1; year <= years; year++) {
     const startBalance = balance;
-    const deposit = baseContribution * Math.pow(1 + growth, year - 1);
+    const period = activeContribution(input, year);
+    const deposit = Math.max(0, period.amount) * Math.pow(1 + growth, year - period.fromYear);
     let contributions = 0;
     let interest = 0;
 

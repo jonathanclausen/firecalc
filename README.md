@@ -55,4 +55,4 @@ Inputs and the chosen currency are remembered in the browser's localStorage.
 
 ### How the math works
 
-The engine simulates month by month. The nominal annual return is converted to an effective monthly rate that matches the chosen compounding frequency, deposits land at the start or end of each deposit period, and the deposit can grow by a fixed percentage each year. The "today's money" figures discount the balance by the expected inflation rate.
+The engine simulates month by month. The nominal annual return is converted to an effective monthly rate that matches the chosen compounding frequency, deposits land at the start or end of each deposit period, and the deposit can grow by a fixed percentage each year. The deposit amount can change from a given year (for example a lower amount from year 6, or 0 to pause); yearly growth restarts from each new amount. The "today's money" figures discount the balance by the expected inflation rate.
