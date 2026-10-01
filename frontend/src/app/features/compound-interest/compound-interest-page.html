@@ -1,0 +1,247 @@
+<section class="intro">
+  <p class="eyebrow">Calculator</p>
+  <h1>Compound interest</h1>
+  <p class="lede">
+    See how a starting balance and steady deposits grow when returns earn returns of their own.
+  </p>
+</section>
+
+<div class="layout">
+  <aside class="card inputs" aria-label="Calculator inputs">
+    <div class="inputs__header">
+      <h2>Your plan</h2>
+      <button type="button" class="link-button" (click)="reset()">Reset</button>
+    </div>
+
+    <fieldset>
+      <legend>Starting point</legend>
+      <app-number-field
+        label="Initial investment"
+        [unit]="currencyCode()"
+        [(value)]="initialAmount"
+        [step]="1000"
+        [sliderMax]="1000000"
+        [sliderStep]="5000"
+      />
+    </fieldset>
+
+    <fieldset>
+      <legend>Recurring deposit</legend>
+      <app-number-field
+        [label]="'Amount per ' + contributionPer()"
+        [unit]="currencyCode()"
+        [(value)]="contribution"
+        [step]="100"
+        [sliderMax]="contributionFrequency() === 'monthly' ? 30000 : 200000"
+        [sliderStep]="contributionFrequency() === 'monthly' ? 250 : 1000"
+      />
+
+      <div class="select-field">
+        <label for="contribution-frequency">Frequency</label>
+        <select
+          id="contribution-frequency"
+          (change)="contributionFrequency.set($any($event.target).value)"
+        >
+          @for (f of frequencies; track f.value) {
+            <option [value]="f.value" [selected]="f.value === contributionFrequency()">
+              {{ f.label }}
+            </option>
+          }
+        </select>
+      </div>
+
+      <div class="segmented" role="radiogroup" aria-label="Deposit timing">
+        <span class="segmented__label">Deposit at</span>
+        <div class="segmented__options">
+          <label [class.active]="contributionTiming() === 'start'">
+            <input
+              type="radio"
+              name="timing"
+              value="start"
+              [checked]="contributionTiming() === 'start'"
+              (change)="contributionTiming.set('start')"
+            />
+            Start of period
+          </label>
+          <label [class.active]="contributionTiming() === 'end'">
+            <input
+              type="radio"
+              name="timing"
+              value="end"
+              [checked]="contributionTiming() === 'end'"
+              (change)="contributionTiming.set('end')"
+            />
+            End of period
+          </label>
+        </div>
+      </div>
+
+      <app-number-field
+        label="Yearly deposit increase"
+        unit="%"
+        [(value)]="contributionGrowth"
+        [step]="0.5"
+        [max]="50"
+        [sliderMax]="10"
+        [sliderStep]="0.5"
+      />
+    </fieldset>
+
+    <fieldset>
+      <legend>Growth</legend>
+      <app-number-field
+        label="Expected annual return"
+        unit="%"
+        [(value)]="annualRate"
+        [step]="0.1"
+        [max]="100"
+        [sliderMax]="15"
+        [sliderStep]="0.1"
+      />
+
+      <div class="select-field">
+        <label for="compounding">Compounding</label>
+        <select id="compounding" (change)="compounding.set($any($event.target).value)">
+          @for (c of compoundings; track c.value) {
+            <option [value]="c.value" [selected]="c.value === compounding()">{{ c.label }}</option>
+          }
+        </select>
+      </div>
+
+      <app-number-field
+        label="Time horizon"
+        unit="years"
+        [(value)]="years"
+        [min]="1"
+        [max]="100"
+        [sliderMax]="60"
+      />
+
+      <app-number-field
+        label="Expected inflation"
+        unit="%"
+        [(value)]="inflation"
+        [step]="0.1"
+        [max]="50"
+        [sliderMax]="10"
+        [sliderStep]="0.1"
+      />
+    </fieldset>
+  </aside>
+
+  <div class="results">
+    <section class="card hero" aria-label="Summary">
+      <div class="hero__main">
+        <span class="kpi__label"
+          >Balance after {{ years() }} {{ years() === 1 ? 'year' : 'years' }}</span
+        >
+        <strong class="hero__value">{{ result().finalBalance | money }}</strong>
+        <span class="hero__sub">
+          {{ result().realFinalBalance | money }} in today's money at {{ inflation() }}% inflation
+        </span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi">
+          <span class="kpi__label"><i class="dot dot--contrib"></i>Total deposited</span>
+          <strong>{{ result().totalContributions | money }}</strong>
+        </div>
+        <div class="kpi">
+          <span class="kpi__label"><i class="dot dot--interest"></i>Interest earned</span>
+          <strong class="positive">{{ result().totalInterest | money }}</strong>
+        </div>
+        <div class="kpi">
+          <span class="kpi__label">Money multiple</span>
+          <strong>{{ growthMultiple().toFixed(2) }}×</strong>
+        </div>
+      </div>
+
+      <div
+        class="split"
+        role="img"
+        [attr.aria-label]="
+          'Final balance is ' +
+          (100 - interestShare()).toFixed(0) +
+          '% deposits and ' +
+          interestShare().toFixed(0) +
+          '% interest'
+        "
+      >
+        <div class="split__bar">
+          <span class="split__contrib" [style.flex-grow]="100 - interestShare()"></span>
+          <span class="split__interest" [style.flex-grow]="interestShare()"></span>
+        </div>
+        <div class="split__labels">
+          <span>{{ (100 - interestShare()).toFixed(0) }}% deposits</span>
+          <span>{{ interestShare().toFixed(0) }}% interest</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card__header">
+        <h2>Growth over time</h2>
+      </div>
+      <app-growth-chart [result]="result()" [initialAmount]="initialAmount()" />
+    </section>
+
+    <section class="insights" aria-label="Insights">
+      <div class="card insight">
+        <span class="insight__icon" aria-hidden="true">⇄</span>
+        <div>
+          <h3>Crossover point</h3>
+          @if (result().crossoverYear; as year) {
+            <p>
+              In <strong>year {{ year }}</strong> your money earns more in interest than you
+              deposit. From there, the portfolio does most of the work.
+            </p>
+          } @else if (contribution() === 0) {
+            <p>Add a recurring deposit to see when interest overtakes what you put in.</p>
+          } @else {
+            <p>
+              Interest doesn't overtake your yearly deposits within {{ years() }} years. Try a
+              longer horizon or a higher return.
+            </p>
+          }
+        </div>
+      </div>
+
+      <div class="card insight">
+        <span class="insight__icon" aria-hidden="true">×2</span>
+        <div>
+          <h3>Doubling time</h3>
+          @if (result().doublingYears; as d) {
+            <p>
+              At {{ annualRate() }}% a year, money doubles roughly every
+              <strong>{{ d.toFixed(1) }} years</strong> without any new deposits.
+            </p>
+          } @else {
+            <p>With a 0% return your money never doubles on its own.</p>
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card__header">
+        <h2>Year by year</h2>
+        <button
+          type="button"
+          class="link-button"
+          [attr.aria-expanded]="showSchedule()"
+          (click)="showSchedule.set(!showSchedule())"
+        >
+          {{ showSchedule() ? 'Hide table' : 'Show table' }}
+        </button>
+      </div>
+      @if (showSchedule()) {
+        <app-schedule-table [rows]="result().rows" [crossoverYear]="result().crossoverYear" />
+      } @else {
+        <p class="muted">
+          A full breakdown of deposits, interest and balance for each of the
+          {{ years() }} years.
+        </p>
+      }
+    </section>
+  </div>
+</div>

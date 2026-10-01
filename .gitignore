@@ -1,0 +1,9 @@
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+
+# .NET (backend, coming later)
+bin/
+obj/
+*.user

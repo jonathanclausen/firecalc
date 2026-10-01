@@ -1,0 +1,102 @@
+<div class="chart">
+  <ul class="legend" aria-label="Legend">
+    <li><span class="swatch swatch--contrib"></span>Deposits</li>
+    <li><span class="swatch swatch--interest"></span>Interest</li>
+    @if (showReal()) {
+      <li><span class="swatch swatch--real"></span>Balance in today's money</li>
+    }
+  </ul>
+
+  <div class="chart__plot">
+    <svg
+      [attr.viewBox]="'0 0 ' + width() + ' ' + height"
+      [attr.width]="width()"
+      [attr.height]="height"
+      role="img"
+      aria-label="Portfolio growth by year. Use arrow keys to inspect years."
+      tabindex="0"
+      (pointermove)="onPointerMove($event)"
+      (pointerleave)="hoverIndex.set(null)"
+      (keydown)="onKey($event)"
+      (blur)="hoverIndex.set(null)"
+    >
+      <!-- Grid and Y axis -->
+      @for (t of yTicks(); track t) {
+        <line
+          class="grid"
+          [attr.x1]="pad.left"
+          [attr.x2]="width() - pad.right"
+          [attr.y1]="y(t)"
+          [attr.y2]="y(t)"
+        />
+        <text class="axis-label" text-anchor="end" [attr.x]="pad.left - 10" [attr.y]="y(t) + 4">
+          {{ formatAxis(t) }}
+        </text>
+      }
+
+      <!-- X axis -->
+      @for (t of xTicks(); track t) {
+        <text class="axis-label" text-anchor="middle" [attr.x]="x(t)" [attr.y]="height - 10">
+          {{ t === 0 ? 'Now' : 'Yr ' + t }}
+        </text>
+      }
+
+      <!-- Stacked areas -->
+      <path class="area area--interest" [attr.d]="interestArea()" />
+      <path class="area area--contrib" [attr.d]="contributionArea()" />
+      <path class="gap" [attr.d]="contributionLine()" />
+      <path class="line line--contrib" [attr.d]="contributionLine()" />
+      <path class="line line--interest" [attr.d]="balanceLine()" />
+      @if (showReal()) {
+        <path class="line line--real" [attr.d]="realLine()" />
+      }
+
+      <!-- Hover layer -->
+      @if (hovered(); as p) {
+        <line
+          class="crosshair"
+          [attr.x1]="x(p.year)"
+          [attr.x2]="x(p.year)"
+          [attr.y1]="pad.top"
+          [attr.y2]="height - pad.bottom"
+        />
+        <circle class="dot dot--interest" r="4.5" [attr.cx]="x(p.year)" [attr.cy]="y(p.balance)" />
+        <circle
+          class="dot dot--contrib"
+          r="4.5"
+          [attr.cx]="x(p.year)"
+          [attr.cy]="y(p.contributions)"
+        />
+      }
+    </svg>
+
+    @if (hovered(); as p) {
+      <div
+        class="tooltip"
+        [class.tooltip--flipped]="tooltipFlipped()"
+        [style.left.px]="tooltipLeft()"
+        [style.top.px]="pad.top"
+        role="status"
+      >
+        <div class="tooltip__title">{{ p.year === 0 ? 'Today' : 'End of year ' + p.year }}</div>
+        <div class="tooltip__row tooltip__row--total">
+          <span>Balance</span><strong>{{ p.balance | money }}</strong>
+        </div>
+        <div class="tooltip__row">
+          <span><i class="swatch swatch--contrib"></i>Deposits</span>
+          <strong>{{ p.contributions | money }}</strong>
+        </div>
+        <div class="tooltip__row">
+          <span><i class="swatch swatch--interest"></i>Interest</span>
+          <strong>{{ p.balance - p.contributions | money }}</strong>
+        </div>
+        @if (showReal()) {
+          <div class="tooltip__row">
+            <span><i class="swatch swatch--real"></i>Today's money</span>
+            <strong>{{ p.real | money }}</strong>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>
