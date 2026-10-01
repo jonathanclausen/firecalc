@@ -9,7 +9,7 @@ frontend/   Angular app (standalone components, signals, SSR)
 backend/    .NET API with Postgres (accounts, snapshots, goal), see backend/README.md
 ```
 
-Production runs on Google Cloud Run with a Neon Postgres database, deployed from `main` by GitHub Actions. Setup: [deploy/README.md](deploy/README.md).
+Production runs on Google Cloud Run with a Neon Postgres database, deployed from `main` by GitHub Actions, with a preview environment and dev database for branches. Setup: [deploy/README.md](deploy/README.md).
 
 ## Run everything
 
