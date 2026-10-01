@@ -16,6 +16,28 @@ const angularApp = new AngularNodeAppEngine();
 const apiUrl = (process.env['API_URL'] ?? 'http://localhost:5080').replace(/\/$/, '');
 
 /**
+ * On Cloud Run the API is private and only accepts calls from this service's identity. Its ID
+ * token goes in X-Serverless-Authorization, so the user's Google token keeps the Authorization
+ * header. Unset locally, where the API is reached directly.
+ */
+const apiAudience = process.env['API_AUDIENCE'];
+let serviceToken: { value: string; expiresAt: number } | undefined;
+
+async function getServiceToken(): Promise<string | undefined> {
+  if (!apiAudience) return undefined;
+  if (serviceToken && serviceToken.expiresAt > Date.now()) return serviceToken.value;
+  const res = await fetch(
+    'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=' +
+      encodeURIComponent(apiAudience),
+    { headers: { 'Metadata-Flavor': 'Google' } },
+  );
+  if (!res.ok) throw new Error(`Metadata server returned ${res.status}`);
+  // Google ID tokens last an hour; refresh well before that.
+  serviceToken = { value: await res.text(), expiresAt: Date.now() + 45 * 60 * 1000 };
+  return serviceToken.value;
+}
+
+/**
  * Settings the browser needs at runtime, so one build works in every environment.
  * The Google client id is public: it identifies the app, it does not grant access.
  */
@@ -35,6 +57,8 @@ app.use('/api', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) => 
       const value = req.headers[name];
       if (typeof value === 'string') headers.set(name, value);
     }
+    const token = await getServiceToken();
+    if (token) headers.set('x-serverless-authorization', `Bearer ${token}`);
     const hasBody = !['GET', 'HEAD'].includes(req.method) && Buffer.isBuffer(req.body);
     const upstream = await fetch(apiUrl + req.originalUrl, {
       method: req.method,

@@ -7,8 +7,10 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Retries cover Neon's free tier: it suspends an idle database and drops open connections,
+// so the first query after a pause can fail once while the database wakes up.
 builder.Services.AddDbContext<FireCalcDbContext>(o =>
-    o.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+    o.UseNpgsql(builder.Configuration.GetConnectionString("Default"), npgsql => npgsql.EnableRetryOnFailure()));
 
 builder.Services.ConfigureHttpJsonOptions(o =>
 {
