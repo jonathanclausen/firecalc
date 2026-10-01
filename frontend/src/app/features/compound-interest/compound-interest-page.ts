@@ -2,8 +2,10 @@ import { Component, afterNextRender, computed, effect, inject, signal } from '@a
 import {
   CompoundInterestInput,
   CompoundingFrequency,
+  ContributionChange,
   ContributionTiming,
   Frequency,
+  activeContribution,
   calculateCompoundInterest,
 } from '../../core/finance/compound-interest';
 import { I18n } from '../../core/i18n/i18n';
@@ -19,6 +21,7 @@ const STORAGE_KEY = 'firecalc.compound-interest.v1';
 export const DEFAULT_INPUT: CompoundInterestInput = {
   initialAmount: 50_000,
   contribution: 5_000,
+  contributionChanges: [],
   contributionFrequency: 'monthly',
   contributionTiming: 'end',
   annualRate: 7,
@@ -41,6 +44,7 @@ export class CompoundInterestPage {
 
   protected readonly initialAmount = signal(DEFAULT_INPUT.initialAmount);
   protected readonly contribution = signal(DEFAULT_INPUT.contribution);
+  protected readonly contributionChanges = signal<ContributionChange[]>([]);
   protected readonly contributionFrequency = signal<Frequency>(DEFAULT_INPUT.contributionFrequency);
   protected readonly contributionTiming = signal<ContributionTiming>(
     DEFAULT_INPUT.contributionTiming,
@@ -68,6 +72,7 @@ export class CompoundInterestPage {
   protected readonly input = computed<CompoundInterestInput>(() => ({
     initialAmount: this.initialAmount(),
     contribution: this.contribution(),
+    contributionChanges: this.contributionChanges(),
     contributionFrequency: this.contributionFrequency(),
     contributionTiming: this.contributionTiming(),
     annualRate: this.annualRate(),
@@ -89,6 +94,10 @@ export class CompoundInterestPage {
     return r.totalContributions > 0 ? r.finalBalance / r.totalContributions : 0;
   });
 
+  protected readonly hasDeposits = computed(
+    () => this.result().totalContributions > this.initialAmount(),
+  );
+
   protected readonly showSchedule = signal(false);
 
   /** True once saved inputs are restored; until then nothing is written back. */
@@ -107,6 +116,25 @@ export class CompoundInterestPage {
     });
   }
 
+  protected addChange() {
+    const changes = this.contributionChanges();
+    const last = Math.max(1, ...changes.map((c) => c.fromYear));
+    const years = this.years();
+    const fromYear = Math.max(2, Math.min(years, last + 5 <= years ? last + 5 : last + 1));
+    const amount = activeContribution(this.input(), fromYear).amount;
+    this.contributionChanges.set([...changes, { fromYear, amount }]);
+  }
+
+  protected updateChange(index: number, patch: Partial<ContributionChange>) {
+    this.contributionChanges.update((changes) =>
+      changes.map((c, i) => (i === index ? { ...c, ...patch } : c)),
+    );
+  }
+
+  protected removeChange(index: number) {
+    this.contributionChanges.update((changes) => changes.filter((_, i) => i !== index));
+  }
+
   protected reset() {
     this.apply(DEFAULT_INPUT);
   }
@@ -114,6 +142,7 @@ export class CompoundInterestPage {
   private apply(input: CompoundInterestInput) {
     this.initialAmount.set(input.initialAmount);
     this.contribution.set(input.contribution);
+    this.contributionChanges.set(validChanges(input.contributionChanges));
     this.contributionFrequency.set(input.contributionFrequency);
     this.contributionTiming.set(input.contributionTiming);
     this.annualRate.set(input.annualRate);
@@ -122,4 +151,13 @@ export class CompoundInterestPage {
     this.contributionGrowth.set(input.contributionGrowth);
     this.inflation.set(input.inflation);
   }
+}
+
+/** Keeps only well-formed changes, e.g. from older or hand-edited saved state. */
+function validChanges(changes: unknown): ContributionChange[] {
+  if (!Array.isArray(changes)) return [];
+  return changes.filter(
+    (c): c is ContributionChange =>
+      Number.isFinite(c?.fromYear) && Number.isFinite(c?.amount) && c.fromYear >= 1,
+  );
 }

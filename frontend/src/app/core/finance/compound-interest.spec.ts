@@ -98,3 +98,46 @@ describe('calculateCompoundInterest', () => {
     expect(r.doublingYears).toBeNull();
   });
 });
+
+describe('contribution changes', () => {
+  it('switches the deposit amount from the given year', () => {
+    const r = calculateCompoundInterest({
+      ...base,
+      contribution: 1000,
+      contributionChanges: [{ fromYear: 6, amount: 500 }],
+      years: 10,
+    });
+    expect(r.rows[4].contributions).toBeCloseTo(12_000, 6);
+    expect(r.rows[5].contributions).toBeCloseTo(6_000, 6);
+    expect(r.totalContributions).toBeCloseTo(5 * 12_000 + 5 * 6_000, 6);
+  });
+
+  it('applies changes in year order regardless of list order and allows pausing', () => {
+    const r = calculateCompoundInterest({
+      ...base,
+      contribution: 100,
+      contributionFrequency: 'annually',
+      contributionChanges: [
+        { fromYear: 4, amount: 300 },
+        { fromYear: 2, amount: 0 },
+      ],
+      years: 5,
+    });
+    expect(r.rows.map((row) => row.contributions)).toEqual([100, 0, 0, 300, 300]);
+  });
+
+  it('restarts yearly growth at the start of each period', () => {
+    const r = calculateCompoundInterest({
+      ...base,
+      contribution: 100,
+      contributionFrequency: 'annually',
+      contributionGrowth: 10,
+      contributionChanges: [{ fromYear: 3, amount: 200 }],
+      years: 4,
+    });
+    const deposits = r.rows.map((row) => row.contributions);
+    expect(deposits[1]).toBeCloseTo(110, 6);
+    expect(deposits[2]).toBeCloseTo(200, 6);
+    expect(deposits[3]).toBeCloseTo(220, 6);
+  });
+});
