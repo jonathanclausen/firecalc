@@ -1,0 +1,74 @@
+# firecalc backend
+
+ASP.NET Core (.NET 10) minimal API with EF Core and PostgreSQL. It stores the planner data:
+accounts, dated balance snapshots and a FIRE goal. The design is in the project notes (`planner-design.md`).
+
+## Sign-in and access
+
+The frontend signs in with Google Identity Services and sends the Google ID token as
+`Authorization: Bearer <token>`. The API validates it against Google's keys and the configured client id,
+then only lets in accounts listed in `Auth:AllowedEmails` with a verified email. With an empty list nobody
+gets in. Users are created on their first request, keyed by Google's `sub`.
+
+| Setting | Env var on Cloud Run | Notes |
+|---|---|---|
+| `ConnectionStrings:Default` | `ConnectionStrings__Default` | Npgsql connection string |
+| `Auth:GoogleClientId` | `Auth__GoogleClientId` | OAuth client id from the GCP project |
+| `Auth:AllowedEmails` | `Auth__AllowedEmails__0` | One variable per allowed Google account |
+| `Cors:AllowedOrigins` | `Cors__AllowedOrigins__0` | The frontend's origin |
+| `Database:MigrateOnStartup` | `Database__MigrateOnStartup` | Default `true`; applies EF migrations on boot |
+
+## Endpoints
+
+All under `/api` and require an allowed Google account. `GET /healthz` is public.
+
+| Method | Path | |
+|---|---|---|
+| GET | `/me` | Signed-in user |
+| GET, POST | `/accounts` | `?includeArchived=true` to include archived |
+| PUT, DELETE | `/accounts/{id}` | Delete only works while the account has no balances; archive otherwise |
+| GET, POST | `/snapshots` | One snapshot per date: `{ date, note?, entries: [{ accountId, balance }] }` |
+| GET, PUT, DELETE | `/snapshots/{id}` | |
+| GET, PUT, DELETE | `/goal` | `{ name?, targetAmount, targetDate?, expectedAnnualReturnPct? }`; GET is 204 when unset |
+| GET | `/dashboard` | Net worth series by account type, latest total, change, goal progress |
+
+Account types are `investment`, `savings` and `cash`.
+
+## Run locally
+
+Whole app (Postgres, API and frontend) with Docker, from the repo root:
+
+```sh
+docker compose up --build    # frontend http://localhost:4000, API http://localhost:5080
+```
+
+To call `/api`, put your Google client id and email in `backend/.env.local` (git-ignored):
+
+```
+Auth__GoogleClientId=1234-abc.apps.googleusercontent.com
+Auth__AllowedEmails__0=you@gmail.com
+```
+
+For quick backend iteration, run only the database in Docker and the API with hot reload:
+
+```sh
+docker compose up -d db
+dotnet watch --project src/FireCalc.Api    # Development settings point at localhost:5432
+```
+
+Here, set `Auth:GoogleClientId` and `Auth:AllowedEmails` with `dotnet user-secrets` instead.
+
+## Tests
+
+Integration tests run the API against a throwaway database on a real Postgres and mint their own ID tokens.
+
+```sh
+FIRECALC_TEST_POSTGRES="Host=localhost;Port=5432;Username=postgres;Password=postgres" dotnet test
+```
+
+## Migrations
+
+```sh
+dotnet tool install --global dotnet-ef
+dotnet ef migrations add <Name> -p src/FireCalc.Api -o Data/Migrations
+```
