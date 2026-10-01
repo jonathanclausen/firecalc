@@ -9,6 +9,7 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { CompoundInterestResult } from '../../../core/finance/compound-interest';
+import { I18n } from '../../../core/i18n/i18n';
 import { CurrencySettings } from '../../../core/settings/currency';
 import { MoneyPipe } from '../../../shared/money.pipe';
 
@@ -35,6 +36,7 @@ export class GrowthChart {
   readonly showReal = input(true);
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  protected readonly i18n = inject(I18n);
   private readonly currency = inject(CurrencySettings);
   private readonly destroyRef = inject(DestroyRef);
 

@@ -1,9 +1,10 @@
+@let c = i18n.t().chart;
 <div class="chart">
-  <ul class="legend" aria-label="Legend">
-    <li><span class="swatch swatch--contrib"></span>Deposits</li>
-    <li><span class="swatch swatch--interest"></span>Interest</li>
+  <ul class="legend" [attr.aria-label]="c.legend">
+    <li><span class="swatch swatch--contrib"></span>{{ c.deposits }}</li>
+    <li><span class="swatch swatch--interest"></span>{{ c.interest }}</li>
     @if (showReal()) {
-      <li><span class="swatch swatch--real"></span>Balance in today's money</li>
+      <li><span class="swatch swatch--real"></span>{{ c.realBalance }}</li>
     }
   </ul>
 
@@ -13,7 +14,7 @@
       [attr.width]="width()"
       [attr.height]="height"
       role="img"
-      aria-label="Portfolio growth by year. Use arrow keys to inspect years."
+      [attr.aria-label]="c.ariaLabel"
       tabindex="0"
       (pointermove)="onPointerMove($event)"
       (pointerleave)="hoverIndex.set(null)"
@@ -37,7 +38,7 @@
       <!-- X axis -->
       @for (t of xTicks(); track t) {
         <text class="axis-label" text-anchor="middle" [attr.x]="x(t)" [attr.y]="height - 10">
-          {{ t === 0 ? 'Now' : 'Yr ' + t }}
+          {{ t === 0 ? c.now : c.year(t) }}
         </text>
       }
 
@@ -78,21 +79,22 @@
         [style.top.px]="pad.top"
         role="status"
       >
-        <div class="tooltip__title">{{ p.year === 0 ? 'Today' : 'End of year ' + p.year }}</div>
+        <div class="tooltip__title">{{ p.year === 0 ? c.today : c.endOfYear(p.year) }}</div>
         <div class="tooltip__row tooltip__row--total">
-          <span>Balance</span><strong>{{ p.balance | money }}</strong>
+          <span>{{ c.balance }}</span
+          ><strong>{{ p.balance | money }}</strong>
         </div>
         <div class="tooltip__row">
-          <span><i class="swatch swatch--contrib"></i>Deposits</span>
+          <span><i class="swatch swatch--contrib"></i>{{ c.deposits }}</span>
           <strong>{{ p.contributions | money }}</strong>
         </div>
         <div class="tooltip__row">
-          <span><i class="swatch swatch--interest"></i>Interest</span>
+          <span><i class="swatch swatch--interest"></i>{{ c.interest }}</span>
           <strong>{{ p.balance - p.contributions | money }}</strong>
         </div>
         @if (showReal()) {
           <div class="tooltip__row">
-            <span><i class="swatch swatch--real"></i>Today's money</span>
+            <span><i class="swatch swatch--real"></i>{{ c.realShort }}</span>
             <strong>{{ p.real | money }}</strong>
           </div>
         }

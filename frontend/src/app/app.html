@@ -1,3 +1,4 @@
+@let t = i18n.t();
 <header class="topbar">
   <div class="topbar__inner">
     <a class="brand" routerLink="/">
@@ -9,22 +10,43 @@
       <span>FireCalc</span>
     </a>
 
-    <nav class="nav" aria-label="Main">
-      <a routerLink="/compound-interest" routerLinkActive="active">Compound interest</a>
-      <span class="nav__soon" title="Coming soon">Scenarios <em>Soon</em></span>
-      <span class="nav__soon" title="Coming soon">Tracking <em>Soon</em></span>
+    <nav class="nav" [attr.aria-label]="t.nav.main">
+      <a routerLink="/compound-interest" routerLinkActive="active">{{ t.nav.compoundInterest }}</a>
+      <span class="nav__soon" [title]="t.nav.comingSoon">
+        {{ t.nav.scenarios }} <em>{{ t.nav.soon }}</em>
+      </span>
+      <span class="nav__soon" [title]="t.nav.comingSoon">
+        {{ t.nav.tracking }} <em>{{ t.nav.soon }}</em>
+      </span>
     </nav>
 
-    <label class="currency">
-      <span class="visually-hidden">Currency</span>
-      <select (change)="currency.select($any($event.target).value)">
-        @for (c of currencies; track c.code) {
-          <option [value]="c.code" [selected]="c.code === currency.current().code">
-            {{ c.code }} · {{ c.label }}
-          </option>
+    <div class="settings">
+      <div class="lang" role="group" [attr.aria-label]="t.language">
+        @for (l of i18n.languages; track l.code) {
+          <button
+            type="button"
+            [class.active]="i18n.lang() === l.code"
+            [attr.aria-pressed]="i18n.lang() === l.code"
+            [attr.lang]="l.code"
+            [title]="l.label"
+            (click)="i18n.set(l.code)"
+          >
+            {{ l.code.toUpperCase() }}
+          </button>
         }
-      </select>
-    </label>
+      </div>
+
+      <label class="currency">
+        <span class="visually-hidden">{{ t.currency }}</span>
+        <select (change)="currency.select($any($event.target).value)">
+          @for (c of currencies; track c.code) {
+            <option [value]="c.code" [selected]="c.code === currency.current().code">
+              {{ c.code }} · {{ t.currencies[c.code] }}
+            </option>
+          }
+        </select>
+      </label>
+    </div>
   </div>
 </header>
 
@@ -32,6 +54,4 @@
   <router-outlet />
 </main>
 
-<footer class="footer">
-  Projections assume a constant return and are estimates, not financial advice.
-</footer>
+<footer class="footer">{{ t.footer }}</footer>

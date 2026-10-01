@@ -8,7 +8,6 @@ export const routes: Routes = [
   },
   {
     path: 'compound-interest',
-    title: 'Compound interest · FireCalc',
     loadComponent: () =>
       import('./features/compound-interest/compound-interest-page').then(
         (m) => m.CompoundInterestPage,

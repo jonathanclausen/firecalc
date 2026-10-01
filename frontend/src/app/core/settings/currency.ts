@@ -5,17 +5,16 @@ export interface CurrencyOption {
   code: string;
   /** BCP 47 locale used for number formatting. */
   locale: string;
-  label: string;
 }
 
-/** Add a currency here to make it selectable in the header. */
+/** Add a currency here (and its name in i18n/translations.ts) to make it selectable. */
 export const CURRENCIES: readonly CurrencyOption[] = [
-  { code: 'DKK', locale: 'da-DK', label: 'Danish krone' },
-  { code: 'EUR', locale: 'de-DE', label: 'Euro' },
-  { code: 'SEK', locale: 'sv-SE', label: 'Swedish krona' },
-  { code: 'NOK', locale: 'nb-NO', label: 'Norwegian krone' },
-  { code: 'USD', locale: 'en-US', label: 'US dollar' },
-  { code: 'GBP', locale: 'en-GB', label: 'British pound' },
+  { code: 'DKK', locale: 'da-DK' },
+  { code: 'EUR', locale: 'de-DE' },
+  { code: 'SEK', locale: 'sv-SE' },
+  { code: 'NOK', locale: 'nb-NO' },
+  { code: 'USD', locale: 'en-US' },
+  { code: 'GBP', locale: 'en-GB' },
 ];
 
 export const DEFAULT_CURRENCY = 'DKK';

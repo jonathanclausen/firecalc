@@ -1,4 +1,5 @@
-import { Component, input } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
+import { I18n } from '../../../core/i18n/i18n';
 import { YearRow } from '../../../core/finance/compound-interest';
 import { MoneyPipe } from '../../../shared/money.pipe';
 
@@ -7,17 +8,18 @@ import { MoneyPipe } from '../../../shared/money.pipe';
   selector: 'app-schedule-table',
   imports: [MoneyPipe],
   template: `
+    @let t = i18n.t().table;
     <div class="scroll">
       <table>
         <thead>
           <tr>
-            <th scope="col">Year</th>
-            <th scope="col">Deposits</th>
-            <th scope="col">Interest</th>
-            <th scope="col">Total deposited</th>
-            <th scope="col">Total interest</th>
-            <th scope="col">Balance</th>
-            <th scope="col">Today's money</th>
+            <th scope="col">{{ t.year }}</th>
+            <th scope="col">{{ t.deposits }}</th>
+            <th scope="col">{{ t.interest }}</th>
+            <th scope="col">{{ t.totalDeposits }}</th>
+            <th scope="col">{{ t.totalInterest }}</th>
+            <th scope="col">{{ t.balance }}</th>
+            <th scope="col">{{ t.real }}</th>
           </tr>
         </thead>
         <tbody>
@@ -103,4 +105,6 @@ import { MoneyPipe } from '../../../shared/money.pipe';
 export class ScheduleTable {
   readonly rows = input.required<YearRow[]>();
   readonly crossoverYear = input<number | null>(null);
+
+  protected readonly i18n = inject(I18n);
 }

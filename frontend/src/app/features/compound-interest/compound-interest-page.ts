@@ -6,6 +6,7 @@ import {
   Frequency,
   calculateCompoundInterest,
 } from '../../core/finance/compound-interest';
+import { I18n } from '../../core/i18n/i18n';
 import { CurrencySettings } from '../../core/settings/currency';
 import { readJson, writeStorage } from '../../core/storage';
 import { MoneyPipe } from '../../shared/money.pipe';
@@ -34,6 +35,7 @@ export const DEFAULT_INPUT: CompoundInterestInput = {
   styleUrl: './compound-interest-page.scss',
 })
 export class CompoundInterestPage {
+  protected readonly i18n = inject(I18n);
   private readonly currency = inject(CurrencySettings);
   protected readonly currencyCode = computed(() => this.currency.current().code);
 
@@ -49,19 +51,18 @@ export class CompoundInterestPage {
   protected readonly contributionGrowth = signal(DEFAULT_INPUT.contributionGrowth);
   protected readonly inflation = signal(DEFAULT_INPUT.inflation);
 
-  protected readonly frequencies: { value: Frequency; label: string; per: string }[] = [
-    { value: 'monthly', label: 'Monthly', per: 'month' },
-    { value: 'quarterly', label: 'Quarterly', per: 'quarter' },
-    { value: 'semiannually', label: 'Half-yearly', per: 'half-year' },
-    { value: 'annually', label: 'Yearly', per: 'year' },
+  protected readonly frequencies: Frequency[] = [
+    'monthly',
+    'quarterly',
+    'semiannually',
+    'annually',
   ];
-
-  protected readonly compoundings: { value: CompoundingFrequency; label: string }[] = [
-    { value: 'daily', label: 'Daily' },
-    { value: 'monthly', label: 'Monthly' },
-    { value: 'quarterly', label: 'Quarterly' },
-    { value: 'semiannually', label: 'Half-yearly' },
-    { value: 'annually', label: 'Yearly' },
+  protected readonly compoundings: CompoundingFrequency[] = [
+    'daily',
+    'monthly',
+    'quarterly',
+    'semiannually',
+    'annually',
   ];
 
   protected readonly input = computed<CompoundInterestInput>(() => ({
@@ -77,10 +78,6 @@ export class CompoundInterestPage {
   }));
 
   protected readonly result = computed(() => calculateCompoundInterest(this.input()));
-
-  protected readonly contributionPer = computed(
-    () => this.frequencies.find((f) => f.value === this.contributionFrequency())!.per,
-  );
 
   protected readonly interestShare = computed(() => {
     const r = this.result();

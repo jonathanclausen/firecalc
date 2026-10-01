@@ -33,6 +33,7 @@ The app uses Angular SSR (`@angular/ssr` with an Express server in `src/server.t
 - `src/app/core/finance/compound-interest.ts` is the calculation engine. It is plain TypeScript with no Angular dependencies so it can be tested in isolation and later mirrored by the backend.
 - `src/app/core/settings/currency.ts` holds the currency list. DKK is the default; add an entry to `CURRENCIES` or change `DEFAULT_CURRENCY` to switch.
 - `src/app/features/compound-interest/` is the calculator page, its chart and year-by-year table.
+- `src/app/core/i18n/translations.ts` holds every UI string. Danish is the default and English can be picked in the header. The choice is stored in a `firecalc.lang` cookie so the server renders the right language.
 - Design tokens (colors, radii, light and dark themes) are CSS custom properties in `src/styles.scss`.
 
 Inputs and the chosen currency are remembered in the browser's localStorage.

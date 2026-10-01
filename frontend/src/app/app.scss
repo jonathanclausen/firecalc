@@ -95,6 +95,44 @@
   }
 }
 
+.settings {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lang {
+  display: flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--surface-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  button {
+    padding: 4px 9px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    cursor: pointer;
+
+    &.active {
+      background: var(--surface-card);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-ring);
+    }
+  }
+}
+
 .currency select {
   padding: 7px 10px;
   font: inherit;
@@ -114,8 +152,11 @@
   .nav {
     display: none;
   }
-  .currency {
+  .settings {
     margin-left: auto;
+  }
+  .currency select {
+    max-width: 120px;
   }
 }
 
