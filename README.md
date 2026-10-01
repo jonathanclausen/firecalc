@@ -5,7 +5,7 @@ A personal FIRE (financial independence, retire early) planner. The first iterat
 ## Repository layout
 
 ```
-frontend/   Angular app (standalone components, signals)
+frontend/   Angular app (standalone components, signals, SSR)
 backend/    .NET API, added when scenarios and tracking need persistence
 ```
 
@@ -19,7 +19,14 @@ npm install
 npm start          # http://localhost:4200
 npm test           # unit tests (Vitest)
 npm run build
+npm run serve:ssr  # serve the production build with server-side rendering on :4000
 ```
+
+### Server-side rendering
+
+The app uses Angular SSR (`@angular/ssr` with an Express server in `src/server.ts`). Every route is rendered on the server and hydrated in the browser. Saved inputs and currency live in localStorage, so the server renders the defaults and the browser restores the visitor's values right after hydration.
+
+`npm run build` produces `dist/frontend/browser` (static assets) and `dist/frontend/server/server.mjs` (the Node server, listening on `PORT`, default 4000). Angular only serves requests whose `Host` header is allow-listed: `localhost` is in `angular.json`, and a deployed host such as a Cloud Run domain is added with the `NG_ALLOWED_HOSTS` environment variable (comma-separated).
 
 ### Where things live
 

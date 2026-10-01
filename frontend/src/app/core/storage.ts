@@ -1,4 +1,4 @@
-/** localStorage helpers that never throw (private mode, blocked storage, SSR). */
+/** localStorage helpers that never throw (server rendering, private mode, blocked storage). */
 
 export function readStorage(key: string): string | null {
   try {

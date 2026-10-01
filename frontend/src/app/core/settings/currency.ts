@@ -1,4 +1,4 @@
-import { Injectable, effect, signal } from '@angular/core';
+import { Injectable, afterNextRender, effect, signal } from '@angular/core';
 import { readStorage, writeStorage } from '../storage';
 
 export interface CurrencyOption {
@@ -24,13 +24,20 @@ const STORAGE_KEY = 'firecalc.currency';
 
 @Injectable({ providedIn: 'root' })
 export class CurrencySettings {
-  readonly current = signal<CurrencyOption>(
-    CURRENCIES.find((c) => c.code === readStorage(STORAGE_KEY)) ??
-      CURRENCIES.find((c) => c.code === DEFAULT_CURRENCY)!,
-  );
+  readonly current = signal<CurrencyOption>(CURRENCIES.find((c) => c.code === DEFAULT_CURRENCY)!);
+
+  private readonly restored = signal(false);
 
   constructor() {
-    effect(() => writeStorage(STORAGE_KEY, this.current().code));
+    // The server renders the default currency; the saved choice is applied after hydration.
+    afterNextRender(() => {
+      this.select(readStorage(STORAGE_KEY) ?? DEFAULT_CURRENCY);
+      this.restored.set(true);
+    });
+    effect(() => {
+      const code = this.current().code;
+      if (this.restored()) writeStorage(STORAGE_KEY, code);
+    });
   }
 
   select(code: string) {

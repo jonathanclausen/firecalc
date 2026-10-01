@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, afterNextRender, computed, effect, inject, signal } from '@angular/core';
 import {
   CompoundInterestInput,
   CompoundingFrequency,
@@ -34,20 +34,20 @@ export const DEFAULT_INPUT: CompoundInterestInput = {
   styleUrl: './compound-interest-page.scss',
 })
 export class CompoundInterestPage {
-  private readonly saved = { ...DEFAULT_INPUT, ...readJson<CompoundInterestInput>(STORAGE_KEY) };
-
   private readonly currency = inject(CurrencySettings);
   protected readonly currencyCode = computed(() => this.currency.current().code);
 
-  protected readonly initialAmount = signal(this.saved.initialAmount);
-  protected readonly contribution = signal(this.saved.contribution);
-  protected readonly contributionFrequency = signal<Frequency>(this.saved.contributionFrequency);
-  protected readonly contributionTiming = signal<ContributionTiming>(this.saved.contributionTiming);
-  protected readonly annualRate = signal(this.saved.annualRate);
-  protected readonly compounding = signal<CompoundingFrequency>(this.saved.compounding);
-  protected readonly years = signal(this.saved.years);
-  protected readonly contributionGrowth = signal(this.saved.contributionGrowth);
-  protected readonly inflation = signal(this.saved.inflation);
+  protected readonly initialAmount = signal(DEFAULT_INPUT.initialAmount);
+  protected readonly contribution = signal(DEFAULT_INPUT.contribution);
+  protected readonly contributionFrequency = signal<Frequency>(DEFAULT_INPUT.contributionFrequency);
+  protected readonly contributionTiming = signal<ContributionTiming>(
+    DEFAULT_INPUT.contributionTiming,
+  );
+  protected readonly annualRate = signal(DEFAULT_INPUT.annualRate);
+  protected readonly compounding = signal<CompoundingFrequency>(DEFAULT_INPUT.compounding);
+  protected readonly years = signal(DEFAULT_INPUT.years);
+  protected readonly contributionGrowth = signal(DEFAULT_INPUT.contributionGrowth);
+  protected readonly inflation = signal(DEFAULT_INPUT.inflation);
 
   protected readonly frequencies: { value: Frequency; label: string; per: string }[] = [
     { value: 'monthly', label: 'Monthly', per: 'month' },
@@ -94,19 +94,35 @@ export class CompoundInterestPage {
 
   protected readonly showSchedule = signal(false);
 
+  /** True once saved inputs are restored; until then nothing is written back. */
+  private readonly restored = signal(false);
+
   constructor() {
-    effect(() => writeStorage(STORAGE_KEY, JSON.stringify(this.input())));
+    // Render with defaults on the server and during hydration, then restore the
+    // visitor's saved inputs in the browser so server and client markup match.
+    afterNextRender(() => {
+      this.apply({ ...DEFAULT_INPUT, ...readJson<CompoundInterestInput>(STORAGE_KEY) });
+      this.restored.set(true);
+    });
+    effect(() => {
+      const input = this.input();
+      if (this.restored()) writeStorage(STORAGE_KEY, JSON.stringify(input));
+    });
   }
 
   protected reset() {
-    this.initialAmount.set(DEFAULT_INPUT.initialAmount);
-    this.contribution.set(DEFAULT_INPUT.contribution);
-    this.contributionFrequency.set(DEFAULT_INPUT.contributionFrequency);
-    this.contributionTiming.set(DEFAULT_INPUT.contributionTiming);
-    this.annualRate.set(DEFAULT_INPUT.annualRate);
-    this.compounding.set(DEFAULT_INPUT.compounding);
-    this.years.set(DEFAULT_INPUT.years);
-    this.contributionGrowth.set(DEFAULT_INPUT.contributionGrowth);
-    this.inflation.set(DEFAULT_INPUT.inflation);
+    this.apply(DEFAULT_INPUT);
+  }
+
+  private apply(input: CompoundInterestInput) {
+    this.initialAmount.set(input.initialAmount);
+    this.contribution.set(input.contribution);
+    this.contributionFrequency.set(input.contributionFrequency);
+    this.contributionTiming.set(input.contributionTiming);
+    this.annualRate.set(input.annualRate);
+    this.compounding.set(input.compounding);
+    this.years.set(input.years);
+    this.contributionGrowth.set(input.contributionGrowth);
+    this.inflation.set(input.inflation);
   }
 }
