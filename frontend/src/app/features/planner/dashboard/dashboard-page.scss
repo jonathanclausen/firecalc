@@ -159,6 +159,10 @@ td.up {
   color: var(--positive);
 }
 
+td.down {
+  color: var(--danger);
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

@@ -141,7 +141,7 @@
               <td class="nowrap">{{ i18n.date(s.date) }}</td>
               <td class="note">{{ s.note }}</td>
               <td class="num">{{ s.total | money: false : cur }}</td>
-              <td class="num" [class.up]="(s.change ?? 0) > 0">
+              <td class="num" [class.up]="(s.change ?? 0) > 0" [class.down]="(s.change ?? 0) < 0">
                 {{ s.change === null ? '–' : signed(s.change) }}
               </td>
               <td class="actions">
