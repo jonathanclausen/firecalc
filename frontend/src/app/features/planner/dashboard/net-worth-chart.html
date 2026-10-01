@@ -1,0 +1,95 @@
+@let t = i18n.t().planner;
+<div class="chart">
+  @if (types().length > 1) {
+    <ul class="legend" [attr.aria-label]="i18n.t().chart.legend">
+      @for (type of types(); track type) {
+        <li><span class="swatch swatch--{{ type }}"></span>{{ t.types[type] }}</li>
+      }
+    </ul>
+  }
+
+  <div class="chart__plot">
+    <svg
+      [attr.viewBox]="'0 0 ' + width() + ' ' + height"
+      [attr.width]="width()"
+      [attr.height]="height"
+      role="img"
+      [attr.aria-label]="t.dashboard.chartAria"
+      tabindex="0"
+      (pointermove)="onPointerMove($event)"
+      (pointerleave)="hoverIndex.set(null)"
+      (keydown)="onKey($event)"
+      (blur)="hoverIndex.set(null)"
+    >
+      @for (tick of yTicks(); track tick) {
+        <line
+          class="grid"
+          [attr.x1]="pad.left"
+          [attr.x2]="width() - pad.right"
+          [attr.y1]="y(tick)"
+          [attr.y2]="y(tick)"
+        />
+        <text class="axis-label" text-anchor="end" [attr.x]="pad.left - 10" [attr.y]="y(tick) + 4">
+          {{ formatAxis(tick) }}
+        </text>
+      }
+
+      @for (i of xTicks(); track i) {
+        <text class="axis-label" text-anchor="middle" [attr.x]="xAt(i)" [attr.y]="height - 10">
+          {{ i18n.date(series()[i].date, 'short') }}
+        </text>
+      }
+
+      @for (layer of layers(); track layer.type) {
+        <path class="area area--{{ layer.type }}" [attr.d]="layer.area" />
+      }
+      @for (layer of layers(); track layer.type) {
+        <path class="gap" [attr.d]="layer.line" />
+        <path class="line line--{{ layer.type }}" [attr.d]="layer.line" />
+      }
+
+      <!-- One marker per snapshot on the total, so single snapshots show too. -->
+      @for (p of series(); track p.date; let i = $index) {
+        <circle class="marker" r="4" [attr.cx]="xAt(i)" [attr.cy]="y(p.total)" />
+      }
+
+      @if (hovered(); as h) {
+        <line
+          class="crosshair"
+          [attr.x1]="xAt(h.index)"
+          [attr.x2]="xAt(h.index)"
+          [attr.y1]="pad.top"
+          [attr.y2]="height - pad.bottom"
+        />
+        <circle
+          class="marker marker--active"
+          r="5.5"
+          [attr.cx]="xAt(h.index)"
+          [attr.cy]="y(h.point.total)"
+        />
+      }
+    </svg>
+
+    @if (hovered(); as h) {
+      <div
+        class="tooltip"
+        [class.tooltip--flipped]="tooltipFlipped()"
+        [style.left.px]="tooltipFlipped() ? xAt(h.index) - 12 : xAt(h.index) + 12"
+        [style.top.px]="pad.top"
+        role="status"
+      >
+        <div class="tooltip__title">{{ i18n.date(h.point.date) }}</div>
+        <div class="tooltip__row tooltip__row--total">
+          <span>{{ t.dashboard.total }}</span
+          ><strong>{{ h.point.total | money: false : currency() }}</strong>
+        </div>
+        @for (type of types(); track type) {
+          <div class="tooltip__row">
+            <span><i class="swatch swatch--{{ type }}"></i>{{ t.types[type] }}</span>
+            <strong>{{ h.point.byType[type] ?? 0 | money: false : currency() }}</strong>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

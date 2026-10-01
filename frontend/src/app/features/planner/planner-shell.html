@@ -1,0 +1,52 @@
+@let t = i18n.t().planner;
+@switch (auth.state()) {
+  @case ('signedIn') {
+    <div class="subnav">
+      <nav [attr.aria-label]="t.tabs">
+        <a
+          routerLink="/planner"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+        >
+          {{ t.overview }}
+        </a>
+        <a routerLink="/planner/snapshot" routerLinkActive="active">{{ t.newSnapshot }}</a>
+        <a routerLink="/planner/accounts" routerLinkActive="active">{{ t.accounts }}</a>
+        <a routerLink="/planner/goal" routerLinkActive="active">{{ t.goal }}</a>
+      </nav>
+      <div class="who">
+        <span>{{ t.signedInAs(auth.user()?.email ?? '') }}</span>
+        <button type="button" class="link-button" (click)="auth.signOut()">{{ t.signOut }}</button>
+      </div>
+    </div>
+    <router-outlet />
+  }
+  @case ('loading') {
+    <p class="muted gate-loading">{{ t.loading }}</p>
+  }
+  @default {
+    <section class="card gate">
+      <svg class="gate__icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="5" y="10" width="14" height="10" rx="2.5" />
+        <path d="M8 10V7.5a4 4 0 0 1 8 0V10" />
+      </svg>
+      @switch (auth.state()) {
+        @case ('denied') {
+          <h1>{{ t.signIn.deniedTitle }}</h1>
+          <p>{{ t.signIn.deniedText }}</p>
+        }
+        @case ('unconfigured') {
+          <h1>{{ t.signIn.unconfiguredTitle }}</h1>
+          <p>{{ t.signIn.unconfiguredText }}</p>
+        }
+        @default {
+          <h1>{{ t.signIn.title }}</h1>
+          <p>{{ t.signIn.text }}</p>
+        }
+      }
+      @if (auth.state() !== 'unconfigured') {
+        <div class="gate__button" #googleButton></div>
+      }
+    </section>
+  }
+}

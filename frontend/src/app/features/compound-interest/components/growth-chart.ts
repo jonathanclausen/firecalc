@@ -11,6 +11,7 @@ import {
 import { CompoundInterestResult } from '../../../core/finance/compound-interest';
 import { I18n } from '../../../core/i18n/i18n';
 import { CurrencySettings } from '../../../core/settings/currency';
+import { niceStep } from '../../../shared/chart-scale';
 import { MoneyPipe } from '../../../shared/money.pipe';
 
 interface Point {
@@ -170,23 +171,4 @@ export class GrowthChart {
     else return;
     event.preventDefault();
   }
-}
-
-/** Rounds a raw step up to 1, 2, 2.5 or 5 times a power of ten (whole numbers if `integer`). */
-function niceStep(raw: number, integer = false) {
-  if (raw <= 0) return 1;
-  const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
-  const residual = raw / magnitude;
-  const allowQuarter = !integer || magnitude >= 10;
-  const nice =
-    residual <= 1
-      ? 1
-      : residual <= 2
-        ? 2
-        : residual <= 2.5 && allowQuarter
-          ? 2.5
-          : residual <= 5
-            ? 5
-            : 10;
-  return nice * magnitude;
 }

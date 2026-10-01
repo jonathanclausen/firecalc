@@ -16,6 +16,7 @@ gets in. Users are created on their first request, keyed by Google's `sub`.
 | `Auth:GoogleClientId` | `Auth__GoogleClientId` | OAuth client id from the GCP project |
 | `Auth:AllowedEmails` | `Auth__AllowedEmails__0` | One variable per allowed Google account |
 | `Cors:AllowedOrigins` | `Cors__AllowedOrigins__0` | The frontend's origin |
+| `Auth:Authority` | `Auth__Authority` | Token issuer, default Google; override only to test against a local issuer |
 | `Database:MigrateOnStartup` | `Database__MigrateOnStartup` | Default `true`; applies EF migrations on boot |
 
 ## Endpoints
@@ -42,10 +43,9 @@ Whole app (Postgres, API and frontend) with Docker, from the repo root:
 docker compose up --build    # frontend http://localhost:4000, API http://localhost:5080
 ```
 
-To call `/api`, put your Google client id and email in `backend/.env.local` (git-ignored):
+The Google client id is set in `docker-compose.yml`. To get in, put your Google account in `backend/.env.local` (git-ignored):
 
 ```
-Auth__GoogleClientId=1234-abc.apps.googleusercontent.com
 Auth__AllowedEmails__0=you@gmail.com
 ```
 
@@ -56,7 +56,7 @@ docker compose up -d db
 dotnet watch --project src/FireCalc.Api    # Development settings point at localhost:5432
 ```
 
-Here, set `Auth:GoogleClientId` and `Auth:AllowedEmails` with `dotnet user-secrets` instead.
+Here, set `Auth:AllowedEmails` with `dotnet user-secrets` instead (the client id is in `appsettings.Development.json`).
 
 ## Tests
 

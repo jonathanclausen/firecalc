@@ -1,0 +1,262 @@
+// Building blocks shared by the "My finances" pages. Scoped to .planner so the calculator is untouched.
+.planner {
+  .intro {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 8px 0 24px;
+
+    h1 {
+      margin: 4px 0 6px;
+      font-size: clamp(1.625rem, 3vw, 2rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+  }
+
+  .eyebrow {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .lede {
+    margin: 0;
+    max-width: 60ch;
+    color: var(--text-secondary);
+  }
+
+  .card {
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: 20px;
+  }
+
+  .card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+
+    h2 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--accent-ring);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    &--primary {
+      background: var(--accent);
+      color: var(--surface-card);
+    }
+
+    &--secondary {
+      background: var(--surface-card);
+      border-color: var(--border);
+      color: var(--text-primary);
+
+      &:hover:not(:disabled) {
+        background: var(--surface-hover);
+      }
+    }
+  }
+
+  .link-button {
+    border: 0;
+    background: none;
+    padding: 4px 0;
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--accent);
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &--danger {
+      color: var(--danger);
+    }
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+
+    > span {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      font: inherit;
+      font-weight: 500;
+      color: var(--text-primary);
+      background: var(--surface-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+
+      &:focus-visible {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-ring);
+      }
+    }
+
+    input[type='number'] {
+      font-variant-numeric: tabular-nums;
+    }
+
+    small {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+  }
+
+  .alert {
+    margin: 0 0 16px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+  }
+
+  .muted {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+
+  .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+
+    h2 {
+      margin: 0;
+      font-size: 1.125rem;
+    }
+
+    p {
+      margin: 0;
+      max-width: 56ch;
+      color: var(--text-secondary);
+    }
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+
+    th,
+    td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+
+    th {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .num {
+      text-align: right;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+  }
+
+  .table-scroll {
+    overflow-x: auto;
+  }
+
+  .type-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 8px;
+    border-radius: 3px;
+    vertical-align: -1px;
+
+    &--investment {
+      background: var(--series-contrib);
+    }
+    &--savings {
+      background: var(--series-interest);
+    }
+    &--cash {
+      background: var(--series-cash);
+    }
+  }
+}
+
+.planner .goal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 520px;
+  padding: 24px;
+
+  .goal-form__buttons {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .goal-form__buttons .link-button {
+    margin-left: auto;
+  }
+}

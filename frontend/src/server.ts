@@ -12,17 +12,45 @@ const browserDistFolder = join(import.meta.dirname, '../browser');
 const app = express();
 const angularApp = new AngularNodeAppEngine();
 
+/** Where the .NET API runs. The browser only talks to this server, which forwards /api. */
+const apiUrl = (process.env['API_URL'] ?? 'http://localhost:5080').replace(/\/$/, '');
+
 /**
- * Example Express Rest API endpoints can be defined here.
- * Uncomment and define endpoints as necessary.
- *
- * Example:
- * ```ts
- * app.get('/api/{*splat}', (req, res) => {
- *   // Handle API request
- * });
- * ```
+ * Settings the browser needs at runtime, so one build works in every environment.
+ * The Google client id is public: it identifies the app, it does not grant access.
  */
+app.get('/app-config.json', (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ googleClientId: process.env['GOOGLE_CLIENT_ID'] ?? '' });
+});
+
+/**
+ * Forward /api to the backend on the same origin, so the browser needs no CORS and the
+ * API address stays a server setting.
+ */
+app.use('/api', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) => {
+  try {
+    const headers = new Headers();
+    for (const name of ['authorization', 'content-type', 'accept', 'accept-language']) {
+      const value = req.headers[name];
+      if (typeof value === 'string') headers.set(name, value);
+    }
+    const hasBody = !['GET', 'HEAD'].includes(req.method) && Buffer.isBuffer(req.body);
+    const upstream = await fetch(apiUrl + req.originalUrl, {
+      method: req.method,
+      headers,
+      body: hasBody ? new Uint8Array(req.body) : undefined,
+    });
+    res.status(upstream.status);
+    for (const name of ['content-type', 'location', 'www-authenticate']) {
+      const value = upstream.headers.get(name);
+      if (value) res.set(name, value);
+    }
+    res.send(Buffer.from(await upstream.arrayBuffer()));
+  } catch {
+    res.status(502).json({ title: 'The API is not reachable.', status: 502 });
+  }
+});
 
 /**
  * Serve static files from /browser

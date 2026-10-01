@@ -1,0 +1,159 @@
+@let t = i18n.t().planner;
+@let d = t.dashboard;
+<section class="intro">
+  <div>
+    <p class="eyebrow">{{ t.eyebrow }}</p>
+    <h1>{{ d.title }}</h1>
+    <p class="lede">{{ d.lede }}</p>
+  </div>
+  @if ((accounts.value()?.length ?? 0) > 0) {
+    <a class="btn btn--primary" routerLink="/planner/snapshot">+ {{ t.newSnapshot }}</a>
+  }
+</section>
+
+@if (failed()) {
+  <p class="alert" role="alert">{{ t.error }}</p>
+} @else if (loading()) {
+  <p class="muted">{{ t.loading }}</p>
+} @else if (accounts.value()!.length === 0 && snapshots.value()!.length === 0) {
+  <section class="card empty">
+    <h2>{{ d.startTitle }}</h2>
+    <p>{{ d.startText }}</p>
+    <a class="btn btn--primary" routerLink="/planner/accounts">{{ d.startAction }}</a>
+  </section>
+} @else if (snapshots.value()!.length === 0) {
+  <section class="card empty">
+    <h2>{{ d.firstTitle }}</h2>
+    <p>{{ d.firstText }}</p>
+    <a class="btn btn--primary" routerLink="/planner/snapshot">{{ t.newSnapshot }}</a>
+  </section>
+} @else {
+  @let dash = dashboard.value()!;
+  @let cur = currency();
+  <div class="top">
+    <section class="card hero" [attr.aria-label]="d.netWorth">
+      <span class="hero__label">{{ d.netWorth }}</span>
+      <strong class="hero__value">{{ dash.latest!.total | money: false : cur }}</strong>
+      <span class="hero__sub">
+        {{ d.latest(i18n.date(dash.latest!.date)) }}
+        @if (dash.changeSincePrevious !== null) {
+          <br />
+          <span [class.up]="dash.changeSincePrevious > 0">{{
+            d.change(signed(dash.changeSincePrevious))
+          }}</span>
+        }
+      </span>
+
+      <div class="kpis">
+        @for (k of typeTotals(); track k.type) {
+          <div class="kpi">
+            <span class="kpi__label"
+              ><i class="type-dot type-dot--{{ k.type }}"></i>{{ t.types[k.type] }}</span
+            >
+            <strong>{{ k.amount | money: false : cur }}</strong>
+          </div>
+        }
+        @if (pace(); as p) {
+          <div class="kpi">
+            <span class="kpi__label">{{ d.pace }}</span>
+            <strong>{{ d.paceValue(signed(p.perMonth)) }}</strong>
+            <small>{{ d.paceSince(i18n.date(p.since)) }}</small>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="card goal">
+      <div class="card__header">
+        <h2>{{ d.goalTitle }}</h2>
+        @if (goal()) {
+          <a class="link-button" routerLink="/planner/goal">{{ t.edit }}</a>
+        }
+      </div>
+      @if (goal(); as g) {
+        <strong class="goal__pct">{{ i18n.percent(g.progressPct, 1) }}</strong>
+        <span class="muted">{{ d.goalOf(g.goal.targetAmount | money: false : cur) }}</span>
+        <div
+          class="goal__bar"
+          role="progressbar"
+          [attr.aria-valuenow]="g.barPct"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          [attr.aria-label]="d.goalTitle"
+        >
+          <span [style.width.%]="g.barPct"></span>
+        </div>
+        @if (g.remaining > 0) {
+          <p class="goal__line">{{ d.goalRemaining(g.remaining | money: false : cur) }}</p>
+        } @else {
+          <p class="goal__line goal__line--done">{{ d.goalReached }}</p>
+        }
+        @if (g.goal.targetDate && g.remaining > 0) {
+          <p class="goal__line muted">{{ d.goalBy(i18n.date(g.goal.targetDate)) }}</p>
+          @if (g.needed === null) {
+            <p class="goal__note">{{ d.goalPassed }}</p>
+          } @else if (g.needed === 0) {
+            <p class="goal__note">{{ d.goalGrowthOnly(i18n.percent(g.rate)) }}</p>
+          } @else if (g.needed !== undefined) {
+            <p
+              class="goal__note"
+              [innerHTML]="d.goalNeeded(g.needed | money: false : cur, i18n.percent(g.rate))"
+            ></p>
+          }
+        }
+      } @else {
+        <p class="muted">{{ d.goalNone }}</p>
+        <a class="btn btn--secondary goal__cta" routerLink="/planner/goal">{{ d.goalSet }}</a>
+      }
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card__header">
+      <h2>{{ d.chartTitle }}</h2>
+    </div>
+    <app-net-worth-chart [series]="dash.series" [currency]="cur" />
+  </section>
+
+  <section class="card">
+    <div class="card__header">
+      <h2>{{ d.historyTitle }}</h2>
+    </div>
+    @if (deleteError()) {
+      <p class="alert" role="alert">{{ t.error }}</p>
+    }
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>{{ d.date }}</th>
+            <th>{{ d.note }}</th>
+            <th class="num">{{ d.total }}</th>
+            <th class="num">{{ d.changeCol }}</th>
+            <th>
+              <span class="visually-hidden">{{ t.edit }}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of history(); track s.id) {
+            <tr>
+              <td class="nowrap">{{ i18n.date(s.date) }}</td>
+              <td class="note">{{ s.note }}</td>
+              <td class="num">{{ s.total | money: false : cur }}</td>
+              <td class="num" [class.up]="(s.change ?? 0) > 0">
+                {{ s.change === null ? '–' : signed(s.change) }}
+              </td>
+              <td class="actions">
+                <a class="link-button" [routerLink]="['/planner/snapshot', s.id]">{{ t.edit }}</a>
+                <button type="button" class="link-button link-button--danger" (click)="remove(s)">
+                  {{ t.delete }}
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
