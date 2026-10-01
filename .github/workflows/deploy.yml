@@ -1,0 +1,117 @@
+# Builds both images and deploys them to Cloud Run.
+#   - Every push to main deploys production (firecalc-web, firecalc-api, database secret firecalc-db).
+#   - A pull request labelled "preview", or a manual run on any other branch, deploys that branch to the
+#     single preview environment (firecalc-web-preview, firecalc-api-preview, firecalc-db-preview), which
+#     uses its own dev database. The latest preview deploy wins.
+# One-time Google Cloud setup and the repository variables it needs: deploy/README.md.
+# Until GCP_PROJECT_ID is set as a repository variable, this workflow skips itself.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths: ["frontend/**", "backend/**", ".github/workflows/deploy.yml"]
+  pull_request:
+    types: [labeled, opened, reopened, synchronize]
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
+  # Public OAuth client id: it identifies the app, it does not grant access.
+  GOOGLE_CLIENT_ID: 42634988358-smce93h2vqaiho07k1brjftaa704n33q.apps.googleusercontent.com
+  # "" for production, "-preview" for the preview environment.
+  SUFFIX: ${{ (github.ref != 'refs/heads/main' || github.event_name == 'pull_request') && '-preview' || '' }}
+
+jobs:
+  deploy:
+    if: >-
+      vars.GCP_PROJECT_ID != '' && (
+        github.event_name != 'pull_request' ||
+        (github.event.pull_request.head.repo.full_name == github.repository &&
+         contains(github.event.pull_request.labels.*.name, 'preview'))
+      )
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'production' || 'preview' }}
+      cancel-in-progress: false
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'production' || 'preview' }}
+      url: ${{ steps.names.outputs.url }}
+    permissions:
+      contents: read
+      id-token: write # lets the job sign in to Google Cloud without a stored key
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # For pull requests, deploy the branch as pushed rather than its merge with main.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          # Production and preview deploy with separate accounts; the preview one can only touch
+          # the preview services.
+          service_account: firecalc-deploy${{ env.SUFFIX }}@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Work out names and URLs
+        id: names
+        run: |
+          # The provider path is projects/<number>/locations/global/..., and Cloud Run's
+          # stable URLs are https://<service>-<project number>.<region>.run.app.
+          number=$(cut -d/ -f2 <<< "${{ vars.GCP_WIF_PROVIDER }}")
+          registry="$REGION-docker.pkg.dev/$PROJECT_ID/firecalc"
+          sha=$(git rev-parse HEAD)
+          {
+            echo "API_IMAGE=$registry/api$SUFFIX:$sha"
+            echo "WEB_IMAGE=$registry/web$SUFFIX:$sha"
+            echo "API_URL=https://firecalc-api$SUFFIX-$number.$REGION.run.app"
+            echo "WEB_HOST=firecalc-web$SUFFIX-$number.$REGION.run.app"
+          } >> "$GITHUB_ENV"
+          echo "url=https://firecalc-web$SUFFIX-$number.$REGION.run.app" >> "$GITHUB_OUTPUT"
+          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+
+      - name: Build and push images
+        run: |
+          docker build -t "$API_IMAGE" backend
+          docker build -t "$WEB_IMAGE" frontend
+          docker push "$API_IMAGE"
+          docker push "$WEB_IMAGE"
+
+      - name: Deploy API
+        env:
+          ALLOWED_EMAILS: ${{ secrets.ALLOWED_EMAILS }}
+        run: |
+          # One Auth__AllowedEmails__<n> variable per comma-separated address.
+          vars="Auth__GoogleClientId=$GOOGLE_CLIENT_ID"
+          i=0
+          for email in ${ALLOWED_EMAILS//,/ }; do
+            vars="$vars;Auth__AllowedEmails__$i=$email"
+            i=$((i + 1))
+          done
+          # Private: only the web service's identity may call it.
+          gcloud run deploy "firecalc-api$SUFFIX" \
+            --image="$API_IMAGE" \
+            --region="$REGION" \
+            --service-account="firecalc-api$SUFFIX@$PROJECT_ID.iam.gserviceaccount.com" \
+            --no-allow-unauthenticated \
+            --set-env-vars="^;^$vars" \
+            --set-secrets="ConnectionStrings__Default=firecalc-db$SUFFIX:latest" \
+            --min-instances=0 --max-instances=1 \
+            --cpu=1 --memory=512Mi --cpu-boost \
+            --quiet
+
+      - name: Deploy web
+        run: |
+          gcloud run deploy "firecalc-web$SUFFIX" \
+            --image="$WEB_IMAGE" \
+            --region="$REGION" \
+            --service-account="firecalc-web@$PROJECT_ID.iam.gserviceaccount.com" \
+            --allow-unauthenticated \
+            --set-env-vars="^;^API_URL=$API_URL;API_AUDIENCE=$API_URL;GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID;NG_ALLOWED_HOSTS=$WEB_HOST" \
+            --min-instances=0 --max-instances=2 \
+            --cpu=1 --memory=512Mi --cpu-boost \
+            --quiet
+          echo "Live at https://$WEB_HOST" >> "$GITHUB_STEP_SUMMARY"
