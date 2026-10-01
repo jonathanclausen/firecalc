@@ -49,15 +49,35 @@ for name in deploy deploy-preview api api-preview web; do
   fi
 done
 
+# Turns Neon's postgresql://user:password@host/db?sslmode=require URL (or its "psql '...'" form)
+# into the key=value form the .NET driver needs. A string already in that form is kept as is.
+to_npgsql() {
+  local url=$1 re='^postgres(ql)?://([^:@/]+)(:([^@/]*))?@([^/:?]+)(:([0-9]+))?/([^?]+)'
+  url=${url#psql } url=${url#\'} url=${url%\'} url=${url#\"} url=${url%\"}
+  if [[ $url == Host=* ]]; then printf %s "$url"; return; fi
+  if [[ ! $url =~ $re ]]; then
+    echo "That doesn't look like a postgresql:// connection string." >&2
+    return 1
+  fi
+  # URL-decode the user and password (%40 -> @ and so on).
+  local user password
+  user=$(printf '%b' "${BASH_REMATCH[2]//%/\\x}")
+  password=$(printf '%b' "${BASH_REMATCH[4]//%/\\x}")
+  printf 'Host=%s;Port=%s;Database=%s;Username=%s;Password="%s";SSL Mode=Require' \
+    "${BASH_REMATCH[5]}" "${BASH_REMATCH[7]:-5432}" "${BASH_REMATCH[8]}" "$user" "${password//\"/\"\"}"
+}
+
 # Stores a connection string, asking for it without echoing. $1 = secret, $2 = who may read it.
 db_secret() {
   if ! gcloud secrets describe "$1" >/dev/null 2>&1; then
-    read -rsp "$3 (Host=...;Database=...;...), then Enter: " db
+    local db
+    read -rsp "$3, as Neon shows it (postgresql://...), then Enter: " db
     echo
+    db=$(to_npgsql "$db")
     printf %s "$db" | gcloud secrets create "$1" --replication-policy=automatic --data-file=-
     unset db
   else
-    echo "$1 already exists; add a new version with: gcloud secrets versions add $1 --data-file=-"
+    echo "$1 already exists; to replace it, run: gcloud secrets delete $1, then this script again"
   fi
   gcloud secrets add-iam-policy-binding "$1" \
     --member="serviceAccount:$2" --role=roles/secretmanager.secretAccessor >/dev/null

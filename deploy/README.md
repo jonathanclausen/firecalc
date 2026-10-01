@@ -25,13 +25,7 @@ Expected to stay at 0 kr for personal use: Cloud Run's free tier (2 million requ
 
 ## One-time setup
 
-1. **Neon.** Create a project at [neon.tech](https://neon.tech) in **AWS Europe Central 1 (Frankfurt)**, then add a branch named `dev` under *Branches*. For each branch, open *Connect*, take the direct (not pooled) connection details and write them in .NET form:
-
-   ```
-   Host=ep-xxxx.eu-central-1.aws.neon.tech;Database=neondb;Username=neondb_owner;Password=xxxx;SSL Mode=Require
-   ```
-
-   The `postgresql://...` URL form does not work with the .NET driver. The two branches have different hosts.
+1. **Neon.** Create a project at [neon.tech](https://neon.tech) in **AWS Europe Central 1 (Frankfurt)**, then add a branch named `dev` under *Branches*. For each branch, open *Connect* and copy the direct (not pooled) connection string, `postgresql://...`. The setup script converts it to the form the .NET driver needs. The two branches have different hosts.
 
 2. **Google Cloud.** Use the project that already holds the OAuth client (project number 42634988358) or create a new one, and make sure billing is linked. Open Cloud Shell in that project and run the setup script (if the repository is private, upload `deploy/setup-gcp.sh` through Cloud Shell's *Upload* menu instead of cloning):
 
@@ -40,7 +34,7 @@ Expected to stay at 0 kr for personal use: Cloud Run's free tier (2 million requ
    bash deploy/setup-gcp.sh <project-id>
    ```
 
-   It enables the needed APIs and creates the image registry, the service accounts with only the roles they need, the two database secrets (it asks for each connection string without echoing it), placeholder preview services and the GitHub sign-in. It can be re-run safely. At the end it prints the values for the next steps.
+   It enables the needed APIs and creates the image registry, the service accounts with only the roles they need, the two database secrets (it asks for each connection string without echoing it and converts it), placeholder preview services and the GitHub sign-in. It can be re-run safely. At the end it prints the values for the next steps.
 
 3. **GitHub.** In the repository's *Settings > Secrets and variables > Actions*, add the variables `GCP_PROJECT_ID` and `GCP_WIF_PROVIDER` (and `GCP_REGION` if you picked another region), and the secret `ALLOWED_EMAILS` with your Google address. Under *Issues > Labels*, add a label named `preview`. The deploy workflow skips itself until `GCP_PROJECT_ID` is set.
 
@@ -52,6 +46,6 @@ Expected to stay at 0 kr for personal use: Cloud Run's free tier (2 million requ
 
 - Preview a branch: add the `preview` label to its pull request, or run *Actions > Deploy > Run workflow* and pick the branch.
 - Fresh dev data: in Neon, open the `dev` branch and choose *Reset from parent* to copy production's current data over it.
-- Change a database password: `gcloud secrets versions add firecalc-db --data-file=-` (or `firecalc-db-preview`), paste, Ctrl-D, then re-run the Deploy workflow.
+- Change a database password: `gcloud secrets delete firecalc-db` (or `firecalc-db-preview`), re-run the setup script and paste the new connection string, then re-run the Deploy workflow.
 - Logs: *Cloud Run > service > Logs*.
 - Roll back: *Cloud Run > service > Revisions*, send traffic to an earlier revision.
