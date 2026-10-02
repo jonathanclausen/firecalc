@@ -265,7 +265,7 @@ export class PlannerApi {
   /** Sets how many shares the account now holds; the API books the difference as a buy or sale. */
   setHolding(
     accountId: string,
-    body: { instrument: InstrumentRef; quantity: number; amount: number | null },
+    body: { instrument: InstrumentRef; quantity: number; unitPrice: number | null },
   ) {
     return firstValueFrom(
       this.http.put<{ quantity: number; change: number; amount: number }>(

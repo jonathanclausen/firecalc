@@ -37,7 +37,7 @@ All under `/api` and require an allowed Google account. `GET /healthz` is public
 | GET, POST | `/accounts/{id}/transactions` | Investment accounts only. `{ date, type, instrument?: { id? \| isin? \| symbol?, name? }, quantity?, price?, amount, note? }` |
 | PUT, DELETE | `/transactions/{id}` | |
 | POST | `/accounts/{id}/import/nordnet` | Body is the Nordnet CSV export as-is. Previews unless `?commit=true`; rows already imported are skipped |
-| PUT | `/accounts/{id}/holdings` | `{ instrument, quantity, amount? }`: sets how many shares you own; the change is booked as a buy or sale at today's price (or `amount`), paired with money in or out so cash stays put |
+| PUT | `/accounts/{id}/holdings` | `{ instrument, quantity, unitPrice?, amount? }`: sets how many shares you own. The first shares need `unitPrice` (per share, in the share's currency) or `amount`; later changes default to today's price. The change is booked as a buy or sale, paired with money in or out so cash stays put |
 | GET | `/instruments/quote` | `?symbol=` latest price, to check a search result against your broker |
 | GET | `/instruments/search` | `?q=` name, ticker or ISIN |
 | PUT | `/instruments/{id}` | `{ symbol }` to fix which price symbol a share uses |

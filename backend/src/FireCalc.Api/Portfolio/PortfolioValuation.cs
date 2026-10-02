@@ -48,16 +48,21 @@ public sealed class PortfolioValuation(FireCalcDbContext db, PriceService prices
     /// <summary>A price older than this is treated as missing rather than shown as current.</summary>
     private const int MaxPriceAgeDays = 30;
 
-    /// <summary>One share's latest price on or before a date, in the user's currency; null when unknown.</summary>
-    public async Task<decimal?> UnitPriceAsync(Guid instrumentId, string currency, DateOnly asOf, CancellationToken ct)
+    /// <summary>
+    /// One share's price in the user's currency: <paramref name="quoted"/> (in the instrument's own currency)
+    /// when given, otherwise the latest close on or before the date. Null when the price or rate is unknown.
+    /// </summary>
+    public async Task<decimal?> UnitPriceAsync(Guid instrumentId, string currency, DateOnly asOf, decimal? quoted, CancellationToken ct)
     {
         await prices.RefreshAsync([instrumentId], asOf.AddDays(-MaxPriceAgeDays), currency, ct);
         var instrument = await db.Instruments.AsNoTracking().SingleAsync(i => i.Id == instrumentId, ct);
         var windowStart = asOf.AddDays(-MaxPriceAgeDays);
-        var close = await db.InstrumentPrices.AsNoTracking()
+        var close = quoted ?? await db.InstrumentPrices.AsNoTracking()
             .Where(p => p.InstrumentId == instrumentId && p.Date <= asOf && p.Date >= windowStart)
             .OrderByDescending(p => p.Date).Select(p => (decimal?)p.Close).FirstOrDefaultAsync(ct);
-        if (close is null || instrument.Currency is null) return null;
+        if (close is null) return null;
+        // Without a known currency a typed price can only be taken as the user's own.
+        if (instrument.Currency is null) return quoted;
         if (instrument.Currency == currency) return close;
 
         var rate = await db.FxRates.AsNoTracking()

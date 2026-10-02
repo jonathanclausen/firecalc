@@ -71,7 +71,7 @@ export class PortfolioPage {
     accountId: string;
     instrument: InstrumentChoice | null;
     quantity: string;
-    amount: string;
+    price: string;
   } | null>(null);
   /** Latest price of a newly searched listing, so it can be checked against the broker. */
   protected readonly quote = httpResource<{ currency: string; price: number; date: string }>(() => {
@@ -84,8 +84,9 @@ export class PortfolioPage {
   protected readonly counting = signal<{
     accountId: string;
     instrumentId: string;
+    currency: string | null;
     quantity: string;
-    amount: string;
+    price: string;
   } | null>(null);
 
   // Patches read the latest draft, so quick successive inputs never overwrite each other.
@@ -97,6 +98,20 @@ export class PortfolioPage {
     this.counting.update((d) => (d ? { ...d, ...patch } : d));
   }
 
+  /** Currency of the instrument being added, so the price field says what it expects. */
+  protected readonly addingCurrency = computed(() => {
+    const chosen = this.adding()?.instrument;
+    if (!chosen) return '';
+    if (chosen.id) {
+      const pos = this.portfolio
+        .value()
+        ?.accounts.flatMap((a) => a.positions)
+        .find((p) => p.instrumentId === chosen.id);
+      return pos?.currency ?? '';
+    }
+    return this.quote.value()?.currency ?? '';
+  });
+
   protected known(data: AccountPortfolio | null): InstrumentChoice[] {
     return (data?.positions ?? []).map((p) => ({
       id: p.instrumentId,
@@ -107,7 +122,7 @@ export class PortfolioPage {
 
   protected startAdd(accountId: string) {
     this.counting.set(null);
-    this.adding.set({ accountId, instrument: null, quantity: '', amount: '' });
+    this.adding.set({ accountId, instrument: null, quantity: '', price: '' });
   }
 
   protected startCount(accountId: string, p: Position) {
@@ -115,8 +130,9 @@ export class PortfolioPage {
     this.counting.set({
       accountId,
       instrumentId: p.instrumentId,
+      currency: p.currency,
       quantity: String(p.quantity),
-      amount: '',
+      price: '',
     });
   }
 
@@ -124,9 +140,9 @@ export class PortfolioPage {
     event.preventDefault();
     const draft = this.adding();
     const quantity = parse(draft?.quantity);
-    if (!draft?.instrument || quantity === null) return;
+    if (!draft?.instrument || quantity === null || parse(draft.price) === null) return;
     const { id, isin, symbol, name } = draft.instrument;
-    await this.saveHolding(draft.accountId, { id, isin, symbol, name }, quantity, draft.amount);
+    await this.saveHolding(draft.accountId, { id, isin, symbol, name }, quantity, draft.price);
   }
 
   protected async saveCount(event: Event) {
@@ -134,27 +150,27 @@ export class PortfolioPage {
     const draft = this.counting();
     const quantity = parse(draft?.quantity);
     if (!draft || quantity === null) return;
-    await this.saveHolding(draft.accountId, { id: draft.instrumentId }, quantity, draft.amount);
+    await this.saveHolding(draft.accountId, { id: draft.instrumentId }, quantity, draft.price);
   }
 
   private async saveHolding(
     accountId: string,
     instrument: InstrumentRef,
     quantity: number,
-    amount: string,
+    price: string,
   ) {
     const t = this.i18n.t().planner;
     this.busy.set(true);
     this.error.set(null);
     try {
-      await this.api.setHolding(accountId, { instrument, quantity, amount: parse(amount) });
+      await this.api.setHolding(accountId, { instrument, quantity, unitPrice: parse(price) });
       this.adding.set(null);
       this.counting.set(null);
       this.portfolio.reload();
     } catch (e) {
-      const needsAmount =
-        e instanceof HttpErrorResponse && e.status === 400 && !!e.error?.errors?.amount;
-      this.error.set(needsAmount ? t.portfolioPage.needAmount : t.error);
+      const needsPrice =
+        e instanceof HttpErrorResponse && e.status === 400 && !!e.error?.errors?.unitPrice;
+      this.error.set(needsPrice ? t.portfolioPage.needPrice : t.error);
     } finally {
       this.busy.set(false);
     }

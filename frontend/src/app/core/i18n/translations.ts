@@ -262,10 +262,13 @@ const da = {
       addHolding: 'Tilføj papir',
       editCount: 'Ret antal',
       ownedNow: 'Antal du ejer nu',
-      totalAmount: (currency: string) => `Samlet beløb i ${currency} (valgfrit)`,
-      totalAmountHint:
-        'Tomt felt bruger dagens kurs. Skriv beløbet, hvis du vil have dit præcise afkast.',
-      needAmount: 'Der er ingen kurs på papiret endnu. Skriv, hvad du gav i alt.',
+      avgPrice: (currency: string) => `Gns. købskurs pr. stk.${currency ? ' i ' + currency : ''}`,
+      avgPriceHint:
+        'Det, du i snit har givet pr. aktie. Nordnet viser det som GAK under beholdningen.',
+      tradePrice: (currency: string) =>
+        `Kurs pr. stk.${currency ? ' i ' + currency : ''} (valgfri)`,
+      tradePriceHint: 'Kursen du handlede til. Tomt felt bruger dagens kurs.',
+      needPrice: 'Skriv kursen pr. aktie, så afkastet kan regnes ud.',
       chooseInstrument: 'Find papiret',
       priceNow: (price: string, date: string) =>
         `Kurs ${price} (${date}). Passer den med Nordnet? Ellers vælg en anden notering.`,
@@ -634,9 +637,13 @@ const en: Translations = {
       addHolding: 'Add holding',
       editCount: 'Edit count',
       ownedNow: 'Shares you own now',
-      totalAmount: (currency: string) => `Total amount in ${currency} (optional)`,
-      totalAmountHint: 'Leave empty to use today’s price. Enter the amount for an exact return.',
-      needAmount: 'This security has no price yet. Enter what you paid in total.',
+      avgPrice: (currency: string) =>
+        `Average purchase price per share${currency ? ' in ' + currency : ''}`,
+      avgPriceHint: 'What you paid per share on average. Nordnet shows it as GAK on the holding.',
+      tradePrice: (currency: string) =>
+        `Price per share${currency ? ' in ' + currency : ''} (optional)`,
+      tradePriceHint: 'The price you traded at. Leave empty to use today’s price.',
+      needPrice: 'Enter the price per share so the return can be worked out.',
       chooseInstrument: 'Find the security',
       priceNow: (price: string, date: string) =>
         `Price ${price} (${date}). Does it match your broker? If not, pick another listing.`,

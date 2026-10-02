@@ -23,7 +23,8 @@ public static class PortfolioEndpoints
     public record QuoteDto(string Symbol, string Currency, decimal Price, DateOnly Date);
     public record UpdateInstrumentRequest(string? Symbol, string? Name);
 
-    public record SetHoldingRequest(InstrumentRef? Instrument, decimal? Quantity, decimal? Amount, DateOnly? Date);
+    /// <summary>Amount is the total paid or received; UnitPrice is per share in the instrument's own currency.</summary>
+    public record SetHoldingRequest(InstrumentRef? Instrument, decimal? Quantity, decimal? Amount, decimal? UnitPrice, DateOnly? Date);
     public record SetHoldingResult(decimal Quantity, decimal Change, decimal Amount);
 
     public record ImportPreviewRow(int Line, DateOnly Date, TransactionType Type, string RawType, string? Name, decimal Quantity, decimal Amount);
@@ -193,7 +194,8 @@ public static class PortfolioEndpoints
             var v = new Validation()
                 .Check(req.Instrument is not null, "instrument", "Choose a share or fund.")
                 .Check(req.Quantity is >= 0, "quantity", "Enter how many you own.")
-                .Check(req.Amount is null or >= 0, "amount", "The amount cannot be negative.");
+                .Check(req.Amount is null or >= 0, "amount", "The amount cannot be negative.")
+                .Check(req.UnitPrice is null or > 0, "unitPrice", "The price must be above 0.");
             if (!v.IsValid) return v.Problem();
             var resolved = await ResolveInstrumentAsync(req.Instrument, db, ct);
             if (resolved is IResult error) return error;
@@ -207,12 +209,16 @@ public static class PortfolioEndpoints
             var change = req.Quantity!.Value - current;
             if (change == 0) return Results.Ok(new SetHoldingResult(current, 0, 0));
 
+            // Without what was paid for the first shares there is no return to show, so ask for it.
+            if (current == 0 && req.Amount is null && req.UnitPrice is null)
+                return new Validation().Check(false, "unitPrice", "Enter the average price you paid per share.").Problem();
+
             var amount = req.Amount;
             if (amount is null)
             {
-                var price = await valuation.UnitPriceAsync(instrument.Id, user.Currency, date, ct);
+                var price = await valuation.UnitPriceAsync(instrument.Id, user.Currency, date, req.UnitPrice, ct);
                 if (price is null)
-                    return new Validation().Check(false, "amount", "No price found for this share. Enter what you paid in total.").Problem();
+                    return new Validation().Check(false, "unitPrice", "No price found for this share. Enter the price per share.").Problem();
                 amount = Math.Round(Math.Abs(change) * price.Value, 2);
             }
 
@@ -231,6 +237,7 @@ public static class PortfolioEndpoints
                     AccountId = accountId, Date = date, Note = note, InstrumentId = instrument.Id,
                     Type = buying ? TransactionType.Buy : TransactionType.Sell,
                     Quantity = Math.Abs(change),
+                    Price = req.UnitPrice,
                     Amount = buying ? -amount.Value : amount.Value,
                 });
             await db.SaveChangesAsync(ct);

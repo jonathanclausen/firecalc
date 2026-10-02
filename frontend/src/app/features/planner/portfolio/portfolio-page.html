@@ -141,23 +141,26 @@
               />
             </label>
             <label class="form-field">
-              <span>{{ p.totalAmount(cur) }}</span>
+              <span>{{ p.avgPrice(addingCurrency()) }}</span>
               <input
                 type="number"
                 inputmode="decimal"
                 min="0"
                 step="any"
-                [value]="draft.amount"
-                (input)="patchAdding({ amount: $any($event.target).value })"
+                required
+                [value]="draft.price"
+                (input)="patchAdding({ price: $any($event.target).value })"
               />
             </label>
           </div>
-          <small class="hint">{{ p.totalAmountHint }}</small>
+          <small class="hint">{{ p.avgPriceHint }}</small>
           <div class="holding-form__buttons">
             <button
               type="submit"
               class="btn btn--primary"
-              [disabled]="busy() || !draft.instrument || draft.quantity.trim() === ''"
+              [disabled]="
+                busy() || !draft.instrument || !draft.quantity.trim() || !draft.price.trim()
+              "
             >
               {{ t.save }}
             </button>
@@ -249,18 +252,18 @@
                             />
                           </label>
                           <label class="form-field">
-                            <span>{{ p.totalAmount(cur) }}</span>
+                            <span>{{ p.tradePrice(draft.currency ?? '') }}</span>
                             <input
                               type="number"
                               inputmode="decimal"
                               min="0"
                               step="any"
-                              [value]="draft.amount"
-                              (input)="patchCounting({ amount: $any($event.target).value })"
+                              [value]="draft.price"
+                              (input)="patchCounting({ price: $any($event.target).value })"
                             />
                           </label>
                         </div>
-                        <small class="hint">{{ p.totalAmountHint }}</small>
+                        <small class="hint">{{ p.tradePriceHint }}</small>
                         <div class="holding-form__buttons">
                           <button type="submit" class="btn btn--primary" [disabled]="busy()">
                             {{ t.save }}
