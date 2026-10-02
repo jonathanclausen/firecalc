@@ -1,0 +1,114 @@
+@let t = i18n.t().planner;
+@let p = t.importPage;
+<section class="intro">
+  <div>
+    <p class="eyebrow">{{ t.portfolioPage.title }}</p>
+    <h1>{{ p.title }}</h1>
+    <p class="lede">{{ p.lede }}</p>
+  </div>
+</section>
+
+@if (accounts.error()) {
+  <p class="alert" role="alert">{{ t.error }}</p>
+} @else if (!accounts.hasValue()) {
+  <p class="muted">{{ t.loading }}</p>
+} @else if (investmentAccounts().length === 0) {
+  <section class="card empty">
+    <p>{{ t.portfolioPage.noInvestmentAccount }}</p>
+    <a class="btn btn--primary" routerLink="/planner/accounts">{{
+      t.portfolioPage.createAccount
+    }}</a>
+  </section>
+} @else {
+  <div class="layout">
+    <section class="card form">
+      @if (error(); as message) {
+        <p class="alert" role="alert">{{ message }}</p>
+      }
+      @if (done(); as d) {
+        <div class="success" role="status">
+          <p>{{ d.new > 0 ? p.done(d.new) : p.nothing }}</p>
+          <a class="btn btn--primary" routerLink="/planner/portfolio">{{ p.toPortfolio }}</a>
+        </div>
+      }
+
+      <label class="form-field">
+        <span>{{ p.account }}</span>
+        <select (change)="chooseAccount($any($event.target).value)">
+          @for (a of investmentAccounts(); track a.id) {
+            <option [value]="a.id" [selected]="a.id === accountId()">{{ a.name }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="form-field">
+        <span>{{ p.file }}</span>
+        <input
+          #fileInput
+          type="file"
+          accept=".csv,text/csv,text/plain"
+          (change)="chooseFile(fileInput)"
+        />
+      </label>
+
+      @if (busy()) {
+        <p class="muted">{{ t.loading }}</p>
+      }
+
+      @if (preview(); as r) {
+        <div class="preview">
+          <p class="preview__summary">{{ p.summary(r.new, r.duplicates) }}</p>
+          @if (r.otherTypes.length > 0) {
+            <p class="note">{{ p.otherTypes(r.otherTypes.join(', ')) }}</p>
+          }
+          @if (r.skipped.length > 0) {
+            <details class="note">
+              <summary>{{ p.skipped(r.skipped.length) }}</summary>
+              <ul>
+                @for (s of r.skipped; track s.line) {
+                  <li>{{ p.line(s.line) }}: {{ s.reason }}</li>
+                }
+              </ul>
+            </details>
+          }
+          @if (r.preview.length > 0) {
+            <h3>{{ p.latest }}</h3>
+            <div class="table-scroll">
+              <table class="data-table">
+                <tbody>
+                  @for (row of r.preview; track row.line) {
+                    <tr>
+                      <td class="nowrap">{{ i18n.date(row.date) }}</td>
+                      <td>
+                        {{ t.txTypes[row.type] }}
+                        <small>{{ row.name }}</small>
+                      </td>
+                      <td class="num">{{ row.quantity ? i18n.number(row.quantity, 4) : '' }}</td>
+                      <td class="num nowrap">{{ amount(row.amount) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+          @if (r.new > 0) {
+            <button type="button" class="btn btn--primary" [disabled]="busy()" (click)="send(true)">
+              {{ p.confirm(r.new) }}
+            </button>
+          } @else {
+            <p class="muted">{{ p.nothing }}</p>
+          }
+        </div>
+      }
+    </section>
+
+    <aside class="card how">
+      <h2>{{ p.howTitle }}</h2>
+      <ol>
+        @for (step of p.how; track $index) {
+          <li>{{ step }}</li>
+        }
+      </ol>
+    </aside>
+  </div>
+}

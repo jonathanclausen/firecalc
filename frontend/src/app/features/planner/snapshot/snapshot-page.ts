@@ -1,5 +1,5 @@
 import { HttpErrorResponse, httpResource } from '@angular/common/http';
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Account, PlannerApi, Snapshot, today } from '../../../core/api/planner-api';
 import { Auth } from '../../../core/auth/auth';
@@ -25,6 +25,15 @@ export class SnapshotPage {
 
   protected readonly accounts = httpResource<Account[]>(() => '/api/accounts?includeArchived=true');
   protected readonly snapshots = httpResource<Snapshot[]>(() => '/api/snapshots');
+  /** Investment accounts with transactions, valued at the chosen date's prices. */
+  protected readonly portfolioValues = httpResource<{ accountId: string; value: number }[]>(() =>
+    /^\d{4}-\d{2}-\d{2}$/.test(this.date())
+      ? `/api/portfolio/values?date=${this.date()}`
+      : undefined,
+  );
+  protected readonly portfolioValue = computed(
+    () => new Map((this.portfolioValues.value() ?? []).map((v) => [v.accountId, v.value])),
+  );
 
   protected readonly date = signal(today());
   protected readonly note = signal('');
@@ -54,10 +63,10 @@ export class SnapshotPage {
 
   constructor() {
     // Fill the form once the data is in: the edited snapshot, or the latest one as a starting point.
-    let filled = false;
+    const filled = signal(false);
     effect(() => {
-      if (filled || !this.ready()) return;
-      filled = true;
+      if (untracked(filled) || !this.ready()) return;
+      filled.set(true);
       const source = this.id() ? this.editing() : (this.snapshots.value()?.[0] ?? null);
       const values: Record<string, string> = {};
       for (const e of source?.entries ?? []) values[e.accountId] = String(e.balance);
@@ -66,6 +75,17 @@ export class SnapshotPage {
         this.date.set(source.date);
         this.note.set(source.note ?? '');
       }
+    });
+
+    // A new snapshot takes portfolio accounts' values from the prices on its date.
+    effect(() => {
+      const values = this.portfolioValue();
+      if (this.id() || !filled() || values.size === 0) return;
+      this.balances.update((b) => {
+        const next = { ...b };
+        for (const [accountId, value] of values) next[accountId] = String(value);
+        return next;
+      });
     });
   }
 

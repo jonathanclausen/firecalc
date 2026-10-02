@@ -63,6 +63,154 @@ export interface Dashboard {
   goal: { goal: Goal; current: number; remaining: number; progressPct: number } | null;
 }
 
+export type TransactionType =
+  | 'buy'
+  | 'sell'
+  | 'dividend'
+  | 'deposit'
+  | 'withdrawal'
+  | 'fee'
+  | 'tax'
+  | 'interest'
+  | 'securityIn'
+  | 'securityOut'
+  | 'other';
+
+export const TRANSACTION_TYPES: readonly TransactionType[] = [
+  'buy',
+  'sell',
+  'dividend',
+  'deposit',
+  'withdrawal',
+  'fee',
+  'tax',
+  'interest',
+  'securityIn',
+  'securityOut',
+  'other',
+];
+
+/** Types that move shares and so need a share or fund and a quantity. */
+export const SHARE_TYPES: ReadonlySet<TransactionType> = new Set([
+  'buy',
+  'sell',
+  'securityIn',
+  'securityOut',
+]);
+
+/** Types that take money out of the account; their amount is stored as a negative number. */
+export const OUTFLOW_TYPES: ReadonlySet<TransactionType> = new Set([
+  'buy',
+  'withdrawal',
+  'fee',
+  'tax',
+]);
+
+export interface Position {
+  instrumentId: string;
+  name: string;
+  isin: string | null;
+  symbol: string | null;
+  currency: string | null;
+  quantity: number;
+  price: number | null;
+  priceDate: string | null;
+  value: number;
+  costBasis: number;
+  gain: number;
+  gainPct: number | null;
+  dayChange: number | null;
+  dividends: number;
+  realizedGain: number;
+  weightPct: number;
+  priceMissing: boolean;
+}
+
+export interface AccountPortfolio {
+  accountId: string;
+  accountName: string;
+  archived: boolean;
+  value: number;
+  marketValue: number;
+  cash: number;
+  costBasis: number;
+  unrealizedGain: number;
+  realizedGain: number;
+  dividends: number;
+  netDeposits: number;
+  growth: number;
+  dayChange: number;
+  pricesAsOf: string | null;
+  transactionCount: number;
+  positions: Position[];
+}
+
+export interface Portfolio {
+  currency: string;
+  asOf: string;
+  value: number;
+  dayChange: number;
+  accounts: AccountPortfolio[];
+}
+
+export interface Transaction {
+  id: string;
+  accountId: string;
+  date: string;
+  type: TransactionType;
+  instrumentId: string | null;
+  instrumentName: string | null;
+  isin: string | null;
+  symbol: string | null;
+  quantity: number;
+  price: number | null;
+  amount: number;
+  note: string | null;
+  source: string;
+}
+
+export interface InstrumentRef {
+  id?: string | null;
+  isin?: string | null;
+  symbol?: string | null;
+  name?: string | null;
+}
+
+export interface SaveTransaction {
+  date: string;
+  type: TransactionType;
+  instrument: InstrumentRef | null;
+  quantity: number | null;
+  price: number | null;
+  amount: number;
+  note: string | null;
+}
+
+export interface SymbolMatch {
+  symbol: string;
+  name: string;
+  exchange: string | null;
+  type: string | null;
+}
+
+export interface ImportResult {
+  committed: boolean;
+  rows: number;
+  new: number;
+  duplicates: number;
+  skipped: { line: number; reason: string }[];
+  otherTypes: string[];
+  preview: {
+    line: number;
+    date: string;
+    type: TransactionType;
+    rawType: string;
+    name: string | null;
+    quantity: number;
+    amount: number;
+  }[];
+}
+
 /** Writes to the planner API. Reads use httpResource in the pages so they stay signal-based. */
 @Injectable({ providedIn: 'root' })
 export class PlannerApi {
@@ -98,6 +246,40 @@ export class PlannerApi {
 
   deleteGoal() {
     return firstValueFrom(this.http.delete<void>('/api/goal'));
+  }
+
+  createTransaction(accountId: string, body: SaveTransaction) {
+    return firstValueFrom(
+      this.http.post<Transaction>(`/api/accounts/${accountId}/transactions`, body),
+    );
+  }
+
+  updateTransaction(id: string, body: SaveTransaction) {
+    return firstValueFrom(this.http.put<Transaction>(`/api/transactions/${id}`, body));
+  }
+
+  deleteTransaction(id: string) {
+    return firstValueFrom(this.http.delete<void>(`/api/transactions/${id}`));
+  }
+
+  /** Sends a Nordnet export as-is. Without commit the server only answers what it would import. */
+  importNordnet(accountId: string, file: ArrayBuffer, commit: boolean) {
+    return firstValueFrom(
+      this.http.post<ImportResult>(`/api/accounts/${accountId}/import/nordnet`, file, {
+        params: { commit },
+        headers: { 'Content-Type': 'application/octet-stream' },
+      }),
+    );
+  }
+
+  searchInstruments(q: string) {
+    return firstValueFrom(
+      this.http.get<SymbolMatch[]>('/api/instruments/search', { params: { q } }),
+    );
+  }
+
+  updateInstrument(id: string, body: { symbol: string | null }) {
+    return firstValueFrom(this.http.put<unknown>(`/api/instruments/${id}`, body));
   }
 }
 

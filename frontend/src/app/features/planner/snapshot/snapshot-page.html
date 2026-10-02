@@ -73,6 +73,22 @@
             />
             <span class="balance__unit">{{ currency() }}</span>
           </span>
+          @if (portfolioValue().get(a.id); as worth) {
+            <span class="balance__portfolio">
+              @if (balances()[a.id] === worth.toString()) {
+                {{ s.filledFromPortfolio }}
+              } @else {
+                {{ s.fromPortfolio(worth | money: false : currency()) }}
+                <button
+                  type="button"
+                  class="link-button"
+                  (click)="$event.preventDefault(); setBalance(a.id, worth.toString())"
+                >
+                  {{ s.usePortfolio }}
+                </button>
+              }
+            </span>
+          }
         </label>
       }
       <p class="hint">{{ s.blankHint }}</p>

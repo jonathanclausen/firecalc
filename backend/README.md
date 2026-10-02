@@ -32,8 +32,24 @@ All under `/api` and require an allowed Google account. `GET /healthz` is public
 | GET, PUT, DELETE | `/snapshots/{id}` | |
 | GET, PUT, DELETE | `/goal` | `{ name?, targetAmount, targetDate?, expectedAnnualReturnPct? }`; GET is 204 when unset |
 | GET | `/dashboard` | Net worth series by account type, latest total, change, goal progress |
+| GET | `/portfolio` | Positions, cash and gains per investment account. `?date=` values on another day |
+| GET | `/portfolio/values` | Each portfolio account's value on `?date=`, used to pre-fill snapshots |
+| GET, POST | `/accounts/{id}/transactions` | Investment accounts only. `{ date, type, instrument?: { id? \| isin? \| symbol?, name? }, quantity?, price?, amount, note? }` |
+| PUT, DELETE | `/transactions/{id}` | |
+| POST | `/accounts/{id}/import/nordnet` | Body is the Nordnet CSV export as-is. Previews unless `?commit=true`; rows already imported are skipped |
+| GET | `/instruments/search` | `?q=` name, ticker or ISIN |
+| PUT | `/instruments/{id}` | `{ symbol }` to fix which price symbol a share uses |
 
 Account types are `investment`, `savings` and `cash`.
+
+### Portfolio prices
+
+A transaction's `amount` is the signed cash effect in the user's currency (a buy is negative, including
+fees), so cash is the sum of amounts and cost uses the average cost method. Prices come from Yahoo
+Finance's free, unofficial chart endpoint (symbols found by ISIN, Copenhagen preferred for Danish ISINs) and
+currency rates from Frankfurter (ECB). Both are fetched when a portfolio is viewed and the stored ones are
+more than six hours old, and daily closes are kept in Postgres, so no scheduled job or API key is needed.
+A position without a recent price is valued at what it cost until its symbol is fixed.
 
 ## Run locally
 

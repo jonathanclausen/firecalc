@@ -1,0 +1,180 @@
+@let t = i18n.t().planner;
+@let p = t.portfolioPage;
+<section class="intro">
+  <div>
+    <p class="eyebrow">{{ t.eyebrow }}</p>
+    <h1>{{ p.title }}</h1>
+    <p class="lede">{{ p.lede }}</p>
+  </div>
+  @if (hasInvestmentAccount()) {
+    <div class="intro__actions">
+      <a class="btn btn--secondary" routerLink="/planner/portfolio/import">{{ p.import }}</a>
+    </div>
+  }
+</section>
+
+@if (failed()) {
+  <p class="alert" role="alert">{{ t.error }}</p>
+} @else if (loading()) {
+  <p class="muted">{{ t.loading }}</p>
+} @else if (!hasInvestmentAccount()) {
+  <section class="card empty">
+    <h2>{{ p.startTitle }}</h2>
+    <p>{{ p.noInvestmentAccount }}</p>
+    <a class="btn btn--primary" routerLink="/planner/accounts">{{ p.createAccount }}</a>
+  </section>
+} @else if (portfolio.value()!.accounts.length === 0) {
+  <section class="card empty">
+    <h2>{{ p.startTitle }}</h2>
+    <p>{{ p.startText }}</p>
+    <div class="empty__actions">
+      <a class="btn btn--primary" routerLink="/planner/portfolio/import">{{ p.import }}</a>
+      @for (a of accounts.value(); track a.id) {
+        @if (a.type === 'investment') {
+          <a class="btn btn--secondary" [routerLink]="['/planner/portfolio', a.id]"
+            >{{ p.addTransaction }} · {{ a.name }}</a
+          >
+        }
+      }
+    </div>
+  </section>
+} @else {
+  @let pf = portfolio.value()!;
+  @let cur = currency();
+  @let tot = totals();
+  <section class="card hero" [attr.aria-label]="p.value">
+    <span class="hero__label">{{ p.value }}</span>
+    <strong class="hero__value">{{ pf.value | money: false : cur }}</strong>
+    <span class="hero__sub">
+      @if (pf.dayChange !== 0) {
+        <span [class.up]="pf.dayChange > 0">{{ p.dayChange(signed(pf.dayChange)) }}</span>
+        ·
+      }
+      @if (tot.pricesAsOf) {
+        {{ p.pricesAsOf(i18n.date(tot.pricesAsOf)) }}
+      }
+    </span>
+    <div class="kpis">
+      <div class="kpi">
+        <span class="kpi__label">{{ p.gain }}</span>
+        <strong>{{ signed(tot.gain) }}</strong>
+      </div>
+      <div class="kpi">
+        <span class="kpi__label">{{ p.growth }}</span>
+        <strong>{{ signed(tot.growth) }}</strong>
+        <small>{{ p.growthHint }}</small>
+      </div>
+      <div class="kpi">
+        <span class="kpi__label">{{ p.dividends }}</span>
+        <strong>{{ tot.dividends | money: false : cur }}</strong>
+      </div>
+      <div class="kpi">
+        <span class="kpi__label">{{ p.cash }}</span>
+        <strong>{{ tot.cash | money: false : cur }}</strong>
+      </div>
+    </div>
+  </section>
+
+  @if (error(); as message) {
+    <p class="alert" role="alert">{{ message }}</p>
+  }
+
+  @for (acc of pf.accounts; track acc.accountId) {
+    <section class="card">
+      <div class="card__header account-header">
+        <div>
+          <h2>{{ acc.accountName }}</h2>
+          <span class="muted">
+            {{ acc.value | money: false : cur }} · {{ p.cash }}
+            {{ acc.cash | money: false : cur }} · {{ p.realized }} {{ signed(acc.realizedGain) }}
+          </span>
+        </div>
+        <a class="link-button" [routerLink]="['/planner/portfolio', acc.accountId]">
+          {{ p.transactions }} ({{ acc.transactionCount }})
+        </a>
+      </div>
+
+      @if (acc.positions.length === 0) {
+        <p class="muted">{{ p.noPositions }}</p>
+      } @else {
+        <div class="table-scroll">
+          <table class="data-table positions">
+            <thead>
+              <tr>
+                <th>{{ p.name }}</th>
+                <th class="num hide-sm">{{ p.quantity }}</th>
+                <th class="num hide-sm">{{ p.price }}</th>
+                <th class="num">{{ p.valueCol }}</th>
+                <th class="num">{{ p.gainCol }}</th>
+                <th class="num hide-sm">{{ p.weight }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (pos of acc.positions; track pos.instrumentId) {
+                <tr>
+                  <td class="security">
+                    <strong>{{ pos.name }}</strong>
+                    <small>
+                      {{ pos.symbol ?? pos.isin }}
+                      @if (pos.priceMissing) {
+                        <span class="badge" [title]="p.noPriceHint">{{ p.noPrice }}</span>
+                      }
+                      <button type="button" class="link-button" (click)="startEdit(pos)">
+                        {{ p.setSymbol }}
+                      </button>
+                    </small>
+                    @if (editing()?.instrumentId === pos.instrumentId) {
+                      <form class="symbol-form" (submit)="saveSymbol($event)">
+                        <label class="form-field">
+                          <span>{{ p.symbolLabel }}</span>
+                          <input
+                            type="text"
+                            maxlength="32"
+                            [value]="editing()!.symbol"
+                            (input)="
+                              editing.set({
+                                instrumentId: pos.instrumentId,
+                                symbol: $any($event.target).value,
+                              })
+                            "
+                          />
+                        </label>
+                        <button type="submit" class="btn btn--primary" [disabled]="busy()">
+                          {{ t.save }}
+                        </button>
+                        <button type="button" class="link-button" (click)="editing.set(null)">
+                          {{ t.cancel }}
+                        </button>
+                      </form>
+                    }
+                  </td>
+                  <td class="num hide-sm">{{ i18n.number(pos.quantity, 4) }}</td>
+                  <td class="num hide-sm nowrap">
+                    @if (pos.price !== null) {
+                      {{ i18n.number(pos.price, 2) }} <small>{{ pos.currency }}</small>
+                    } @else {
+                      –
+                    }
+                  </td>
+                  <td class="num nowrap">{{ pos.value | money: false : cur }}</td>
+                  <td class="num nowrap" [class.up]="pos.gain > 0" [class.down]="pos.gain < 0">
+                    {{ signed(pos.gain) }}
+                    @if (pos.gainPct !== null) {
+                      <small>{{ signedPct(pos.gainPct) }}</small>
+                    }
+                  </td>
+                  <td class="num hide-sm">
+                    <span class="weight">
+                      <span class="weight__bar"><span [style.width.%]="pos.weightPct"></span></span>
+                      {{ i18n.percent(pos.weightPct, 1) }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
+}
