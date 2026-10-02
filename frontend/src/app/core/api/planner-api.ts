@@ -262,6 +262,19 @@ export class PlannerApi {
     return firstValueFrom(this.http.delete<void>(`/api/transactions/${id}`));
   }
 
+  /** Sets how many shares the account now holds; the API books the difference as a buy or sale. */
+  setHolding(
+    accountId: string,
+    body: { instrument: InstrumentRef; quantity: number; amount: number | null },
+  ) {
+    return firstValueFrom(
+      this.http.put<{ quantity: number; change: number; amount: number }>(
+        `/api/accounts/${accountId}/holdings`,
+        body,
+      ),
+    );
+  }
+
   /** Sends a Nordnet export as-is. Without commit the server only answers what it would import. */
   importNordnet(accountId: string, file: ArrayBuffer, commit: boolean) {
     return firstValueFrom(

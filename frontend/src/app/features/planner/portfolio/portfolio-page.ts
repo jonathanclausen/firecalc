@@ -1,15 +1,23 @@
-import { httpResource } from '@angular/common/http';
+import { HttpErrorResponse, httpResource } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Account, PlannerApi, Portfolio, Position } from '../../../core/api/planner-api';
+import {
+  Account,
+  AccountPortfolio,
+  InstrumentRef,
+  PlannerApi,
+  Portfolio,
+  Position,
+} from '../../../core/api/planner-api';
 import { I18n } from '../../../core/i18n/i18n';
 import { CurrencySettings } from '../../../core/settings/currency';
 import { MoneyPipe } from '../../../shared/money.pipe';
+import { InstrumentChoice, InstrumentPicker } from './instrument-picker';
 
 /** Holdings per investment account, valued with the latest stored prices (/planner/portfolio). */
 @Component({
   selector: 'app-portfolio-page',
-  imports: [RouterLink, MoneyPipe],
+  imports: [RouterLink, MoneyPipe, InstrumentPicker],
   templateUrl: './portfolio-page.html',
   styleUrl: './portfolio-page.scss',
 })
@@ -30,6 +38,14 @@ export class PortfolioPage {
     (this.accounts.value() ?? []).some((a) => a.type === 'investment'),
   );
 
+  /** Every active investment account, with its valuation once it has holdings. */
+  protected readonly cards = computed(() => {
+    const valued = new Map((this.portfolio.value()?.accounts ?? []).map((a) => [a.accountId, a]));
+    return (this.accounts.value() ?? [])
+      .filter((a) => a.type === 'investment')
+      .map((account) => ({ account, data: valued.get(account.id) ?? null }));
+  });
+
   /** Sums across accounts for the hero card. */
   protected readonly totals = computed(() => {
     const list = this.portfolio.value()?.accounts ?? [];
@@ -49,6 +65,100 @@ export class PortfolioPage {
   protected readonly editing = signal<{ instrumentId: string; symbol: string } | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
+
+  /** The account a holding is being added to, with the draft. */
+  protected readonly adding = signal<{
+    accountId: string;
+    instrument: InstrumentChoice | null;
+    quantity: string;
+    amount: string;
+  } | null>(null);
+  /** Latest price of a newly searched listing, so it can be checked against the broker. */
+  protected readonly quote = httpResource<{ currency: string; price: number; date: string }>(() => {
+    const chosen = this.adding()?.instrument;
+    return chosen?.symbol && !chosen.id
+      ? `/api/instruments/quote?symbol=${encodeURIComponent(chosen.symbol)}`
+      : undefined;
+  });
+  /** The holding whose share count is being changed, with the draft. */
+  protected readonly counting = signal<{
+    accountId: string;
+    instrumentId: string;
+    quantity: string;
+    amount: string;
+  } | null>(null);
+
+  // Patches read the latest draft, so quick successive inputs never overwrite each other.
+  protected patchAdding(patch: Partial<NonNullable<ReturnType<typeof this.adding>>>) {
+    this.adding.update((d) => (d ? { ...d, ...patch } : d));
+  }
+
+  protected patchCounting(patch: Partial<NonNullable<ReturnType<typeof this.counting>>>) {
+    this.counting.update((d) => (d ? { ...d, ...patch } : d));
+  }
+
+  protected known(data: AccountPortfolio | null): InstrumentChoice[] {
+    return (data?.positions ?? []).map((p) => ({
+      id: p.instrumentId,
+      name: p.name,
+      label: [p.name, p.symbol ?? p.isin].filter(Boolean).join(' · '),
+    }));
+  }
+
+  protected startAdd(accountId: string) {
+    this.counting.set(null);
+    this.adding.set({ accountId, instrument: null, quantity: '', amount: '' });
+  }
+
+  protected startCount(accountId: string, p: Position) {
+    this.adding.set(null);
+    this.counting.set({
+      accountId,
+      instrumentId: p.instrumentId,
+      quantity: String(p.quantity),
+      amount: '',
+    });
+  }
+
+  protected async saveAdd(event: Event) {
+    event.preventDefault();
+    const draft = this.adding();
+    const quantity = parse(draft?.quantity);
+    if (!draft?.instrument || quantity === null) return;
+    const { id, isin, symbol, name } = draft.instrument;
+    await this.saveHolding(draft.accountId, { id, isin, symbol, name }, quantity, draft.amount);
+  }
+
+  protected async saveCount(event: Event) {
+    event.preventDefault();
+    const draft = this.counting();
+    const quantity = parse(draft?.quantity);
+    if (!draft || quantity === null) return;
+    await this.saveHolding(draft.accountId, { id: draft.instrumentId }, quantity, draft.amount);
+  }
+
+  private async saveHolding(
+    accountId: string,
+    instrument: InstrumentRef,
+    quantity: number,
+    amount: string,
+  ) {
+    const t = this.i18n.t().planner;
+    this.busy.set(true);
+    this.error.set(null);
+    try {
+      await this.api.setHolding(accountId, { instrument, quantity, amount: parse(amount) });
+      this.adding.set(null);
+      this.counting.set(null);
+      this.portfolio.reload();
+    } catch (e) {
+      const needsAmount =
+        e instanceof HttpErrorResponse && e.status === 400 && !!e.error?.errors?.amount;
+      this.error.set(needsAmount ? t.portfolioPage.needAmount : t.error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
 
   protected signed(value: number) {
     const text = this.currencySettings.format(value, { currency: this.currency() });
@@ -80,4 +190,10 @@ export class PortfolioPage {
       this.busy.set(false);
     }
   }
+}
+
+function parse(raw: string | undefined): number | null {
+  if (raw === undefined || raw.trim() === '') return null;
+  const value = Number(raw.replace(',', '.'));
+  return Number.isFinite(value) && value >= 0 ? value : null;
 }

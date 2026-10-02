@@ -85,9 +85,20 @@
   }
 }
 
-.security {
+.security__button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
   strong {
-    display: block;
     font-weight: 600;
   }
 
@@ -95,15 +106,108 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     font-size: 0.75rem;
     color: var(--text-muted);
   }
 
-  .link-button {
-    padding: 0;
-    font-size: 0.75rem;
+  &:hover strong {
+    color: var(--accent);
   }
+}
+
+tr.open td {
+  border-bottom-color: transparent;
+}
+
+.count-row td {
+  padding-top: 0;
+  background: none;
+}
+
+.holding-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-input);
+  border: 1px solid var(--border);
+
+  .count-row & {
+    margin-bottom: 0;
+  }
+
+  input {
+    font-size: 1rem;
+  }
+}
+
+.holding-form__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.holding-form__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+
+  .ticker,
+  .symbol-inline {
+    margin-left: auto;
+  }
+}
+
+.symbol-inline {
+  display: inline-flex;
+  gap: 8px;
+
+  input {
+    width: 160px;
+    padding: 6px 10px;
+    font: inherit;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.chosen {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+
+.quote {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+
+  &--missing {
+    color: var(--danger);
+  }
+}
+
+.btn--small {
+  padding: 7px 12px;
+  font-size: 0.8125rem;
+}
+
+.show-sm {
+  display: none;
 }
 
 .badge {
@@ -115,26 +219,10 @@
   font-weight: 600;
 }
 
-.symbol-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 10px;
-  margin-top: 10px;
-
-  .form-field {
-    flex: 1 1 200px;
-  }
-}
-
 td small {
   display: block;
   font-size: 0.75rem;
   color: var(--text-muted);
-}
-
-td.security small {
-  display: flex;
 }
 
 td.up {
@@ -174,5 +262,9 @@ td.down {
 @media (max-width: 640px) {
   .hide-sm {
     display: none;
+  }
+
+  .show-sm {
+    display: inline;
   }
 }

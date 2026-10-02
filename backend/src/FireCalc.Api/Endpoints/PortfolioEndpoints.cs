@@ -20,7 +20,11 @@ public static class PortfolioEndpoints
     public record SaveTransactionRequest(DateOnly? Date, TransactionType? Type, InstrumentRef? Instrument, decimal? Quantity, decimal? Price, decimal? Amount, string? Note);
 
     public record InstrumentDto(Guid Id, string Name, string? Isin, string? Symbol, string? Currency);
+    public record QuoteDto(string Symbol, string Currency, decimal Price, DateOnly Date);
     public record UpdateInstrumentRequest(string? Symbol, string? Name);
+
+    public record SetHoldingRequest(InstrumentRef? Instrument, decimal? Quantity, decimal? Amount, DateOnly? Date);
+    public record SetHoldingResult(decimal Quantity, decimal Change, decimal Amount);
 
     public record ImportPreviewRow(int Line, DateOnly Date, TransactionType Type, string RawType, string? Name, decimal Quantity, decimal Amount);
     public record ImportResultDto(
@@ -70,7 +74,7 @@ public static class PortfolioEndpoints
 
             var v = Validate(req);
             if (!v.IsValid) return v.Problem();
-            var instrument = await ResolveInstrumentAsync(req, db, ct);
+            var instrument = await ResolveInstrumentAsync(req.Instrument, db, ct);
             if (instrument is IResult error) return error;
 
             var tx = new PortfolioTransaction { AccountId = accountId };
@@ -89,7 +93,7 @@ public static class PortfolioEndpoints
 
             var v = Validate(req);
             if (!v.IsValid) return v.Problem();
-            var instrument = await ResolveInstrumentAsync(req, db, ct);
+            var instrument = await ResolveInstrumentAsync(req.Instrument, db, ct);
             if (instrument is IResult error) return error;
 
             Apply(tx, req, instrument as Instrument);
@@ -176,8 +180,72 @@ public static class PortfolioEndpoints
                     .ToList()));
         });
 
+        // The phone-friendly way to keep a portfolio current: say how many shares you now own. The change is
+        // booked as a buy or sale, paid for by money moved in or out of the account, so cash stays put and
+        // net deposits still separate your savings from market growth.
+        api.MapPut("/accounts/{accountId:guid}/holdings", async (Guid accountId, SetHoldingRequest req, ClaimsPrincipal principal, FireCalcDbContext db, PortfolioValuation valuation, CancellationToken ct) =>
+        {
+            var user = await db.GetOrCreateUserAsync(principal, ct);
+            var account = await db.Accounts.SingleOrDefaultAsync(a => a.Id == accountId && a.UserId == user.Id, ct);
+            if (account is null) return Results.NotFound();
+            if (account.Type != AccountType.Investment) return NotInvestment();
+
+            var v = new Validation()
+                .Check(req.Instrument is not null, "instrument", "Choose a share or fund.")
+                .Check(req.Quantity is >= 0, "quantity", "Enter how many you own.")
+                .Check(req.Amount is null or >= 0, "amount", "The amount cannot be negative.");
+            if (!v.IsValid) return v.Problem();
+            var resolved = await ResolveInstrumentAsync(req.Instrument, db, ct);
+            if (resolved is IResult error) return error;
+            if (resolved is not Instrument instrument) return new Validation().Check(false, "instrument", "Choose a share or fund.").Problem();
+            await db.SaveChangesAsync(ct);
+
+            var date = req.Date ?? DateOnly.FromDateTime(DateTime.UtcNow);
+            var own = await db.Transactions.AsNoTracking().Where(t => t.AccountId == accountId).ToListAsync(ct);
+            var current = PortfolioCalculator.Calculate(own, DateOnly.MaxValue).Holdings
+                .FirstOrDefault(h => h.InstrumentId == instrument.Id)?.Quantity ?? 0;
+            var change = req.Quantity!.Value - current;
+            if (change == 0) return Results.Ok(new SetHoldingResult(current, 0, 0));
+
+            var amount = req.Amount;
+            if (amount is null)
+            {
+                var price = await valuation.UnitPriceAsync(instrument.Id, user.Currency, date, ct);
+                if (price is null)
+                    return new Validation().Check(false, "amount", "No price found for this share. Enter what you paid in total.").Problem();
+                amount = Math.Round(Math.Abs(change) * price.Value, 2);
+            }
+
+            var buying = change > 0;
+            var note = $"{current:0.####} → {req.Quantity:0.####}";
+            db.Transactions.AddRange(
+                new PortfolioTransaction
+                {
+                    AccountId = accountId, Date = date, Note = note,
+                    Type = buying ? TransactionType.Deposit : TransactionType.Withdrawal,
+                    Amount = buying ? amount.Value : -amount.Value,
+                    CreatedAt = DateTimeOffset.UtcNow.AddTicks(buying ? -1 : 1),
+                },
+                new PortfolioTransaction
+                {
+                    AccountId = accountId, Date = date, Note = note, InstrumentId = instrument.Id,
+                    Type = buying ? TransactionType.Buy : TransactionType.Sell,
+                    Quantity = Math.Abs(change),
+                    Amount = buying ? -amount.Value : amount.Value,
+                });
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(new SetHoldingResult(req.Quantity.Value, change, amount.Value));
+        });
+
         api.MapGet("/instruments/search", async (string? q, PriceService prices, CancellationToken ct) =>
             string.IsNullOrWhiteSpace(q) ? [] : await prices.SearchAsync(q.Trim(), ct));
+
+        api.MapGet("/instruments/quote", async (string? symbol, PriceService prices, CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(symbol)) return Results.NotFound();
+            var quote = await prices.QuoteAsync(symbol.Trim(), ct);
+            return quote is { } q ? Results.Ok(new QuoteDto(symbol.Trim().ToUpperInvariant(), q.Currency, q.Close.Close, q.Close.Date)) : Results.NotFound();
+        });
 
         // Lets the user fix which price symbol an instrument uses when the automatic match is wrong.
         api.MapPut("/instruments/{id:guid}", async (Guid id, UpdateInstrumentRequest req, ClaimsPrincipal principal, FireCalcDbContext db, PriceService prices, CancellationToken ct) =>
@@ -231,9 +299,9 @@ public static class PortfolioEndpoints
     }
 
     /// <summary>Returns the instrument to use (or null for cash-only rows), or an error result.</summary>
-    private static async Task<object?> ResolveInstrumentAsync(SaveTransactionRequest req, FireCalcDbContext db, CancellationToken ct)
+    private static async Task<object?> ResolveInstrumentAsync(InstrumentRef? r, FireCalcDbContext db, CancellationToken ct)
     {
-        if (req.Instrument is not { } r) return null;
+        if (r is null) return null;
         if (r.Id is { } id)
             return await db.Instruments.FindAsync([id], ct) ?? (object)Results.ValidationProblem(new Dictionary<string, string[]> { ["instrument"] = ["Unknown instrument."] });
 

@@ -263,4 +263,48 @@ public class PortfolioTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var portfolio = await client.GetFromJsonAsync<JsonElement>("/api/portfolio?date=2026-03-10");
         Assert.Equal(1200m, portfolio.GetProperty("accounts")[0].GetProperty("positions")[0].GetProperty("value").GetDecimal());
     }
+
+    [Fact]
+    public async Task Setting_a_share_count_books_the_change_at_todays_price_without_touching_cash()
+    {
+        var m = factory.MarketData;
+        m.Search["Vestas"] = [new("VWS.CO", "Vestas Wind Systems", "CPH", "EQUITY")];
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        m.Prices["VWS.CO"] = new("DKK", [new(today.AddDays(-1), 100m), new(today, 110m)]);
+        var client = NewOwner();
+        var account = await CreateAccount(client);
+
+        var quote = await client.GetFromJsonAsync<JsonElement>("/api/instruments/quote?symbol=VWS.CO");
+        Assert.Equal(110m, quote.GetProperty("price").GetDecimal());
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/instruments/quote?symbol=NOPE")).StatusCode);
+
+        var first = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "VWS.CO", name = "Vestas" }, quantity = 10 });
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(1100m, (await first.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("amount").GetDecimal());
+
+        // Selling 4 with a price you type yourself.
+        var sold = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "VWS.CO" }, quantity = 6, amount = 500 });
+        Assert.Equal(-4m, (await sold.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("change").GetDecimal());
+
+        var acc = (await client.GetFromJsonAsync<JsonElement>("/api/portfolio")).GetProperty("accounts")[0];
+        var position = acc.GetProperty("positions")[0];
+        Assert.Equal(6m, position.GetProperty("quantity").GetDecimal());
+        Assert.Equal(660m, position.GetProperty("costBasis").GetDecimal());
+        Assert.Equal(0m, acc.GetProperty("cash").GetDecimal());
+        Assert.Equal(600m, acc.GetProperty("netDeposits").GetDecimal());
+        Assert.Equal(60m, acc.GetProperty("growth").GetDecimal());
+    }
+
+    [Fact]
+    public async Task Setting_a_share_count_without_a_price_asks_for_the_amount()
+    {
+        var client = NewOwner();
+        var account = await CreateAccount(client);
+        var res = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "UNKNOWN.CO" }, quantity = 5 });
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+        Assert.Contains("amount", await res.Content.ReadAsStringAsync());
+
+        var ok = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "UNKNOWN.CO" }, quantity = 5, amount = 250 });
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+    }
 }

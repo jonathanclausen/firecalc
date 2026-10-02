@@ -31,47 +31,6 @@
   background: var(--accent-soft);
 }
 
-.search {
-  display: flex;
-  gap: 8px;
-
-  input {
-    flex: 1;
-  }
-}
-
-.matches {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-
-  li + li {
-    border-top: 1px solid var(--border);
-  }
-
-  button {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    width: 100%;
-    padding: 10px 12px;
-    border: 0;
-    background: var(--surface-card);
-    color: var(--text-primary);
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-
-    &:hover,
-    &:focus-visible {
-      background: var(--surface-hover);
-    }
-  }
-}
-
 .buttons {
   display: flex;
   align-items: center;

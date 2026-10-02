@@ -54,47 +54,7 @@
               </button>
             </div>
           } @else {
-            @if (known().length > 0) {
-              <select (change)="pickKnown($any($event.target).value)">
-                <option value="">–</option>
-                @for (k of known(); track k.id) {
-                  <option [value]="k.id">{{ k.label }}</option>
-                }
-              </select>
-            }
-            <div class="search">
-              <input
-                type="search"
-                [placeholder]="p.instrumentSearch"
-                [value]="query()"
-                (input)="query.set($any($event.target).value)"
-                (keydown.enter)="search($event)"
-              />
-              <button
-                type="button"
-                class="btn btn--secondary"
-                [disabled]="busy()"
-                (click)="search($event)"
-              >
-                {{ p.search }}
-              </button>
-            </div>
-            @if (matches(); as list) {
-              @if (list.length === 0) {
-                <small>{{ p.noMatches }}</small>
-              } @else {
-                <ul class="matches">
-                  @for (m of list; track m.symbol) {
-                    <li>
-                      <button type="button" (click)="pickMatch(m)">
-                        <strong>{{ m.name }}</strong>
-                        <small>{{ m.symbol }} · {{ m.exchange }}</small>
-                      </button>
-                    </li>
-                  }
-                </ul>
-              }
-            }
+            <app-instrument-picker [known]="known()" (picked)="instrument.set($event)" />
           }
         </div>
       }

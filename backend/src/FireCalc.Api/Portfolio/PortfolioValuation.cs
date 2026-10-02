@@ -48,6 +48,24 @@ public sealed class PortfolioValuation(FireCalcDbContext db, PriceService prices
     /// <summary>A price older than this is treated as missing rather than shown as current.</summary>
     private const int MaxPriceAgeDays = 30;
 
+    /// <summary>One share's latest price on or before a date, in the user's currency; null when unknown.</summary>
+    public async Task<decimal?> UnitPriceAsync(Guid instrumentId, string currency, DateOnly asOf, CancellationToken ct)
+    {
+        await prices.RefreshAsync([instrumentId], asOf.AddDays(-MaxPriceAgeDays), currency, ct);
+        var instrument = await db.Instruments.AsNoTracking().SingleAsync(i => i.Id == instrumentId, ct);
+        var windowStart = asOf.AddDays(-MaxPriceAgeDays);
+        var close = await db.InstrumentPrices.AsNoTracking()
+            .Where(p => p.InstrumentId == instrumentId && p.Date <= asOf && p.Date >= windowStart)
+            .OrderByDescending(p => p.Date).Select(p => (decimal?)p.Close).FirstOrDefaultAsync(ct);
+        if (close is null || instrument.Currency is null) return null;
+        if (instrument.Currency == currency) return close;
+
+        var rate = await db.FxRates.AsNoTracking()
+            .Where(r => r.Currency == instrument.Currency && r.QuoteCurrency == currency && r.Date <= asOf && r.Date >= windowStart)
+            .OrderByDescending(r => r.Date).Select(r => (decimal?)r.Rate).FirstOrDefaultAsync(ct);
+        return rate is null ? null : close * rate;
+    }
+
     public async Task<List<AccountPortfolio>> ValueAsync(Guid userId, string currency, DateOnly asOf, bool refresh, CancellationToken ct)
     {
         var accounts = await db.Accounts.AsNoTracking()

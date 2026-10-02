@@ -259,6 +259,22 @@ const da = {
         'Eksportér dine transaktioner fra Nordnet og importér filen, eller tilføj køb og salg i hånden. Kurserne hentes automatisk hver dag.',
       noInvestmentAccount: 'Opret først en konto af typen Investering, fx “Nordnet aktiedepot”.',
       createAccount: 'Opret konto',
+      addHolding: 'Tilføj papir',
+      editCount: 'Ret antal',
+      ownedNow: 'Antal du ejer nu',
+      totalAmount: (currency: string) => `Samlet beløb i ${currency} (valgfrit)`,
+      totalAmountHint:
+        'Tomt felt bruger dagens kurs. Skriv beløbet, hvis du vil have dit præcise afkast.',
+      needAmount: 'Der er ingen kurs på papiret endnu. Skriv, hvad du gav i alt.',
+      chooseInstrument: 'Find papiret',
+      priceNow: (price: string, date: string) =>
+        `Kurs ${price} (${date}). Passer den med Nordnet? Ellers vælg en anden notering.`,
+      noQuote:
+        'Der blev ikke fundet en kurs for denne notering. Prøv en anden, eller skriv beløbet selv.',
+      emptyAccount: 'Ingen papirer endnu. Tilføj dem, du ejer, med antal.',
+      phoneTitle: 'Hold porteføljen opdateret fra telefonen',
+      phoneText:
+        'Tilføj hvert papir én gang med antal. Når du køber eller sælger, retter du bare antallet. Kurserne hentes automatisk.',
     },
 
     importPage: {
@@ -615,6 +631,20 @@ const en: Translations = {
         'Export your transactions from Nordnet and import the file, or add buys and sells by hand. Prices are fetched automatically every day.',
       noInvestmentAccount: 'First create an account of type Investment, e.g. “Nordnet depot”.',
       createAccount: 'Create account',
+      addHolding: 'Add holding',
+      editCount: 'Edit count',
+      ownedNow: 'Shares you own now',
+      totalAmount: (currency: string) => `Total amount in ${currency} (optional)`,
+      totalAmountHint: 'Leave empty to use today’s price. Enter the amount for an exact return.',
+      needAmount: 'This security has no price yet. Enter what you paid in total.',
+      chooseInstrument: 'Find the security',
+      priceNow: (price: string, date: string) =>
+        `Price ${price} (${date}). Does it match your broker? If not, pick another listing.`,
+      noQuote: 'No price found for this listing. Try another, or enter the amount yourself.',
+      emptyAccount: 'No holdings yet. Add the ones you own with their count.',
+      phoneTitle: 'Keep your portfolio current from your phone',
+      phoneText:
+        'Add each holding once with its count. When you buy or sell, just change the count. Prices are fetched automatically.',
     },
 
     importPage: {

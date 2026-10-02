@@ -3,12 +3,10 @@ import { Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   Account,
-  InstrumentRef,
   OUTFLOW_TYPES,
   PlannerApi,
   SHARE_TYPES,
   SaveTransaction,
-  SymbolMatch,
   TRANSACTION_TYPES,
   Transaction,
   TransactionType,
@@ -17,17 +15,12 @@ import {
 import { Auth } from '../../../core/auth/auth';
 import { I18n } from '../../../core/i18n/i18n';
 import { CurrencySettings } from '../../../core/settings/currency';
-
-/** A chosen share or fund, either one already in the account or a search result. */
-interface Choice extends InstrumentRef {
-  name: string;
-  label: string;
-}
+import { InstrumentChoice, InstrumentPicker } from './instrument-picker';
 
 /** One investment account's transactions, with a form to add or edit one (/planner/portfolio/:accountId). */
 @Component({
   selector: 'app-transactions-page',
-  imports: [RouterLink],
+  imports: [RouterLink, InstrumentPicker],
   templateUrl: './transactions-page.html',
   styleUrl: './transactions-page.scss',
 })
@@ -52,7 +45,7 @@ export class TransactionsPage {
 
   /** Shares and funds already used in this account, for quick picking. */
   protected readonly known = computed(() => {
-    const seen = new Map<string, Choice>();
+    const seen = new Map<string, InstrumentChoice>();
     for (const t of this.transactions.value() ?? []) {
       if (t.instrumentId && !seen.has(t.instrumentId)) {
         seen.set(t.instrumentId, {
@@ -69,9 +62,7 @@ export class TransactionsPage {
   protected readonly editingId = signal<string | null>(null);
   protected readonly date = signal(today());
   protected readonly type = signal<TransactionType>('buy');
-  protected readonly instrument = signal<Choice | null>(null);
-  protected readonly query = signal('');
-  protected readonly matches = signal<SymbolMatch[] | null>(null);
+  protected readonly instrument = signal<InstrumentChoice | null>(null);
   protected readonly quantity = signal('');
   protected readonly amount = signal('');
   protected readonly price = signal('');
@@ -87,33 +78,6 @@ export class TransactionsPage {
 
   protected money(value: number) {
     return this.currencySettings.format(value, { currency: this.currency() });
-  }
-
-  protected async search(event: Event) {
-    event.preventDefault();
-    const q = this.query().trim();
-    if (!q) return;
-    this.busy.set(true);
-    try {
-      this.matches.set(await this.api.searchInstruments(q));
-    } catch {
-      this.matches.set([]);
-    } finally {
-      this.busy.set(false);
-    }
-  }
-
-  protected pickKnown(id: string) {
-    this.instrument.set(this.known().find((k) => k.id === id) ?? null);
-  }
-
-  protected pickMatch(m: SymbolMatch) {
-    const isin = /^[A-Z]{2}[A-Z0-9]{9}\d$/.test(this.query().trim().toUpperCase())
-      ? this.query().trim().toUpperCase()
-      : null;
-    this.instrument.set({ symbol: m.symbol, isin, name: m.name, label: `${m.name} · ${m.symbol}` });
-    this.matches.set(null);
-    this.query.set('');
   }
 
   protected edit(t: Transaction) {
@@ -143,7 +107,6 @@ export class TransactionsPage {
     this.amount.set('');
     this.price.set('');
     this.note.set('');
-    this.matches.set(null);
     this.error.set(null);
   }
 

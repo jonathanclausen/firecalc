@@ -58,6 +58,13 @@ public sealed class PriceService(FireCalcDbContext db, IMarketData market, Price
 
     public async Task<List<SymbolMatch>> SearchAsync(string query, CancellationToken ct) => await market.SearchAsync(query, ct);
 
+    /// <summary>The latest close for a symbol, so people can check a search result against their broker.</summary>
+    public async Task<(string Currency, DailyClose Close)?> QuoteAsync(string symbol, CancellationToken ct)
+    {
+        var history = await market.GetDailyClosesAsync(symbol, DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-10), ct);
+        return history?.Closes.LastOrDefault() is { } last ? (history.Currency, last) : null;
+    }
+
     /// <summary>Forgets an instrument's stored prices, e.g. after its symbol was corrected.</summary>
     public async Task ResetPricesAsync(Instrument instrument, CancellationToken ct)
     {
