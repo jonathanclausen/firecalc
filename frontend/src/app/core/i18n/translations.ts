@@ -265,6 +265,9 @@ const da = {
       avgPrice: (currency: string) => `Gns. købskurs pr. stk.${currency ? ' i ' + currency : ''}`,
       avgPriceHint:
         'Det, du i snit har givet pr. aktie. Nordnet viser det som GAK under beholdningen.',
+      purchaseDate: 'Købsdato (valgfri)',
+      purchaseDateHint:
+        'Bruges til valutakursen for udenlandske aktier, så dit afkast i kroner også tæller valutaens udvikling. Tom = i dag.',
       tradePrice: (currency: string) =>
         `Kurs pr. stk.${currency ? ' i ' + currency : ''} (valgfri)`,
       tradePriceHint: 'Kursen du handlede til. Tomt felt bruger dagens kurs.',
@@ -640,6 +643,9 @@ const en: Translations = {
       avgPrice: (currency: string) =>
         `Average purchase price per share${currency ? ' in ' + currency : ''}`,
       avgPriceHint: 'What you paid per share on average. Nordnet shows it as GAK on the holding.',
+      purchaseDate: 'Purchase date (optional)',
+      purchaseDateHint:
+        'Used for the exchange rate on foreign shares, so your return in kroner includes the currency’s move. Empty = today.',
       tradePrice: (currency: string) =>
         `Price per share${currency ? ' in ' + currency : ''} (optional)`,
       tradePriceHint: 'The price you traded at. Leave empty to use today’s price.',

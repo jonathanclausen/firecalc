@@ -64,6 +64,8 @@ export class PortfolioPage {
   /** The position whose ticker is being corrected, with the draft symbol. */
   protected readonly editing = signal<{ instrumentId: string; symbol: string } | null>(null);
   protected readonly busy = signal(false);
+  /** Latest allowed purchase date. */
+  protected readonly today = new Date().toISOString().slice(0, 10);
   protected readonly error = signal<string | null>(null);
 
   /** The account a holding is being added to, with the draft. */
@@ -72,6 +74,7 @@ export class PortfolioPage {
     instrument: InstrumentChoice | null;
     quantity: string;
     price: string;
+    date: string;
   } | null>(null);
   /** Latest price of a newly searched listing, so it can be checked against the broker. */
   protected readonly quote = httpResource<{ currency: string; price: number; date: string }>(() => {
@@ -122,7 +125,7 @@ export class PortfolioPage {
 
   protected startAdd(accountId: string) {
     this.counting.set(null);
-    this.adding.set({ accountId, instrument: null, quantity: '', price: '' });
+    this.adding.set({ accountId, instrument: null, quantity: '', price: '', date: '' });
   }
 
   protected startCount(accountId: string, p: Position) {
@@ -142,7 +145,13 @@ export class PortfolioPage {
     const quantity = parse(draft?.quantity);
     if (!draft?.instrument || quantity === null || parse(draft.price) === null) return;
     const { id, isin, symbol, name } = draft.instrument;
-    await this.saveHolding(draft.accountId, { id, isin, symbol, name }, quantity, draft.price);
+    await this.saveHolding(
+      draft.accountId,
+      { id, isin, symbol, name },
+      quantity,
+      draft.price,
+      draft.date || null,
+    );
   }
 
   protected async saveCount(event: Event) {
@@ -158,12 +167,18 @@ export class PortfolioPage {
     instrument: InstrumentRef,
     quantity: number,
     price: string,
+    date: string | null = null,
   ) {
     const t = this.i18n.t().planner;
     this.busy.set(true);
     this.error.set(null);
     try {
-      await this.api.setHolding(accountId, { instrument, quantity, unitPrice: parse(price) });
+      await this.api.setHolding(accountId, {
+        instrument,
+        quantity,
+        unitPrice: parse(price),
+        date,
+      });
       this.adding.set(null);
       this.counting.set(null);
       this.portfolio.reload();

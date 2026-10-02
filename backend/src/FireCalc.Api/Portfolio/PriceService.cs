@@ -97,8 +97,10 @@ public sealed class PriceService(FireCalcDbContext db, IMarketData market, Price
         var key = $"{fx}/{quote}";
         var firstStored = await db.FxRates.Where(r => r.Currency == fx && r.QuoteCurrency == quote).MinAsync(r => (DateOnly?)r.Date, ct);
         var missingHistory = firstStored is null || firstStored > from.AddDays(7);
-        if (state.FxCheckedAt.TryGetValue(key, out var checkedAt) && now - checkedAt < (missingHistory ? TimeSpan.FromMinutes(5) : MaxAge)) return;
-        state.FxCheckedAt[key] = now;
+        // A check only counts if it reached back as far as this one needs.
+        if (state.FxCheckedAt.TryGetValue(key, out var checkedAt) && checkedAt.From <= from
+            && now - checkedAt.At < (missingHistory ? TimeSpan.FromMinutes(5) : MaxAge)) return;
+        state.FxCheckedAt[key] = (now, from);
 
         var lastStored = await db.FxRates.Where(r => r.Currency == fx && r.QuoteCurrency == quote).MaxAsync(r => (DateOnly?)r.Date, ct);
         var fetchFrom = missingHistory || lastStored is null ? from : lastStored.Value.AddDays(-7);
@@ -115,5 +117,5 @@ public sealed class PriceService(FireCalcDbContext db, IMarketData market, Price
 public sealed class PriceRefreshState
 {
     public SemaphoreSlim Lock { get; } = new(1, 1);
-    public ConcurrentDictionary<string, DateTimeOffset> FxCheckedAt { get; } = new();
+    public ConcurrentDictionary<string, (DateTimeOffset At, DateOnly From)> FxCheckedAt { get; } = new();
 }

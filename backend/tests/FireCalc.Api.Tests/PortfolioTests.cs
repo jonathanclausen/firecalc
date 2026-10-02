@@ -319,4 +319,31 @@ public class PortfolioTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var ok = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "UNKNOWN.CO" }, quantity = 8, unitPrice = 52 });
         Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
     }
+    [Fact]
+    public async Task A_purchase_date_converts_at_that_days_exchange_rate()
+    {
+        var m = factory.MarketData;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var bought = today.AddDays(-200);
+        m.Prices["EQNR.OL"] = new("NOK", [new(today, 250m)]);
+        m.Prices["DNB.OL"] = new("NOK", [new(today, 200m)]);
+        m.Fx["NOK"] = [new(bought.AddDays(-1), 0.6m), new(today.AddDays(-1), 0.7m)];
+        var client = NewOwner();
+        var account = await CreateAccount(client);
+
+        // Today's rate first, so the rates are already checked when the older date comes in.
+        var dnb = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "DNB.OL" }, quantity = 1, unitPrice = 200 });
+        Assert.Equal(140m, (await dnb.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("amount").GetDecimal());
+
+        var res = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "EQNR.OL" }, quantity = 10, unitPrice = 150, date = bought });
+        Assert.Equal(900m, (await res.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("amount").GetDecimal()); // 10 × 150 × 0.60
+
+        var acc = (await client.GetFromJsonAsync<JsonElement>("/api/portfolio")).GetProperty("accounts")[0];
+        var equinor = acc.GetProperty("positions").EnumerateArray().Single(p => p.GetProperty("symbol").GetString() == "EQNR.OL");
+        Assert.Equal(1750m, equinor.GetProperty("value").GetDecimal()); // 10 × 250 × 0.70
+        Assert.Equal(850m, equinor.GetProperty("gain").GetDecimal()); // share and currency rise together
+
+        var future = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "EQNR.OL" }, quantity = 12, unitPrice = 150, date = today.AddDays(2) });
+        Assert.Equal(HttpStatusCode.BadRequest, future.StatusCode);
+    }
 }

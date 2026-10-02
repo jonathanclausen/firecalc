@@ -154,6 +154,16 @@
             </label>
           </div>
           <small class="hint">{{ p.avgPriceHint }}</small>
+          <label class="form-field">
+            <span>{{ p.purchaseDate }}</span>
+            <input
+              type="date"
+              [max]="today"
+              [value]="draft.date"
+              (input)="patchAdding({ date: $any($event.target).value })"
+            />
+          </label>
+          <small class="hint">{{ p.purchaseDateHint }}</small>
           <div class="holding-form__buttons">
             <button
               type="submit"

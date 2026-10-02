@@ -195,14 +195,20 @@ public static class PortfolioEndpoints
                 .Check(req.Instrument is not null, "instrument", "Choose a share or fund.")
                 .Check(req.Quantity is >= 0, "quantity", "Enter how many you own.")
                 .Check(req.Amount is null or >= 0, "amount", "The amount cannot be negative.")
-                .Check(req.UnitPrice is null or > 0, "unitPrice", "The price must be above 0.");
+                .Check(req.UnitPrice is null or > 0, "unitPrice", "The price must be above 0.")
+                .Check(req.Date is null || req.Date <= DateOnly.FromDateTime(DateTime.UtcNow), "date", "The purchase date cannot be in the future.");
             if (!v.IsValid) return v.Problem();
             var resolved = await ResolveInstrumentAsync(req.Instrument, db, ct);
             if (resolved is IResult error) return error;
             if (resolved is not Instrument instrument) return new Validation().Check(false, "instrument", "Choose a share or fund.").Problem();
+
+            // A purchase date converts a foreign price at that day's exchange rate, so the gain in kroner
+            // includes the currency's move since then. It may be earlier than the stored history.
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var date = req.Date ?? today;
+            if (date < today) instrument.PricesCheckedAt = null;
             await db.SaveChangesAsync(ct);
 
-            var date = req.Date ?? DateOnly.FromDateTime(DateTime.UtcNow);
             var own = await db.Transactions.AsNoTracking().Where(t => t.AccountId == accountId).ToListAsync(ct);
             var current = PortfolioCalculator.Calculate(own, DateOnly.MaxValue).Holdings
                 .FirstOrDefault(h => h.InstrumentId == instrument.Id)?.Quantity ?? 0;
