@@ -55,3 +55,79 @@ public class Goal
     public DateOnly? TargetDate { get; set; }
     public decimal? ExpectedAnnualReturnPct { get; set; }
 }
+
+public enum TransactionType
+{
+    Buy,
+    Sell,
+    Dividend,
+    Deposit,
+    Withdrawal,
+    Fee,
+    Tax,
+    Interest,
+    /// <summary>Shares added without cash, e.g. a split or a transfer in from another broker.</summary>
+    SecurityIn,
+    /// <summary>Shares removed without cash, e.g. the old line in a split or a transfer out.</summary>
+    SecurityOut,
+    Other,
+}
+
+/// <summary>
+/// A share, ETF or fund. Shared market data, not owned by a user: the same ISIN is one row.
+/// </summary>
+public class Instrument
+{
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public string? Isin { get; set; }
+    /// <summary>Yahoo Finance symbol, e.g. NOVO-B.CO. Null until found or set by hand.</summary>
+    public string? Symbol { get; set; }
+    public required string Name { get; set; }
+    /// <summary>Currency the price is quoted in, as reported by the price source.</summary>
+    public string? Currency { get; set; }
+    /// <summary>When prices were last fetched (successfully or not), so we don't ask too often.</summary>
+    public DateTimeOffset? PricesCheckedAt { get; set; }
+}
+
+/// <summary>Daily closing price in the instrument's currency.</summary>
+public class InstrumentPrice
+{
+    public Guid InstrumentId { get; set; }
+    public DateOnly Date { get; set; }
+    public decimal Close { get; set; }
+}
+
+/// <summary>How many units of the user's currency one unit of <see cref="Currency"/> cost on a date.</summary>
+public class FxRate
+{
+    public required string Currency { get; set; }
+    public required string QuoteCurrency { get; set; }
+    public DateOnly Date { get; set; }
+    public decimal Rate { get; set; }
+}
+
+/// <summary>
+/// One movement in an investment account. Amount is the signed cash effect in the user's currency
+/// (negative for a buy including fees, positive for a sale or dividend), which makes the account's
+/// cash the plain sum of amounts and a position's cost the money actually paid.
+/// </summary>
+public class PortfolioTransaction
+{
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public Guid AccountId { get; set; }
+    public Guid? InstrumentId { get; set; }
+    public Instrument? Instrument { get; set; }
+    public DateOnly Date { get; set; }
+    public TransactionType Type { get; set; }
+    /// <summary>Number of shares, always positive; the type says which way.</summary>
+    public decimal Quantity { get; set; }
+    /// <summary>Price per share in the instrument's currency, as the broker reported it.</summary>
+    public decimal? Price { get; set; }
+    public decimal Amount { get; set; }
+    public string? Note { get; set; }
+    /// <summary>"manual" or the importer's name, e.g. "nordnet".</summary>
+    public string Source { get; set; } = "manual";
+    /// <summary>The broker's own id for the row, used to skip rows already imported.</summary>
+    public string? ExternalId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}

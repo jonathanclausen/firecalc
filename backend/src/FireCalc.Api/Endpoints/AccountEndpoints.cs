@@ -62,6 +62,8 @@ public static class AccountEndpoints
             // Deleting would rewrite history; accounts with balances are archived instead.
             if (await db.SnapshotEntries.AnyAsync(x => x.AccountId == id, ct))
                 return Results.Problem("The account has balances in snapshots. Archive it instead.", statusCode: StatusCodes.Status409Conflict);
+            if (await db.Transactions.AnyAsync(t => t.AccountId == id, ct))
+                return Results.Problem("The account has transactions. Archive it instead.", statusCode: StatusCodes.Status409Conflict);
 
             db.Accounts.Remove(account);
             await db.SaveChangesAsync(ct);

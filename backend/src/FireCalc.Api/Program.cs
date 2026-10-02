@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using FireCalc.Api.Auth;
 using FireCalc.Api.Data;
 using FireCalc.Api.Endpoints;
+using FireCalc.Api.Portfolio;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +18,16 @@ builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
     o.SerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
 });
+
+builder.Services.AddHttpClient<IMarketData, YahooMarketData>(c =>
+{
+    // Yahoo refuses requests without a browser-like user agent.
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; FireCalc/1.0)");
+    c.Timeout = TimeSpan.FromSeconds(15);
+});
+builder.Services.AddSingleton<PriceRefreshState>();
+builder.Services.AddScoped<PriceService>();
+builder.Services.AddScoped<PortfolioValuation>();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddGoogleAuth(builder.Configuration);
@@ -49,6 +60,7 @@ api.MapAccountEndpoints();
 api.MapSnapshotEndpoints();
 api.MapGoalEndpoints();
 api.MapDashboardEndpoints();
+api.MapPortfolioEndpoints();
 
 app.Run();
 
