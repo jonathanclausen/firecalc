@@ -174,6 +174,41 @@ public class PlannerTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task A_loan_counts_against_net_worth_and_a_home_loan_follows_the_home()
+    {
+        var client = NewOwner();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var savings = await CreateAccount(client, "Opsparing", "savings");
+        var home = await CreateAccount(client, "Bolig", "property");
+        var bankLoan = await client.PostAsJsonAsync("/api/accounts", new { name = "Banklån", type = "loan", partOfHome = true });
+        var created = await bankLoan.Content.ReadFromJsonAsync<JsonElement>();
+        var bank = created.GetProperty("id").GetString()!;
+        Assert.True(created.GetProperty("partOfHome").GetBoolean());
+        // Only a loan can belong to the home.
+        var other = await client.PostAsJsonAsync("/api/accounts", new { name = "Bil", type = "savings", partOfHome = true });
+        Assert.False((await other.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("partOfHome").GetBoolean());
+        var car = await CreateAccount(client, "Billån", "loan");
+
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddMonths(-1), balance = 300000m });
+        await client.PutAsJsonAsync($"/api/accounts/{home}/balances", new { date = today.AddMonths(-1), balance = 4000000m, loan = 3200000m });
+        await client.PutAsJsonAsync($"/api/accounts/{bank}/balances", new { date = today.AddMonths(-1), balance = 400000m });
+        await client.PutAsJsonAsync($"/api/accounts/{car}/balances", new { date = today.AddMonths(-1), balance = 50000m });
+
+        var dash = await client.GetFromJsonAsync<JsonElement>("/api/dashboard");
+        Assert.Equal(650000m, dash.GetProperty("latest").GetProperty("total").GetDecimal());
+        Assert.Equal(-450000m, dash.GetProperty("latest").GetProperty("byType").GetProperty("loan").GetDecimal());
+
+        // Without the home, its loan goes too; the car loan still counts.
+        var without = await client.GetFromJsonAsync<JsonElement>("/api/dashboard?includeHome=false");
+        Assert.Equal(250000m, without.GetProperty("latest").GetProperty("total").GetDecimal());
+        Assert.Equal(-50000m, without.GetProperty("latest").GetProperty("byType").GetProperty("loan").GetDecimal());
+
+        var put = await client.PutAsJsonAsync($"/api/accounts/{bank}", new { name = "Banklån", type = "loan", archived = false, partOfHome = false });
+        Assert.False((await put.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("partOfHome").GetBoolean());
+        Assert.Equal(-150000m, (await client.GetFromJsonAsync<JsonElement>("/api/dashboard?includeHome=false")).GetProperty("latest").GetProperty("total").GetDecimal());
+    }
+
+    [Fact]
     public async Task Goal_requires_a_positive_target()
     {
         var res = await NewOwner().PutAsJsonAsync("/api/goal", new { targetAmount = 0m });

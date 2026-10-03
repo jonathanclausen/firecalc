@@ -9,13 +9,14 @@ public static class AccountEndpoints
 {
     /// <summary>
     /// <see cref="Tracked"/> accounts have transactions and are valued from them; the others carry the
-    /// latest balance entered by hand. For a home, <see cref="Balance"/> is its value and <see cref="Loan"/> what is owed.
+    /// latest balance entered by hand. For a home, <see cref="Balance"/> is its value and <see cref="Loan"/> what is owed;
+    /// for a loan, <see cref="Balance"/> is what is owed.
     /// </summary>
-    public record AccountDto(Guid Id, string Name, AccountType Type, bool Archived, bool Tracked = false, decimal? Balance = null, DateOnly? BalanceDate = null, decimal? Loan = null);
+    public record AccountDto(Guid Id, string Name, AccountType Type, bool Archived, bool Tracked = false, decimal? Balance = null, DateOnly? BalanceDate = null, decimal? Loan = null, bool PartOfHome = false);
     public record BalanceDto(DateOnly Date, decimal Balance, decimal? Loan = null);
     public record SaveBalanceRequest(DateOnly? Date, decimal? Balance, decimal? Loan = null);
-    public record CreateAccountRequest(string? Name, AccountType? Type);
-    public record UpdateAccountRequest(string? Name, AccountType? Type, bool Archived);
+    public record CreateAccountRequest(string? Name, AccountType? Type, bool PartOfHome = false);
+    public record UpdateAccountRequest(string? Name, AccountType? Type, bool Archived, bool PartOfHome = false);
 
     public static void MapAccountEndpoints(this RouteGroupBuilder api)
     {
@@ -36,7 +37,7 @@ public static class AccountEndpoints
                 .Select(x => new AccountDto(
                     x.Account.Id, x.Account.Name, x.Account.Type, x.Account.Archived, x.Tracked,
                     x.Latest == null ? null : x.Latest.Balance, x.Latest == null ? null : x.Latest.Date,
-                    x.Latest == null ? null : x.Latest.Loan))
+                    x.Latest == null ? null : x.Latest.Loan, x.Account.PartOfHome))
                 .ToListAsync(ct);
         });
 
@@ -46,7 +47,13 @@ public static class AccountEndpoints
             if (!v.IsValid) return v.Problem();
 
             var user = await db.GetOrCreateUserAsync(principal, ct);
-            var account = new Account { UserId = user.Id, Name = req.Name!.Trim(), Type = req.Type!.Value };
+            var account = new Account
+            {
+                UserId = user.Id,
+                Name = req.Name!.Trim(),
+                Type = req.Type!.Value,
+                PartOfHome = req.Type == AccountType.Loan && req.PartOfHome,
+            };
             db.Accounts.Add(account);
             await db.SaveChangesAsync(ct);
             return Results.Created($"/api/accounts/{account.Id}", ToDto(account));
@@ -64,6 +71,7 @@ public static class AccountEndpoints
             account.Name = req.Name!.Trim();
             account.Type = req.Type!.Value;
             account.Archived = req.Archived;
+            account.PartOfHome = account.Type == AccountType.Loan && req.PartOfHome;
             await db.SaveChangesAsync(ct);
             return Results.Ok(ToDto(account));
         });
@@ -135,7 +143,7 @@ public static class AccountEndpoints
         });
     }
 
-    private static AccountDto ToDto(Account a) => new(a.Id, a.Name, a.Type, a.Archived);
+    private static AccountDto ToDto(Account a) => new(a.Id, a.Name, a.Type, a.Archived, PartOfHome: a.PartOfHome);
 
     private static Validation Validate(string? name, AccountType? type) => new Validation()
         .Check(!string.IsNullOrWhiteSpace(name), "name", "Name is required.")

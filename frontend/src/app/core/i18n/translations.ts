@@ -133,6 +133,7 @@ const da = {
       savings: 'Opsparing',
       cash: 'Kontanter',
       property: 'Bolig',
+      loan: 'Lån',
     } as Record<string, string>,
 
     signIn: {
@@ -165,9 +166,10 @@ const da = {
       chartTitle: 'Formue over tid',
       includeHome: 'Medregn friværdi',
       includeHomeHint:
-        'Boligens værdi minus restgæld. Slået fra tæller den hverken med i formue, graf eller mål.',
+        'Boligens værdi minus restgæld og lån, der hører til boligen. Slået fra tæller den hverken med i formue, graf eller mål.',
       chartAria:
         'Formue over tid fordelt på kontotyper. Brug piletasterne til at se de enkelte datoer.',
+      netLine: 'Formue efter lån',
       total: 'I alt',
       pace: 'Gennemsnitlig udvikling',
       paceValue: (amount: string) => `${amount} om måneden`,
@@ -189,6 +191,7 @@ const da = {
       balanceFrom: (date: string) => `Saldo fra ${date}`,
       noBalance: 'Ingen saldo endnu',
       equityFrom: (date: string) => `Friværdi pr. ${date}`,
+      owedFrom: (date: string) => `Restgæld pr. ${date}`,
       update: 'Opdater',
     },
 
@@ -224,6 +227,11 @@ const da = {
       homeNoBalance: 'Ingen værdi endnu',
       homeHint:
         'Første gang: købsprisen og lånet på købsdagen. Derefter når du har en ny vurdering eller restgæld.',
+      partOfHome: 'Hører til boligen',
+      partOfHomeHint: 'Slås fra sammen med friværdien på overblikket.',
+      owed: 'Restgæld',
+      loanNoBalance: 'Ingen restgæld endnu',
+      updateLoan: 'Opdater restgæld',
       futureDate: 'Datoen kan ikke ligge i fremtiden.',
     },
 
@@ -548,6 +556,7 @@ const en: Translations = {
       savings: 'Savings',
       cash: 'Cash',
       property: 'Home',
+      loan: 'Loan',
     },
 
     signIn: {
@@ -580,8 +589,9 @@ const en: Translations = {
       chartTitle: 'Net worth over time',
       includeHome: 'Include home equity',
       includeHomeHint:
-        'Your home’s value minus the loan. Turned off, it counts in neither net worth, the chart nor the goal.',
+        'Your home’s value minus its mortgage and any loans that belong to it. Turned off, it counts in neither net worth, the chart nor the goal.',
       chartAria: 'Net worth over time by account type. Use arrow keys to inspect each date.',
+      netLine: 'Net worth after loans',
       total: 'Total',
       pace: 'Average change',
       paceValue: (amount: string) => `${amount} per month`,
@@ -603,6 +613,7 @@ const en: Translations = {
       balanceFrom: (date: string) => `Balance from ${date}`,
       noBalance: 'No balance yet',
       equityFrom: (date: string) => `Equity as of ${date}`,
+      owedFrom: (date: string) => `Owed as of ${date}`,
       update: 'Update',
     },
 
@@ -638,6 +649,11 @@ const en: Translations = {
       homeNoBalance: 'No value yet',
       homeHint:
         'First time: the purchase price and the loan on the day you bought. After that, whenever you have a new valuation or loan balance.',
+      partOfHome: 'Belongs to the home',
+      partOfHomeHint: 'Turned off together with home equity on the overview.',
+      owed: 'Amount owed',
+      loanNoBalance: 'Nothing owed entered yet',
+      updateLoan: 'Update amount owed',
       futureDate: 'The date can’t be in the future.',
     },
 

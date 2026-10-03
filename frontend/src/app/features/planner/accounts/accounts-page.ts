@@ -37,8 +37,14 @@ export class AccountsPage {
 
   protected readonly newName = signal('');
   protected readonly newType = signal<AccountType>('investment');
+  protected readonly newPartOfHome = signal(false);
   /** The account being renamed, with its draft values. */
-  protected readonly editing = signal<{ id: string; name: string; type: AccountType } | null>(null);
+  protected readonly editing = signal<{
+    id: string;
+    name: string;
+    type: AccountType;
+    partOfHome: boolean;
+  } | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
 
@@ -117,14 +123,26 @@ export class AccountsPage {
     const name = this.newName().trim();
     if (!name) return;
     await this.run(async () => {
-      await this.api.createAccount({ name, type: this.newType() });
+      const type = this.newType();
+      await this.api.createAccount({
+        name,
+        type,
+        partOfHome: type === 'loan' && this.newPartOfHome(),
+      });
       this.newName.set('');
+      this.newPartOfHome.set(false);
     });
   }
 
   protected startEdit(a: Account) {
     this.balanceDraft.set(null);
-    this.editing.set({ id: a.id, name: a.name, type: a.type });
+    this.editing.set({ id: a.id, name: a.name, type: a.type, partOfHome: a.partOfHome });
+  }
+
+  /** Changes one field of the open edit form. */
+  protected setEdit(change: Partial<{ name: string; type: AccountType; partOfHome: boolean }>) {
+    const draft = this.editing();
+    if (draft) this.editing.set({ ...draft, ...change });
   }
 
   protected async saveEdit(a: Account, event: Event) {
@@ -136,13 +154,21 @@ export class AccountsPage {
         name: draft.name.trim(),
         type: draft.type,
         archived: a.archived,
+        partOfHome: draft.type === 'loan' && draft.partOfHome,
       });
       this.editing.set(null);
     });
   }
 
   protected setArchived(a: Account, archived: boolean) {
-    return this.run(() => this.api.updateAccount(a.id, { name: a.name, type: a.type, archived }));
+    return this.run(() =>
+      this.api.updateAccount(a.id, {
+        name: a.name,
+        type: a.type,
+        archived,
+        partOfHome: a.partOfHome,
+      }),
+    );
   }
 
   protected async remove(a: Account) {

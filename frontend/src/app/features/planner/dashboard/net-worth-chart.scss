@@ -43,6 +43,15 @@
   &--property {
     background: var(--series-home);
   }
+  &--loan {
+    background: var(--series-loan);
+  }
+  &--net {
+    height: 2px;
+    border-radius: 1px;
+    vertical-align: 3px;
+    background: var(--text-primary);
+  }
 }
 
 .chart__plot {
@@ -91,6 +100,9 @@
   &--property {
     fill: var(--series-home);
   }
+  &--loan {
+    fill: var(--series-loan);
+  }
 }
 
 .gap {
@@ -117,6 +129,21 @@
   &--property {
     stroke: var(--series-home);
   }
+  &--loan {
+    stroke: var(--series-loan);
+  }
+}
+
+.zero {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+.net {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 2;
+  stroke-linejoin: round;
 }
 
 .marker {

@@ -26,7 +26,10 @@ interface Layer {
   line: string;
 }
 
-/** Stacked areas of net worth by account type, one point per date, on a time axis. */
+/**
+ * Stacked areas of net worth by account type, one point per date, on a time axis. Loans hang below
+ * zero, with a line for net worth after them.
+ */
 @Component({
   selector: 'app-net-worth-chart',
   imports: [MoneyPipe],
@@ -61,7 +64,15 @@ export class NetWorthChart {
 
   /** Account types that appear anywhere in the history, bottom of the stack first. */
   protected readonly types = computed(() =>
-    ACCOUNT_TYPES.filter((t) => this.series().some((p) => (p.byType[t] ?? 0) > 0)),
+    ACCOUNT_TYPES.filter((t) => t !== 'loan' && this.series().some((p) => (p.byType[t] ?? 0) > 0)),
+  );
+
+  /** Whether any loan shows in the history; it is drawn below zero. */
+  protected readonly hasDebt = computed(() => this.series().some((p) => (p.byType.loan ?? 0) < 0));
+
+  /** Every type in the legend and tooltip, loans last. */
+  protected readonly legendTypes = computed<AccountType[]>(() =>
+    this.hasDebt() ? [...this.types(), 'loan'] : this.types(),
   );
 
   private readonly times = computed(() => this.series().map((p) => Date.parse(p.date)));
@@ -78,14 +89,19 @@ export class NetWorthChart {
   private readonly innerHeight = HEIGHT - PAD.top - PAD.bottom;
 
   protected readonly yTicks = computed(() => {
-    const max = Math.max(1, ...this.series().map((p) => p.total));
-    const step = niceStep(max / 4);
+    const types = this.types();
+    const series = this.series();
+    const top = series.map((p) => types.reduce((sum, t) => sum + (p.byType[t] ?? 0), 0));
+    const max = Math.max(1, ...top, ...series.map((p) => p.total));
+    const min = Math.min(0, ...series.map((p) => Math.min(p.byType.loan ?? 0, p.total)));
+    const step = niceStep((max - min) / 4);
     const ticks: number[] = [];
-    for (let v = 0; v <= max + step * 0.001; v += step) ticks.push(v);
+    for (let v = Math.floor(min / step) * step; v <= max + step * 0.001; v += step) ticks.push(v);
     if (ticks[ticks.length - 1] < max) ticks.push(ticks[ticks.length - 1] + step);
     return ticks;
   });
 
+  private readonly yMin = computed(() => this.yTicks()[0]);
   private readonly yMax = computed(() => this.yTicks()[this.yTicks().length - 1]);
 
   protected xAt(index: number) {
@@ -94,7 +110,8 @@ export class NetWorthChart {
   }
 
   protected y(value: number) {
-    return PAD.top + this.innerHeight - (value / this.yMax()) * this.innerHeight;
+    const [min, max] = [this.yMin(), this.yMax()];
+    return PAD.top + this.innerHeight - ((value - min) / (max - min)) * this.innerHeight;
   }
 
   /** Dates to label, spaced so they don't collide; always includes the latest. */
@@ -135,6 +152,19 @@ export class NetWorthChart {
         line: `M${top.join(' L')}`,
       };
     });
+  });
+
+  /** Loans as an area from zero down, and net worth after them as a line. */
+  protected readonly debt = computed(() => {
+    const series = this.series();
+    if (!this.hasDebt() || series.length < 2) return null;
+    const low = series.map((p, i) => `${this.xAt(i)},${this.y(p.byType.loan ?? 0)}`);
+    const zero = series.map((_, i) => `${this.xAt(i)},${this.y(0)}`).reverse();
+    return {
+      area: `M${low.join(' L')} L${zero.join(' L')} Z`,
+      line: `M${low.join(' L')}`,
+      net: `M${series.map((p, i) => `${this.xAt(i)},${this.y(p.total)}`).join(' L')}`,
+    };
   });
 
   protected readonly hovered = computed(() => {

@@ -35,6 +35,16 @@
         {{ a.addButton }}
       </button>
     </div>
+    @if (newType() === 'loan') {
+      <label class="toggle add__home">
+        <input
+          type="checkbox"
+          [checked]="newPartOfHome()"
+          (change)="newPartOfHome.set($any($event.target).checked)"
+        />
+        {{ a.partOfHome }} <small>{{ a.partOfHomeHint }}</small>
+      </label>
+    }
   </form>
 
   <section class="card">
@@ -75,26 +85,12 @@
                     maxlength="100"
                     required
                     [value]="editing()!.name"
-                    (input)="
-                      editing.set({
-                        id: acc.id,
-                        name: $any($event.target).value,
-                        type: editing()!.type,
-                      })
-                    "
+                    (input)="setEdit({ name: $any($event.target).value })"
                   />
                 </label>
                 <label class="form-field">
                   <span class="visually-hidden">{{ a.type }}</span>
-                  <select
-                    (change)="
-                      editing.set({
-                        id: acc.id,
-                        name: editing()!.name,
-                        type: $any($event.target).value,
-                      })
-                    "
-                  >
+                  <select (change)="setEdit({ type: $any($event.target).value })">
                     @for (type of types; track type) {
                       <option [value]="type" [selected]="type === editing()!.type">
                         {{ t.types[type] }}
@@ -102,6 +98,16 @@
                     }
                   </select>
                 </label>
+                @if (editing()!.type === 'loan') {
+                  <label class="toggle">
+                    <input
+                      type="checkbox"
+                      [checked]="editing()!.partOfHome"
+                      (change)="setEdit({ partOfHome: $any($event.target).checked })"
+                    />
+                    {{ a.partOfHome }}
+                  </label>
+                }
                 <button type="submit" class="btn btn--primary" [disabled]="busy()">
                   {{ t.save }}
                 </button>
@@ -114,7 +120,9 @@
                 <i class="type-dot type-dot--{{ acc.type }}"></i>
                 <span>
                   {{ acc.name }}
-                  <small>{{ t.types[acc.type] }}</small>
+                  <small
+                    >{{ t.types[acc.type] }}{{ acc.partOfHome ? ' · ' + a.partOfHome : '' }}</small
+                  >
                 </span>
                 @if (acc.archived) {
                   <em class="badge">{{ a.archivedBadge }}</em>
@@ -150,6 +158,7 @@
               </div>
             } @else if (!acc.archived || acc.balance !== null) {
               @let home = acc.type === 'property';
+              @let loan = acc.type === 'loan';
               <div class="balance">
                 <span class="balance__text">
                   @if (acc.balance !== null && acc.balanceDate) {
@@ -162,17 +171,20 @@
                         {{ a.loan }} {{ acc.loan ?? 0 | money: false : currency() }}
                       </small>
                     } @else {
+                      @if (loan) {
+                        {{ a.owed }}
+                      }
                       <strong>{{ acc.balance | money: false : currency() }}</strong>
                       {{ a.balanceFrom(i18n.date(acc.balanceDate)) }}
                     }
                   } @else {
-                    {{ home ? a.homeNoBalance : a.noBalance }}
+                    {{ home ? a.homeNoBalance : loan ? a.loanNoBalance : a.noBalance }}
                   }
                 </span>
                 <span class="actions">
                   @if (!acc.archived && balanceDraft()?.id !== acc.id) {
                     <button type="button" class="link-button" (click)="startBalance(acc)">
-                      {{ home ? a.updateHome : a.updateBalance }}
+                      {{ home ? a.updateHome : loan ? a.updateLoan : a.updateBalance }}
                     </button>
                   }
                   @if (acc.balance !== null) {
@@ -192,7 +204,7 @@
                     <p class="balance-form__hint">{{ a.homeHint }}</p>
                   }
                   <label class="form-field">
-                    <span>{{ home ? a.homeValue : a.balance }}</span>
+                    <span>{{ home ? a.homeValue : acc.type === 'loan' ? a.owed : a.balance }}</span>
                     <input
                       type="text"
                       inputmode="decimal"

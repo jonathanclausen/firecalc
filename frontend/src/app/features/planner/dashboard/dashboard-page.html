@@ -149,6 +149,8 @@
                   {{ d.live }}
                 } @else if (acc.balanceDate && acc.type === 'property') {
                   {{ d.equityFrom(i18n.date(acc.balanceDate)) }}
+                } @else if (acc.balanceDate && acc.type === 'loan') {
+                  {{ d.owedFrom(i18n.date(acc.balanceDate)) }}
                 } @else if (acc.balanceDate) {
                   {{ d.balanceFrom(i18n.date(acc.balanceDate)) }}
                 } @else {

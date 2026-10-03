@@ -1,9 +1,12 @@
 @let t = i18n.t().planner;
 <div class="chart">
-  @if (types().length > 1) {
+  @if (legendTypes().length > 1) {
     <ul class="legend" [attr.aria-label]="i18n.t().chart.legend">
-      @for (type of types(); track type) {
+      @for (type of legendTypes(); track type) {
         <li><span class="swatch swatch--{{ type }}"></span>{{ t.types[type] }}</li>
+      }
+      @if (debt()) {
+        <li><span class="swatch swatch--net"></span>{{ t.dashboard.netLine }}</li>
       }
     </ul>
   }
@@ -47,6 +50,19 @@
         <path class="gap" [attr.d]="layer.line" />
         <path class="line line--{{ layer.type }}" [attr.d]="layer.line" />
       }
+      @if (debt(); as d) {
+        <path class="area area--loan" [attr.d]="d.area" />
+        <path class="line line--loan" [attr.d]="d.line" />
+        <line
+          class="zero"
+          [attr.x1]="pad.left"
+          [attr.x2]="width() - pad.right"
+          [attr.y1]="y(0)"
+          [attr.y2]="y(0)"
+        />
+        <path class="gap" [attr.d]="d.net" />
+        <path class="net" [attr.d]="d.net" />
+      }
 
       <!-- Markers on the total while there are few points, so a single point shows too. -->
       @if (series().length <= 24) {
@@ -85,7 +101,7 @@
           <span>{{ t.dashboard.total }}</span
           ><strong>{{ h.point.total | money: false : currency() }}</strong>
         </div>
-        @for (type of types(); track type) {
+        @for (type of legendTypes(); track type) {
           <div class="tooltip__row">
             <span><i class="swatch swatch--{{ type }}"></i>{{ t.types[type] }}</span>
             <strong>{{ h.point.byType[type] ?? 0 | money: false : currency() }}</strong>

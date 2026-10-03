@@ -38,9 +38,11 @@ export class DashboardPage {
   });
   protected readonly accounts = httpResource<Account[]>(() => '/api/accounts');
 
-  /** The switch only shows once there is a home to leave out. */
+  /** The switch only shows once there is a home, or a loan for one, to leave out. */
   protected readonly hasHome = computed(() =>
-    (this.accounts.value() ?? []).some((a) => a.type === 'property' && !a.archived),
+    (this.accounts.value() ?? []).some(
+      (a) => (a.type === 'property' || a.partOfHome) && !a.archived,
+    ),
   );
 
   protected readonly loading = computed(() => !this.view() || !this.accounts.hasValue());
