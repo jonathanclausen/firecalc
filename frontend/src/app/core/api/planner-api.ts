@@ -284,9 +284,12 @@ export class PlannerApi {
   }
 
   /** Sends a Nordnet export as-is. Without commit the server only answers what it would import. */
-  importNordnet(accountId: string, file: ArrayBuffer, commit: boolean) {
+  /** Imports a broker export; Saxo's is an .xlsx (a zip, starting "PK"), Nordnet's a CSV. */
+  importTransactions(accountId: string, file: ArrayBuffer, commit: boolean) {
+    const head = new Uint8Array(file.slice(0, 2));
+    const broker = head[0] === 0x50 && head[1] === 0x4b ? 'saxo' : 'nordnet';
     return firstValueFrom(
-      this.http.post<ImportResult>(`/api/accounts/${accountId}/import/nordnet`, file, {
+      this.http.post<ImportResult>(`/api/accounts/${accountId}/import/${broker}`, file, {
         params: { commit },
         headers: { 'Content-Type': 'application/octet-stream' },
       }),

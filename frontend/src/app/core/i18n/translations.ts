@@ -237,7 +237,7 @@ const da = {
       realized: 'Realiseret',
       cash: 'Kontanter',
       netDeposits: 'Nettoindskud',
-      import: 'Importér fra Nordnet',
+      import: 'Importér fra Nordnet eller Saxo',
       addTransaction: 'Tilføj transaktion',
       transactions: 'Transaktioner',
       transactionCount: (n: number) => (n === 1 ? '1 transaktion' : `${n} transaktioner`),
@@ -294,16 +294,21 @@ const da = {
     },
 
     importPage: {
-      title: 'Importér fra Nordnet',
-      lede: 'Hent dine transaktioner fra Nordnet og læg filen her. Transaktioner, der allerede er importeret, springes over, så du kan importere den samme fil igen senere.',
-      howTitle: 'Sådan eksporterer du fra Nordnet',
+      title: 'Importér fra Nordnet eller Saxo',
+      lede: 'Hent dine transaktioner fra Nordnet eller Saxo og læg filen her. Transaktioner, der allerede er importeret, springes over, så du kan importere den samme fil igen senere.',
+      howTitle: 'Sådan eksporterer du',
       how: [
         'Log ind på nordnet.dk og åbn oversigten over transaktioner for dit depot.',
         'Vælg depotet og sæt perioden til hele tiden, så beholdningen bliver rigtig.',
         'Klik på Eksportér (CSV) og gem filen.',
       ],
+      howSaxo: [
+        'Log ind hos Saxo og åbn transaktionsoversigten for kontoen.',
+        'Sæt perioden til hele tiden, så beholdningen bliver rigtig.',
+        'Eksportér til Excel (.xlsx) og gem filen.',
+      ],
       account: 'Konto',
-      file: 'Fil fra Nordnet (.csv)',
+      file: 'Fil fra Nordnet (.csv) eller Saxo (.xlsx)',
       preview: 'Se, hvad der importeres',
       summary: (fresh: number, dupes: number) =>
         (fresh === 1 ? '1 ny transaktion' : `${fresh} nye transaktioner`) +
@@ -319,7 +324,7 @@ const da = {
         n === 1 ? '1 transaktion er importeret.' : `${n} transaktioner er importeret.`,
       nothing: 'Der er intet nyt at importere.',
       toPortfolio: 'Se porteføljen',
-      badFile: 'Filen kunne ikke læses som en transaktionseksport fra Nordnet.',
+      badFile: 'Filen kunne ikke læses som en transaktionseksport fra Nordnet eller Saxo.',
     },
 
     transactionsPage: {
@@ -626,7 +631,7 @@ const en: Translations = {
       realized: 'Realised',
       cash: 'Cash',
       netDeposits: 'Net deposits',
-      import: 'Import from Nordnet',
+      import: 'Import from Nordnet or Saxo',
       addTransaction: 'Add transaction',
       transactions: 'Transactions',
       transactionCount: (n: number) => (n === 1 ? '1 transaction' : `${n} transactions`),
@@ -682,16 +687,21 @@ const en: Translations = {
     },
 
     importPage: {
-      title: 'Import from Nordnet',
-      lede: 'Download your transactions from Nordnet and drop the file here. Transactions already imported are skipped, so you can import the same file again later.',
-      howTitle: 'How to export from Nordnet',
+      title: 'Import from Nordnet or Saxo',
+      lede: 'Download your transactions from Nordnet or Saxo and drop the file here. Transactions already imported are skipped, so you can import the same file again later.',
+      howTitle: 'How to export',
       how: [
         'Log in at nordnet.dk and open the transactions overview for your account.',
         'Pick the account and set the period to all time so the holdings come out right.',
         'Click Export (CSV) and save the file.',
       ],
+      howSaxo: [
+        'Log in at Saxo and open the transactions overview for the account.',
+        'Set the period to all time so the holdings come out right.',
+        'Export to Excel (.xlsx) and save the file.',
+      ],
       account: 'Account',
-      file: 'File from Nordnet (.csv)',
+      file: 'File from Nordnet (.csv) or Saxo (.xlsx)',
       preview: 'Preview the import',
       summary: (fresh: number, dupes: number) =>
         (fresh === 1 ? '1 new transaction' : `${fresh} new transactions`) +
@@ -706,7 +716,7 @@ const en: Translations = {
       done: (n: number) => (n === 1 ? '1 transaction imported.' : `${n} transactions imported.`),
       nothing: 'Nothing new to import.',
       toPortfolio: 'View portfolio',
-      badFile: 'The file could not be read as a Nordnet transaction export.',
+      badFile: 'The file could not be read as a Nordnet or Saxo transaction export.',
     },
 
     transactionsPage: {
