@@ -3,6 +3,7 @@ using System;
 using FireCalc.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FireCalc.Api.Data.Migrations
 {
     [DbContext(typeof(FireCalcDbContext))]
-    partial class FireCalcDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261003155458_HomeLoan")]
+    partial class HomeLoan
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -38,9 +41,6 @@ namespace FireCalc.Api.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<bool>("PartOfHome")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("Type")
                         .IsRequired()

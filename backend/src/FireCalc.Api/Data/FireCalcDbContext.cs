@@ -40,6 +40,7 @@ public class FireCalcDbContext(DbContextOptions<FireCalcDbContext> options) : Db
             e.HasKey(x => new { x.AccountId, x.Date });
             e.HasOne<Account>().WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Cascade);
             e.Property(x => x.Balance).HasPrecision(18, 2);
+            e.Property(x => x.Loan).HasPrecision(18, 2);
         });
 
         b.Entity<Snapshot>(e =>

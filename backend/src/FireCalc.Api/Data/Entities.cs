@@ -5,6 +5,10 @@ public enum AccountType
     Investment,
     Savings,
     Cash,
+    /// <summary>A home: each balance is the home's value with <see cref="AccountBalance.Loan"/> owed on it.</summary>
+    Property,
+    /// <summary>Money owed. Its balance is the amount owed and counts against net worth.</summary>
+    Loan,
 }
 
 public class User
@@ -23,6 +27,8 @@ public class Account
     public Guid UserId { get; set; }
     public required string Name { get; set; }
     public AccountType Type { get; set; }
+    /// <summary>A <see cref="AccountType.Loan"/> taken for the home, so it is left out with the home's equity.</summary>
+    public bool PartOfHome { get; set; }
     public bool Archived { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
@@ -35,7 +41,10 @@ public class AccountBalance
 {
     public Guid AccountId { get; set; }
     public DateOnly Date { get; set; }
+    /// <summary>For a <see cref="AccountType.Property"/> account, what the home is worth.</summary>
     public decimal Balance { get; set; }
+    /// <summary>What is owed on a home (restgæld); null for other accounts.</summary>
+    public decimal? Loan { get; set; }
 }
 
 /// <summary>

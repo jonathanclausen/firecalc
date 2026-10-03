@@ -13,7 +13,8 @@ public static class DashboardEndpoints
 
     /// <summary>
     /// An account's part of today's net worth. Tracked accounts are valued live from their transactions;
-    /// the others count with the balance entered on <see cref="BalanceDate"/>.
+    /// the others count with the balance entered on <see cref="BalanceDate"/>. A home counts with its equity
+    /// (value less loan) and a loan with what is owed, as a negative value.
     /// </summary>
     public record AccountValue(Guid Id, string Name, AccountType Type, decimal Value, bool Tracked, DateOnly? BalanceDate);
 
@@ -28,12 +29,16 @@ public static class DashboardEndpoints
 
     public static void MapDashboardEndpoints(this RouteGroupBuilder api)
     {
-        api.MapGet("/dashboard", async (ClaimsPrincipal principal, FireCalcDbContext db, PortfolioHistory history, PortfolioValuation valuation, CancellationToken ct) =>
+        // includeHome=false leaves homes, and loans taken for them, out of everything: totals, chart, change and goal progress.
+        api.MapGet("/dashboard", async (bool? includeHome, ClaimsPrincipal principal, FireCalcDbContext db, PortfolioHistory history, PortfolioValuation valuation, CancellationToken ct) =>
         {
             var user = await db.GetOrCreateUserAsync(principal, ct);
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             var goal = await db.Goals.AsNoTracking().SingleOrDefaultAsync(g => g.UserId == user.Id, ct);
-            var accounts = await db.Accounts.AsNoTracking().Where(a => a.UserId == user.Id).OrderBy(a => a.CreatedAt).ToListAsync(ct);
+            var accounts = await db.Accounts.AsNoTracking()
+                .Where(a => a.UserId == user.Id && (includeHome != false || (a.Type != AccountType.Property && !a.PartOfHome)))
+                .OrderBy(a => a.CreatedAt)
+                .ToListAsync(ct);
             var accountIds = accounts.Select(a => a.Id).ToList();
             var balances = (await db.Balances.AsNoTracking().Where(b => accountIds.Contains(b.AccountId)).ToListAsync(ct))
                 .GroupBy(b => b.AccountId)
@@ -49,7 +54,13 @@ public static class DashboardEndpoints
             {
                 if (!balances.TryGetValue(account.Id, out var list)) return null;
                 if (account.Archived && day > list[^1].Date) return null;
-                return list.LastOrDefault(b => b.Date <= day)?.Balance;
+                var balance = list.LastOrDefault(b => b.Date <= day);
+                return balance is null ? null : account.Type switch
+                {
+                    AccountType.Property => balance.Balance - (balance.Loan ?? 0),
+                    AccountType.Loan => -balance.Balance,
+                    _ => balance.Balance,
+                };
             }
 
             SeriesPoint PointOn(DateOnly day)

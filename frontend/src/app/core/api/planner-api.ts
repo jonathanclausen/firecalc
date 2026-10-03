@@ -4,9 +4,16 @@ import { firstValueFrom } from 'rxjs';
 
 /** Shapes returned by the .NET API under /api. Dates are ISO yyyy-mm-dd strings. */
 
-export type AccountType = 'investment' | 'savings' | 'cash';
+export type AccountType = 'investment' | 'savings' | 'cash' | 'property' | 'loan';
 
-export const ACCOUNT_TYPES: readonly AccountType[] = ['investment', 'savings', 'cash'];
+/** Also the chart's stacking order, bottom first; loans are drawn below zero. */
+export const ACCOUNT_TYPES: readonly AccountType[] = [
+  'investment',
+  'savings',
+  'cash',
+  'property',
+  'loan',
+];
 
 export interface Me {
   email: string;
@@ -21,14 +28,19 @@ export interface Account {
   archived: boolean;
   /** Valued from its transactions; balances can't be entered by hand. */
   tracked: boolean;
-  /** Latest balance entered by hand, and its date. */
+  /** Latest balance entered by hand, and its date. For a home: its value. */
   balance: number | null;
   balanceDate: string | null;
+  /** What is owed on a home (restgæld); null for other accounts. */
+  loan: number | null;
+  /** A loan taken for the home: left out together with the home's equity. */
+  partOfHome: boolean;
 }
 
 export interface AccountBalance {
   date: string;
   balance: number;
+  loan?: number | null;
 }
 
 export interface Goal {
@@ -55,7 +67,10 @@ export interface AccountValue {
 
 export interface Dashboard {
   currency: string;
-  /** Today: the portfolio at live prices plus each other account's latest balance. */
+  /**
+   * Today: the portfolio at live prices plus each other account's latest balance; a home at its
+   * equity and a loan as a negative amount.
+   */
   latest: SeriesPoint | null;
   /** Change since changeSince, a month ago. */
   change: number | null;
@@ -236,11 +251,14 @@ export interface ImportResult {
 export class PlannerApi {
   private readonly http = inject(HttpClient);
 
-  createAccount(body: { name: string; type: AccountType }) {
+  createAccount(body: { name: string; type: AccountType; partOfHome?: boolean }) {
     return firstValueFrom(this.http.post<Account>('/api/accounts', body));
   }
 
-  updateAccount(id: string, body: { name: string; type: AccountType; archived: boolean }) {
+  updateAccount(
+    id: string,
+    body: { name: string; type: AccountType; archived: boolean; partOfHome?: boolean },
+  ) {
     return firstValueFrom(this.http.put<Account>(`/api/accounts/${id}`, body));
   }
 

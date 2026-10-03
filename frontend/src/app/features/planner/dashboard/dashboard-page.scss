@@ -89,6 +89,12 @@
   .type-dot--savings {
     background: var(--hero-series-interest);
   }
+  .type-dot--property {
+    background: var(--hero-series-home);
+  }
+  .type-dot--loan {
+    background: var(--hero-series-loan);
+  }
 }
 
 .goal {
@@ -198,4 +204,64 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.intro__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+
+  input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+}
+
+.switch__track {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--track);
+  transition: background 0.15s;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--surface-card);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.15s;
+  }
+
+  input:checked + & {
+    background: var(--accent);
+
+    &::after {
+      transform: translateX(16px);
+    }
+  }
+
+  input:focus-visible + & {
+    outline: 2px solid var(--accent-ring);
+    outline-offset: 2px;
+  }
 }
