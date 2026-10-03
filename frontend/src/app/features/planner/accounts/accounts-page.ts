@@ -174,7 +174,15 @@ export class AccountsPage {
   protected async remove(a: Account) {
     const t = this.i18n.t().planner.accountsPage;
     if (!confirm(t.confirmDelete(a.name))) return;
-    await this.run(() => this.api.deleteAccount(a.id), t.inUse);
+    await this.run(async () => {
+      try {
+        await this.api.deleteAccount(a.id);
+      } catch (e) {
+        // The account has history: ask again, spelling out that it goes too.
+        if (!(e instanceof HttpErrorResponse && e.status === 409)) throw e;
+        if (confirm(t.confirmDeleteHistory(a.name))) await this.api.deleteAccount(a.id, true);
+      }
+    });
   }
 
   /** Runs a write, reloads the list and shows a message if it fails (409 has its own text). */

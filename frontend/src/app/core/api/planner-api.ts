@@ -262,8 +262,14 @@ export class PlannerApi {
     return firstValueFrom(this.http.put<Account>(`/api/accounts/${id}`, body));
   }
 
-  deleteAccount(id: string) {
-    return firstValueFrom(this.http.delete<void>(`/api/accounts/${id}`));
+  /** withHistory also deletes the account's balances and transactions; without it, an account with history is a 409. */
+  deleteAccount(id: string, withHistory = false) {
+    return firstValueFrom(
+      this.http.delete<void>(
+        `/api/accounts/${id}`,
+        withHistory ? { params: { withHistory: true } } : {},
+      ),
+    );
   }
 
   saveBalance(accountId: string, body: AccountBalance) {
