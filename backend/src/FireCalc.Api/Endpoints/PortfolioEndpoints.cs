@@ -226,6 +226,9 @@ public static class PortfolioEndpoints
             if (amount is null)
             {
                 var price = await valuation.UnitPriceAsync(instrument.Id, user.Currency, date, unitPrice, ct);
+                // Without today's price a trade can still go through at the GAK given with it.
+                if (price is null && req.AveragePrice is not null)
+                    price = await valuation.UnitPriceAsync(instrument.Id, user.Currency, date, req.AveragePrice, ct);
                 if (price is null)
                     return new Validation().Check(false, "unitPrice", "No price found for this share. Enter the price per share.").Problem();
                 amount = Math.Round(Math.Abs(change) * price.Value, 2);

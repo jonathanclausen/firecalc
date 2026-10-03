@@ -89,8 +89,10 @@ export class PortfolioPage {
     accountId: string;
     instrumentId: string;
     currency: string | null;
+    /** The count and GAK when the form opened, so only what was changed is sent. */
+    quantityWas: number;
+    averageWas: string;
     quantity: string;
-    price: string;
     average: string;
   } | null>(null);
 
@@ -132,13 +134,15 @@ export class PortfolioPage {
 
   protected startCount(accountId: string, p: Position) {
     this.adding.set(null);
+    const average = currentAverage(p);
     this.counting.set({
       accountId,
       instrumentId: p.instrumentId,
       currency: p.currency,
+      quantityWas: p.quantity,
+      averageWas: average,
       quantity: String(p.quantity),
-      price: '',
-      average: '',
+      average,
     });
   }
 
@@ -162,16 +166,15 @@ export class PortfolioPage {
     const draft = this.counting();
     const quantity = parse(draft?.quantity);
     if (!draft || quantity === null) return;
-    await this.saveHolding(
-      draft.accountId,
-      { id: draft.instrumentId },
-      quantity,
-      draft.price,
-      null,
-      {
-        averagePrice: parse(draft.average),
-      },
-    );
+    // The GAK is only sent when it was changed; a changed count alone is traded at today's price.
+    const average = draft.average !== draft.averageWas ? parse(draft.average) : null;
+    if (quantity === draft.quantityWas && average === null) {
+      this.counting.set(null);
+      return;
+    }
+    await this.saveHolding(draft.accountId, { id: draft.instrumentId }, quantity, '', null, {
+      averagePrice: average,
+    });
   }
 
   private async saveHolding(
@@ -246,4 +249,17 @@ function parse(raw: string | undefined): number | null {
   if (raw === undefined || raw.trim() === '') return null;
   const value = parseDecimal(raw);
   return value !== null && value >= 0 ? value : null;
+}
+
+/**
+ * The average price paid per share in the share's own currency, for showing in the form. Foreign
+ * shares are converted back at today's rate, so it can differ slightly from the broker's GAK.
+ */
+function currentAverage(p: Position): string {
+  if (p.quantity <= 0 || p.costBasis <= 0) return '';
+  const perShare =
+    p.price && p.value > 0 && !p.priceMissing
+      ? (p.costBasis * p.price) / p.value
+      : p.costBasis / p.quantity;
+  return String(Math.round(perShare * 100) / 100).replace('.', ',');
 }

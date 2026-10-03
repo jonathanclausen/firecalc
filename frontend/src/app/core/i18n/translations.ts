@@ -268,13 +268,8 @@ const da = {
       purchaseDate: 'Købsdato (valgfri)',
       purchaseDateHint:
         'Bruges til valutakursen for udenlandske aktier, så dit afkast i kroner også tæller valutaens udvikling. Tom = i dag.',
-      tradePrice: (currency: string) =>
-        `Kurs pr. stk.${currency ? ' i ' + currency : ''} (valgfri)`,
-      tradePriceHint: 'Kursen du handlede til. Tomt felt bruger dagens kurs.',
-      correctAverage: (currency: string) =>
-        `Ret gns. købskurs (GAK)${currency ? ' i ' + currency : ''} (valgfri)`,
       correctAverageHint:
-        'Udfyld kun, hvis den er forkert. Afkastet regnes så ud fra den nye kurs.',
+        'Ret den, så den passer med GAK hos din bank. Ændrer du antallet uden at rette GAK, handles der til dagens kurs.',
       cannotCorrectAverage: 'Der blev ikke fundet en valutakurs for papiret. Prøv igen senere.',
       needPrice: 'Skriv kursen pr. aktie, så afkastet kan regnes ud.',
       chooseInstrument: 'Find papiret',
@@ -652,13 +647,8 @@ const en: Translations = {
       purchaseDate: 'Purchase date (optional)',
       purchaseDateHint:
         'Used for the exchange rate on foreign shares, so your return in kroner includes the currency’s move. Empty = today.',
-      tradePrice: (currency: string) =>
-        `Price per share${currency ? ' in ' + currency : ''} (optional)`,
-      tradePriceHint: 'The price you traded at. Leave empty to use today’s price.',
-      correctAverage: (currency: string) =>
-        `Correct average purchase price (GAK)${currency ? ' in ' + currency : ''} (optional)`,
       correctAverageHint:
-        'Only fill in if it is wrong. Your return is then worked out from the new price.',
+        'Correct it to match the GAK at your broker. If you change the count without changing the GAK, the trade uses today’s price.',
       cannotCorrectAverage: 'No exchange rate was found for this share. Try again later.',
       needPrice: 'Enter the price per share so the return can be worked out.',
       chooseInstrument: 'Find the security',

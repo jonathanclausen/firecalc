@@ -319,6 +319,13 @@ public class PortfolioTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
         var ok = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "UNKNOWN.CO" }, quantity = 8, unitPrice = 52 });
         Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+
+        // A new GAK with the new count is enough when there is no price to trade at.
+        var withGak = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "UNKNOWN.CO" }, quantity = 10, averagePrice = 51 });
+        Assert.Equal(HttpStatusCode.OK, withGak.StatusCode);
+        var position = (await client.GetFromJsonAsync<JsonElement>("/api/portfolio")).GetProperty("accounts")[0].GetProperty("positions")[0];
+        Assert.Equal(10m, position.GetProperty("quantity").GetDecimal());
+        Assert.Equal(510m, position.GetProperty("costBasis").GetDecimal());
     }
     [Fact]
     public async Task A_purchase_date_converts_at_that_days_exchange_rate()

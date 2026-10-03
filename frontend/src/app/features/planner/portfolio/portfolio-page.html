@@ -256,25 +256,15 @@
                             />
                           </label>
                           <label class="form-field">
-                            <span>{{ p.tradePrice(draft.currency ?? '') }}</span>
+                            <span>{{ p.avgPrice(draft.currency ?? '') }}</span>
                             <input
                               type="text"
                               inputmode="decimal"
-                              [value]="draft.price"
-                              (input)="patchCounting({ price: $any($event.target).value })"
+                              [value]="draft.average"
+                              (input)="patchCounting({ average: $any($event.target).value })"
                             />
                           </label>
                         </div>
-                        <small class="hint">{{ p.tradePriceHint }}</small>
-                        <label class="form-field">
-                          <span>{{ p.correctAverage(draft.currency ?? '') }}</span>
-                          <input
-                            type="text"
-                            inputmode="decimal"
-                            [value]="draft.average"
-                            (input)="patchCounting({ average: $any($event.target).value })"
-                          />
-                        </label>
                         <small class="hint">{{ p.correctAverageHint }}</small>
                         <div class="holding-form__buttons">
                           <button type="submit" class="btn btn--primary" [disabled]="busy()">
