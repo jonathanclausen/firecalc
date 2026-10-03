@@ -149,19 +149,30 @@
                 <a class="link-button" routerLink="/planner/portfolio">{{ a.seePortfolio }}</a>
               </div>
             } @else if (!acc.archived || acc.balance !== null) {
+              @let home = acc.type === 'property';
               <div class="balance">
                 <span class="balance__text">
                   @if (acc.balance !== null && acc.balanceDate) {
-                    <strong>{{ acc.balance | money: false : currency() }}</strong>
-                    {{ a.balanceFrom(i18n.date(acc.balanceDate)) }}
+                    @if (home) {
+                      {{ a.equity }}
+                      <strong>{{ equity(acc) | money: false : currency() }}</strong>
+                      {{ a.balanceFrom(i18n.date(acc.balanceDate)) }}
+                      <small class="balance__split">
+                        {{ a.homeValue }} {{ acc.balance | money: false : currency() }} ·
+                        {{ a.loan }} {{ acc.loan ?? 0 | money: false : currency() }}
+                      </small>
+                    } @else {
+                      <strong>{{ acc.balance | money: false : currency() }}</strong>
+                      {{ a.balanceFrom(i18n.date(acc.balanceDate)) }}
+                    }
                   } @else {
-                    {{ a.noBalance }}
+                    {{ home ? a.homeNoBalance : a.noBalance }}
                   }
                 </span>
                 <span class="actions">
                   @if (!acc.archived && balanceDraft()?.id !== acc.id) {
                     <button type="button" class="link-button" (click)="startBalance(acc)">
-                      {{ a.updateBalance }}
+                      {{ home ? a.updateHome : a.updateBalance }}
                     </button>
                   }
                   @if (acc.balance !== null) {
@@ -175,24 +186,35 @@
 
             @if (balanceDraft(); as draft) {
               @if (draft.id === acc.id) {
+                @let home = acc.type === 'property';
                 <form class="balance-form" (submit)="saveBalance(acc, $event)">
+                  @if (home) {
+                    <p class="balance-form__hint">{{ a.homeHint }}</p>
+                  }
                   <label class="form-field">
-                    <span>{{ a.balance }}</span>
+                    <span>{{ home ? a.homeValue : a.balance }}</span>
                     <input
                       type="text"
                       inputmode="decimal"
                       appDecimal
                       required
                       [value]="draft.balance"
-                      (input)="
-                        balanceDraft.set({
-                          id: acc.id,
-                          balance: $any($event.target).value,
-                          date: draft.date,
-                        })
-                      "
+                      (input)="setDraft('balance', $any($event.target).value)"
                     />
                   </label>
+                  @if (home) {
+                    <label class="form-field">
+                      <span>{{ a.loan }}</span>
+                      <input
+                        type="text"
+                        inputmode="decimal"
+                        appDecimal
+                        placeholder="0"
+                        [value]="draft.loan"
+                        (input)="setDraft('loan', $any($event.target).value)"
+                      />
+                    </label>
+                  }
                   <label class="form-field">
                     <span>{{ a.date }}</span>
                     <input
@@ -200,13 +222,7 @@
                       required
                       [max]="today"
                       [value]="draft.date"
-                      (input)="
-                        balanceDraft.set({
-                          id: acc.id,
-                          balance: draft.balance,
-                          date: $any($event.target).value,
-                        })
-                      "
+                      (input)="setDraft('date', $any($event.target).value)"
                     />
                   </label>
                   <button
@@ -228,7 +244,19 @@
                 @for (b of history.value() ?? []; track b.date) {
                   <li>
                     <span>{{ i18n.date(b.date) }}</span>
-                    <span class="history__amount">{{ b.balance | money: false : currency() }}</span>
+                    @if (acc.type === 'property') {
+                      <span class="history__amount">
+                        {{ equity(b) | money: false : currency() }}
+                        <small
+                          >{{ b.balance | money: false : currency() }} −
+                          {{ b.loan ?? 0 | money: false : currency() }}</small
+                        >
+                      </span>
+                    } @else {
+                      <span class="history__amount">{{
+                        b.balance | money: false : currency()
+                      }}</span>
+                    }
                     <button
                       type="button"
                       class="link-button link-button--danger"

@@ -6,22 +6,36 @@
     <h1>{{ d.title }}</h1>
     <p class="lede">{{ d.lede }}</p>
   </div>
-  @if ((accounts.value()?.length ?? 0) > 0) {
-    <a class="btn btn--secondary" routerLink="/planner/accounts">{{ d.updateBalances }}</a>
-  }
+  <div class="intro__actions">
+    @if (hasHome()) {
+      <label class="switch" [title]="d.includeHomeHint">
+        <input
+          type="checkbox"
+          role="switch"
+          [checked]="includeHome()"
+          (change)="setIncludeHome($any($event.target).checked)"
+        />
+        <span class="switch__track" aria-hidden="true"></span>
+        {{ d.includeHome }}
+      </label>
+    }
+    @if ((accounts.value()?.length ?? 0) > 0) {
+      <a class="btn btn--secondary" routerLink="/planner/accounts">{{ d.updateBalances }}</a>
+    }
+  </div>
 </section>
 
 @if (failed()) {
   <p class="alert" role="alert">{{ t.error }}</p>
 } @else if (loading()) {
   <p class="muted">{{ t.loading }}</p>
-} @else if (accounts.value()!.length === 0 && !dashboard.value()!.latest) {
+} @else if (accounts.value()!.length === 0 && !view()!.latest) {
   <section class="card empty">
     <h2>{{ d.startTitle }}</h2>
     <p>{{ d.startText }}</p>
     <a class="btn btn--primary" routerLink="/planner/accounts">{{ d.startAction }}</a>
   </section>
-} @else if (!dashboard.value()!.latest) {
+} @else if (!view()!.latest) {
   <section class="card empty">
     <h2>{{ d.firstTitle }}</h2>
     <p>{{ d.firstText }}</p>
@@ -31,7 +45,7 @@
     </div>
   </section>
 } @else {
-  @let dash = dashboard.value()!;
+  @let dash = view()!;
   @let cur = currency();
   <div class="top">
     <section class="card hero" [attr.aria-label]="d.netWorth">
@@ -133,6 +147,8 @@
               <small>
                 @if (acc.tracked) {
                   {{ d.live }}
+                } @else if (acc.balanceDate && acc.type === 'property') {
+                  {{ d.equityFrom(i18n.date(acc.balanceDate)) }}
                 } @else if (acc.balanceDate) {
                   {{ d.balanceFrom(i18n.date(acc.balanceDate)) }}
                 } @else {

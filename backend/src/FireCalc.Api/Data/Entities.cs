@@ -5,6 +5,8 @@ public enum AccountType
     Investment,
     Savings,
     Cash,
+    /// <summary>A home: each balance is the home's value with <see cref="AccountBalance.Loan"/> owed on it.</summary>
+    Property,
 }
 
 public class User
@@ -35,7 +37,10 @@ public class AccountBalance
 {
     public Guid AccountId { get; set; }
     public DateOnly Date { get; set; }
+    /// <summary>For a <see cref="AccountType.Property"/> account, what the home is worth.</summary>
     public decimal Balance { get; set; }
+    /// <summary>What is owed on a home (restgæld); null for other accounts.</summary>
+    public decimal? Loan { get; set; }
 }
 
 /// <summary>

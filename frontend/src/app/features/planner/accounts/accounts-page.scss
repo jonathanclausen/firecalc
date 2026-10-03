@@ -125,9 +125,30 @@
   gap: 10px;
   width: 100%;
 
-  @media (max-width: 560px) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  // A home has a loan field too.
+  &:has(.balance-form__hint) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 170px auto auto;
   }
+
+  @media (max-width: 560px) {
+    &,
+    &:has(.balance-form__hint) {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+}
+
+.balance-form__hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.balance__split {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 .history {
@@ -152,4 +173,11 @@
 
 .history__amount {
   font-variant-numeric: tabular-nums;
+  text-align: right;
+
+  small {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
 }

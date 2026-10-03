@@ -9,11 +9,11 @@ public static class AccountEndpoints
 {
     /// <summary>
     /// <see cref="Tracked"/> accounts have transactions and are valued from them; the others carry the
-    /// latest balance entered by hand.
+    /// latest balance entered by hand. For a home, <see cref="Balance"/> is its value and <see cref="Loan"/> what is owed.
     /// </summary>
-    public record AccountDto(Guid Id, string Name, AccountType Type, bool Archived, bool Tracked = false, decimal? Balance = null, DateOnly? BalanceDate = null);
-    public record BalanceDto(DateOnly Date, decimal Balance);
-    public record SaveBalanceRequest(DateOnly? Date, decimal? Balance);
+    public record AccountDto(Guid Id, string Name, AccountType Type, bool Archived, bool Tracked = false, decimal? Balance = null, DateOnly? BalanceDate = null, decimal? Loan = null);
+    public record BalanceDto(DateOnly Date, decimal Balance, decimal? Loan = null);
+    public record SaveBalanceRequest(DateOnly? Date, decimal? Balance, decimal? Loan = null);
     public record CreateAccountRequest(string? Name, AccountType? Type);
     public record UpdateAccountRequest(string? Name, AccountType? Type, bool Archived);
 
@@ -35,7 +35,8 @@ public static class AccountEndpoints
                 })
                 .Select(x => new AccountDto(
                     x.Account.Id, x.Account.Name, x.Account.Type, x.Account.Archived, x.Tracked,
-                    x.Latest == null ? null : x.Latest.Balance, x.Latest == null ? null : x.Latest.Date))
+                    x.Latest == null ? null : x.Latest.Balance, x.Latest == null ? null : x.Latest.Date,
+                    x.Latest == null ? null : x.Latest.Loan))
                 .ToListAsync(ct);
         });
 
@@ -93,7 +94,7 @@ public static class AccountEndpoints
             var list = await db.Balances.AsNoTracking()
                 .Where(x => x.AccountId == id)
                 .OrderByDescending(x => x.Date)
-                .Select(x => new BalanceDto(x.Date, x.Balance))
+                .Select(x => new BalanceDto(x.Date, x.Balance, x.Loan))
                 .ToListAsync(ct);
             return Results.Ok(list);
         });
@@ -106,19 +107,23 @@ public static class AccountEndpoints
                 .Check(req.Date is not null, "date", "Date is required.")
                 .Check(req.Date is null || req.Date <= today, "date", "The date can't be in the future.")
                 .Check(req.Balance is not null, "balance", "Balance is required.")
-                .Check(req.Balance is null || req.Balance >= 0, "balance", "Balance cannot be negative.");
+                .Check(req.Balance is null || req.Balance >= 0, "balance", "Balance cannot be negative.")
+                .Check(req.Loan is null || req.Loan >= 0, "loan", "Loan cannot be negative.");
             if (!v.IsValid) return v.Problem();
 
             var user = await db.GetOrCreateUserAsync(principal, ct);
-            if (!await db.Accounts.AnyAsync(a => a.Id == id && a.UserId == user.Id, ct)) return Results.NotFound();
+            var account = await db.Accounts.AsNoTracking().SingleOrDefaultAsync(a => a.Id == id && a.UserId == user.Id, ct);
+            if (account is null) return Results.NotFound();
             if (await db.Transactions.AnyAsync(t => t.AccountId == id, ct))
                 return Results.Problem("This account is valued from its transactions.", statusCode: StatusCodes.Status409Conflict);
 
             var balance = await db.Balances.SingleOrDefaultAsync(x => x.AccountId == id && x.Date == req.Date, ct);
             if (balance is null) db.Balances.Add(balance = new AccountBalance { AccountId = id, Date = req.Date!.Value });
             balance.Balance = Math.Round(req.Balance!.Value, 2);
+            // Only a home has a loan against it; a home without one owes nothing.
+            balance.Loan = account.Type == AccountType.Property ? Math.Round(req.Loan ?? 0, 2) : null;
             await db.SaveChangesAsync(ct);
-            return Results.Ok(new BalanceDto(balance.Date, balance.Balance));
+            return Results.Ok(new BalanceDto(balance.Date, balance.Balance, balance.Loan));
         });
 
         balances.MapDelete("/{date}", async (Guid id, DateOnly date, ClaimsPrincipal principal, FireCalcDbContext db, CancellationToken ct) =>

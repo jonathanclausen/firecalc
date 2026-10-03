@@ -28,10 +28,10 @@ All under `/api` and require an allowed Google account. `GET /healthz` is public
 | GET | `/me` | Signed-in user |
 | GET, POST | `/accounts` | `?includeArchived=true` to include archived |
 | PUT, DELETE | `/accounts/{id}` | Delete only works while the account has no balances; archive otherwise |
-| GET, PUT | `/accounts/{id}/balances` | Balances entered by hand for accounts without transactions. PUT `{ date, balance }` adds or replaces that date's balance |
+| GET, PUT | `/accounts/{id}/balances` | Balances entered by hand for accounts without transactions. PUT `{ date, balance, loan? }` adds or replaces that date's balance. For a `property` account `balance` is the home's value and `loan` what is owed on it |
 | DELETE | `/accounts/{id}/balances/{date}` | |
 | GET, PUT, DELETE | `/goal` | `{ name?, targetAmount, targetDate?, expectedAnnualReturnPct? }`; GET is 204 when unset |
-| GET | `/dashboard` | Net worth today (portfolio live, other accounts at their latest balance), a series at month ends and balance dates, each account's part, change over the last month, goal progress |
+| GET | `/dashboard` | Net worth today (portfolio live, other accounts at their latest balance, a home at its value less the loan), a series at month ends and balance dates, each account's part, change over the last month, goal progress. `?includeHome=false` leaves homes out of all of it |
 | GET | `/portfolio` | Positions, cash and gains per investment account. `?date=` values on another day |
 | GET | `/portfolio/values` | Each portfolio account's value on `?date=` |
 | GET | `/portfolio/history` | All investment accounts together, day by day for `?from=&to=`: value, net money put in, and time-weighted return in percent |
@@ -43,7 +43,7 @@ All under `/api` and require an allowed Google account. `GET /healthz` is public
 | GET | `/instruments/search` | `?q=` name, ticker or ISIN |
 | PUT | `/instruments/{id}` | `{ symbol }` to fix which price symbol a share uses |
 
-Account types are `investment`, `savings` and `cash`.
+Account types are `investment`, `savings`, `cash` and `property` (a home).
 
 ### Portfolio prices
 

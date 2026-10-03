@@ -48,9 +48,13 @@ export class AccountsPage {
   protected readonly currency = computed(() => this.me.value()?.currency ?? 'DKK');
 
   /** The account whose balance is being entered, with the typed text. */
-  protected readonly balanceDraft = signal<{ id: string; balance: string; date: string } | null>(
-    null,
-  );
+  protected readonly balanceDraft = signal<{
+    id: string;
+    balance: string;
+    /** What is owed, for a home. */
+    loan: string;
+    date: string;
+  } | null>(null);
   /** The account whose balance history is open. */
   protected readonly historyFor = signal<string | null>(null);
   protected readonly history = httpResource<AccountBalance[]>(() => {
@@ -60,11 +64,24 @@ export class AccountsPage {
 
   protected startBalance(a: Account) {
     this.editing.set(null);
+    const lang = this.i18n.lang();
     this.balanceDraft.set({
       id: a.id,
-      balance: a.balance === null ? '' : formatDecimal(a.balance, this.i18n.lang()),
+      balance: a.balance === null ? '' : formatDecimal(a.balance, lang),
+      loan: a.loan === null ? '' : formatDecimal(a.loan, lang),
       date: this.today,
     });
+  }
+
+  /** Changes one field of the open balance form. */
+  protected setDraft(field: 'balance' | 'loan' | 'date', value: string) {
+    const draft = this.balanceDraft();
+    if (draft) this.balanceDraft.set({ ...draft, [field]: value });
+  }
+
+  /** A home's equity: its value less what is owed. */
+  protected equity(b: { balance: number | null; loan?: number | null }) {
+    return (b.balance ?? 0) - (b.loan ?? 0);
   }
 
   protected async saveBalance(a: Account, event: Event) {
@@ -72,8 +89,11 @@ export class AccountsPage {
     const draft = this.balanceDraft();
     const balance = parseDecimal(draft?.balance, this.i18n.lang());
     if (!draft || balance === null || balance < 0 || !draft.date) return;
+    // A home without a loan typed in owes nothing.
+    const loan = a.type === 'property' ? (parseDecimal(draft.loan, this.i18n.lang()) ?? 0) : null;
+    if (loan !== null && loan < 0) return;
     await this.run(async () => {
-      await this.api.saveBalance(a.id, { date: draft.date, balance });
+      await this.api.saveBalance(a.id, { date: draft.date, balance, loan });
       this.balanceDraft.set(null);
       if (this.historyFor() === a.id) this.history.reload();
     });

@@ -138,6 +138,42 @@ public class PlannerTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task A_home_counts_with_its_equity_and_can_be_left_out()
+    {
+        var client = NewOwner();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var savings = await CreateAccount(client, "Opsparing", "savings");
+        var home = await CreateAccount(client, "Bolig", "property");
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddMonths(-2), balance = 100000m });
+        await client.PutAsJsonAsync($"/api/accounts/{home}/balances", new { date = today.AddMonths(-2), balance = 4000000m, loan = 3200000m });
+        var saved = await client.PutAsJsonAsync($"/api/accounts/{home}/balances", new { date = today.AddDays(-5), balance = 4100000m, loan = 3150000m });
+        Assert.Equal(3150000m, (await saved.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("loan").GetDecimal());
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync($"/api/accounts/{home}/balances", new { date = today, balance = 1m, loan = -1m })).StatusCode);
+        // A loan sent for an account that isn't a home is ignored.
+        var plain = await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddMonths(-1), balance = 100000m, loan = 50000m });
+        Assert.Equal(JsonValueKind.Null, (await plain.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("loan").ValueKind);
+
+        var listed = (await client.GetFromJsonAsync<JsonElement>("/api/accounts")).EnumerateArray().Single(a => a.GetProperty("type").GetString() == "property");
+        Assert.Equal(4100000m, listed.GetProperty("balance").GetDecimal());
+        Assert.Equal(3150000m, listed.GetProperty("loan").GetDecimal());
+
+        await client.PutAsJsonAsync("/api/goal", new { targetAmount = 2000000m });
+
+        var dash = await client.GetFromJsonAsync<JsonElement>("/api/dashboard");
+        Assert.Equal(1050000m, dash.GetProperty("latest").GetProperty("total").GetDecimal());
+        Assert.Equal(950000m, dash.GetProperty("latest").GetProperty("byType").GetProperty("property").GetDecimal());
+        Assert.Equal(800000m, dash.GetProperty("series")[0].GetProperty("byType").GetProperty("property").GetDecimal());
+        Assert.Equal(950000m, dash.GetProperty("accounts")[1].GetProperty("value").GetDecimal());
+        Assert.Equal(52.5m, dash.GetProperty("goal").GetProperty("progressPct").GetDecimal());
+
+        var without = await client.GetFromJsonAsync<JsonElement>("/api/dashboard?includeHome=false");
+        Assert.Equal(100000m, without.GetProperty("latest").GetProperty("total").GetDecimal());
+        Assert.False(without.GetProperty("latest").GetProperty("byType").TryGetProperty("property", out _));
+        Assert.Single(without.GetProperty("accounts").EnumerateArray());
+        Assert.Equal(5.0m, without.GetProperty("goal").GetProperty("progressPct").GetDecimal());
+    }
+
+    [Fact]
     public async Task Goal_requires_a_positive_target()
     {
         var res = await NewOwner().PutAsJsonAsync("/api/goal", new { targetAmount = 0m });

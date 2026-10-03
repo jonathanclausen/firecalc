@@ -40,6 +40,9 @@
   &--cash {
     background: var(--series-cash);
   }
+  &--property {
+    background: var(--series-home);
+  }
 }
 
 .chart__plot {
@@ -85,6 +88,9 @@
   &--cash {
     fill: var(--series-cash);
   }
+  &--property {
+    fill: var(--series-home);
+  }
 }
 
 .gap {
@@ -107,6 +113,9 @@
   }
   &--cash {
     stroke: var(--series-cash);
+  }
+  &--property {
+    stroke: var(--series-home);
   }
 }
 
