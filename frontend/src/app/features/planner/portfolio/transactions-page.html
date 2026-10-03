@@ -66,6 +66,7 @@
             <input
               type="text"
               inputmode="decimal"
+              appDecimal
               [required]="needsShares()"
               [value]="quantity()"
               (input)="quantity.set($any($event.target).value)"
@@ -77,6 +78,7 @@
           <input
             type="text"
             inputmode="decimal"
+            appDecimal
             required
             [value]="amount()"
             (input)="amount.set($any($event.target).value)"
@@ -89,6 +91,7 @@
             <input
               type="text"
               inputmode="decimal"
+              appDecimal
               [value]="price()"
               (input)="price.set($any($event.target).value)"
             />

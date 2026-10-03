@@ -14,14 +14,16 @@ import {
 } from '../../../core/api/planner-api';
 import { Auth } from '../../../core/auth/auth';
 import { I18n } from '../../../core/i18n/i18n';
+import type { Lang } from '../../../core/i18n/translations';
 import { CurrencySettings } from '../../../core/settings/currency';
 import { InstrumentChoice, InstrumentPicker } from './instrument-picker';
-import { parseDecimal } from '../../../shared/parse-decimal';
+import { DecimalInput } from '../../../shared/decimal-input';
+import { formatDecimal, parseDecimal } from '../../../shared/parse-decimal';
 
 /** One investment account's transactions, with a form to add or edit one (/planner/portfolio/:accountId). */
 @Component({
   selector: 'app-transactions-page',
-  imports: [RouterLink, InstrumentPicker],
+  imports: [RouterLink, InstrumentPicker, DecimalInput],
   templateUrl: './transactions-page.html',
   styleUrl: './transactions-page.scss',
 })
@@ -94,9 +96,10 @@ export class TransactionsPage {
           }
         : null,
     );
-    this.quantity.set(t.quantity ? String(t.quantity) : '');
-    this.amount.set(String(OUTFLOW_TYPES.has(t.type) ? -t.amount : t.amount));
-    this.price.set(t.price === null ? '' : String(t.price));
+    const lang = this.i18n.lang();
+    this.quantity.set(t.quantity ? formatDecimal(t.quantity, lang) : '');
+    this.amount.set(formatDecimal(OUTFLOW_TYPES.has(t.type) ? -t.amount : t.amount, lang));
+    this.price.set(formatDecimal(t.price, lang));
     this.note.set(t.note ?? '');
     this.error.set(null);
   }
@@ -115,7 +118,7 @@ export class TransactionsPage {
     event.preventDefault();
     const t = this.i18n.t().planner;
     const type = this.type();
-    const amount = parse(this.amount());
+    const amount = parse(this.amount(), this.i18n.lang());
     if (amount === null) return;
 
     const instrument = this.allowsShares() ? this.instrument() : null;
@@ -130,8 +133,8 @@ export class TransactionsPage {
             name: instrument.name,
           }
         : null,
-      quantity: this.allowsShares() ? parse(this.quantity()) : null,
-      price: parse(this.price()),
+      quantity: this.allowsShares() ? parse(this.quantity(), this.i18n.lang()) : null,
+      price: parse(this.price(), this.i18n.lang()),
       // People type the amount as a positive number; outflows are stored negative.
       amount: OUTFLOW_TYPES.has(type)
         ? -Math.abs(amount)
@@ -172,8 +175,8 @@ export class TransactionsPage {
   }
 }
 
-function parse(raw: string): number | null {
+function parse(raw: string, lang: Lang): number | null {
   if (raw.trim() === '') return null;
-  const value = parseDecimal(raw);
+  const value = parseDecimal(raw, lang);
   return value;
 }
