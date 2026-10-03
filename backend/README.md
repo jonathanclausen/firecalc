@@ -34,6 +34,7 @@ All under `/api` and require an allowed Google account. `GET /healthz` is public
 | GET | `/dashboard` | Net worth series by account type, latest total, change, goal progress |
 | GET | `/portfolio` | Positions, cash and gains per investment account. `?date=` values on another day |
 | GET | `/portfolio/values` | Each portfolio account's value on `?date=`, used to pre-fill snapshots |
+| GET | `/portfolio/history` | All investment accounts together, day by day for `?from=&to=`: value, net money put in, and time-weighted return in percent |
 | GET, POST | `/accounts/{id}/transactions` | Investment accounts only. `{ date, type, instrument?: { id? \| isin? \| symbol?, name? }, quantity?, price?, amount, note? }` |
 | PUT, DELETE | `/transactions/{id}` | |
 | POST | `/accounts/{id}/import/{nordnet\|saxo}` | Body is the Nordnet CSV or Saxo .xlsx export as-is. Previews unless `?commit=true`; rows already imported are skipped |
