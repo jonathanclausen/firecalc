@@ -71,7 +71,7 @@ public enum TransactionType
     /// <summary>Shares removed without cash, e.g. the old line in a split or a transfer out.</summary>
     SecurityOut,
     Other,
-    /// <summary>Sets what the shares still held cost (a corrected GAK), without moving any money.</summary>
+    /// <summary>Changes what the shares held cost (a corrected GAK), without moving any money.</summary>
     CostCorrection,
 }
 
@@ -126,8 +126,11 @@ public class PortfolioTransaction
     /// <summary>Price per share in the instrument's currency, as the broker reported it.</summary>
     public decimal? Price { get; set; }
     public decimal Amount { get; set; }
-    /// <summary>For a cost correction: what the shares held cost from then on, in the user's currency.</summary>
-    public decimal? CostBasis { get; set; }
+    /// <summary>
+    /// For a cost correction: how much it adds to what the shares held cost, in the user's currency. A change
+    /// rather than a total, so trades entered later with an earlier date still count.
+    /// </summary>
+    public decimal? CostChange { get; set; }
     public string? Note { get; set; }
     /// <summary>"manual" or the importer's name, e.g. "nordnet".</summary>
     public string Source { get; set; } = "manual";

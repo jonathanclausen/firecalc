@@ -355,7 +355,7 @@ public static class PortfolioEndpoints
             Quantity = holding.Quantity,
             Price = average,
             Amount = 0,
-            CostBasis = Math.Round(holding.Quantity * average * rate.Value, 2),
+            CostChange = Math.Round(holding.Quantity * average * rate.Value - holding.CostBasis, 2),
             Note = $"GAK {average:0.####}{(instrument.Currency is { } c ? " " + c : "")}",
         });
         await db.SaveChangesAsync(ct);
@@ -368,8 +368,9 @@ public static class PortfolioEndpoints
     /// </summary>
     private static decimal NativeCost(IEnumerable<PortfolioTransaction> transactions)
     {
+        var all = transactions.ToList();
         decimal quantity = 0, cost = 0;
-        foreach (var t in transactions.OrderBy(t => t.Date).ThenBy(t => t.CreatedAt))
+        foreach (var t in all.OrderBy(t => t.Date).ThenBy(t => t.CreatedAt))
         {
             switch (t.Type)
             {
@@ -383,7 +384,8 @@ public static class PortfolioEndpoints
                     quantity -= t.Quantity;
                     break;
                 case TransactionType.CostCorrection when t.Price is { } avg:
-                    cost = quantity * avg;
+                    // Like the stored change in kroner: measured against what was entered before it.
+                    cost += t.Quantity * avg - NativeCost(all.Where(o => o.CreatedAt < t.CreatedAt));
                     break;
             }
         }

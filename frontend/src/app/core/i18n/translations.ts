@@ -269,7 +269,17 @@ const da = {
       purchaseDateHint:
         'Bruges til valutakursen for udenlandske aktier, så dit afkast i kroner også tæller valutaens udvikling. Tom = i dag.',
       correctAverageHint:
-        'Ret den, så den passer med GAK hos din bank. Ændrer du antallet uden at rette GAK, handles der til dagens kurs.',
+        'Ret den, så den passer med GAK hos din bank. Har du købt eller solgt, så brug Køb eller Sælg.',
+      buy: 'Køb',
+      sell: 'Sælg',
+      boughtQuantity: 'Antal købt',
+      soldQuantity: 'Antal solgt',
+      tradePrice: (currency: string) =>
+        `Kurs pr. stk.${currency ? ' i ' + currency : ''} (valgfri)`,
+      tradeDate: 'Dato (valgfri)',
+      tradeHint: (held: number) =>
+        `Du ejer ${held.toLocaleString('da-DK')} nu. Tom kurs eller dato betyder dagens.`,
+      sellTooMany: 'Du kan ikke sælge flere, end du ejer.',
       cannotCorrectAverage: 'Der blev ikke fundet en valutakurs for papiret. Prøv igen senere.',
       needPrice: 'Skriv kursen pr. aktie, så afkastet kan regnes ud.',
       chooseInstrument: 'Find papiret',
@@ -648,7 +658,17 @@ const en: Translations = {
       purchaseDateHint:
         'Used for the exchange rate on foreign shares, so your return in kroner includes the currency’s move. Empty = today.',
       correctAverageHint:
-        'Correct it to match the GAK at your broker. If you change the count without changing the GAK, the trade uses today’s price.',
+        'Correct it to match the GAK at your broker. If you bought or sold, use Buy or Sell.',
+      buy: 'Buy',
+      sell: 'Sell',
+      boughtQuantity: 'Shares bought',
+      soldQuantity: 'Shares sold',
+      tradePrice: (currency: string) =>
+        `Price per share${currency ? ' in ' + currency : ''} (optional)`,
+      tradeDate: 'Date (optional)',
+      tradeHint: (held: number) =>
+        `You own ${held.toLocaleString('en-GB')} now. An empty price or date means today’s.`,
+      sellTooMany: 'You cannot sell more than you own.',
       cannotCorrectAverage: 'No exchange rate was found for this share. Try again later.',
       needPrice: 'Enter the price per share so the return can be worked out.',
       chooseInstrument: 'Find the security',

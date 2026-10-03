@@ -409,5 +409,12 @@ public class PortfolioTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var after = (await client.GetFromJsonAsync<JsonElement>("/api/portfolio")).GetProperty("accounts")[0]
             .GetProperty("positions").EnumerateArray().Single(p => p.GetProperty("isin").GetString() == "DK0062498333");
         Assert.Equal(5700m, after.GetProperty("costBasis").GetDecimal());
+
+        // A purchase entered afterwards with an earlier date still adds to the corrected cost.
+        await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { id = novo.GetProperty("instrumentId").GetString() }, quantity = 20, unitPrice = 420, date = new DateOnly(2026, 3, 2) });
+        var later = (await client.GetFromJsonAsync<JsonElement>("/api/portfolio")).GetProperty("accounts")[0]
+            .GetProperty("positions").EnumerateArray().Single(p => p.GetProperty("isin").GetString() == "DK0062498333");
+        Assert.Equal(20m, later.GetProperty("quantity").GetDecimal());
+        Assert.Equal(7800m, later.GetProperty("costBasis").GetDecimal()); // 5,700 + 5 × 420
     }
 }

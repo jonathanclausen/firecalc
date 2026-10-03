@@ -71,8 +71,8 @@ public static class PortfolioCalculator
                         p.Quantity += t.Quantity;
                         p.Cost += -t.Amount + (sharesIn > 0 ? carriedCost * t.Quantity / sharesIn : 0);
                         break;
-                    case TransactionType.CostCorrection when t.CostBasis is { } corrected && p.Quantity > Dust:
-                        p.Cost = corrected;
+                    case TransactionType.CostCorrection when t.CostChange is { } change && p.Quantity > Dust:
+                        p.Cost = Math.Max(0, p.Cost + change);
                         break;
                     case TransactionType.Dividend:
                     case TransactionType.Tax:

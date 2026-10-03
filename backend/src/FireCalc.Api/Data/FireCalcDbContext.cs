@@ -92,7 +92,7 @@ public class FireCalcDbContext(DbContextOptions<FireCalcDbContext> options) : Db
             e.Property(t => t.Quantity).HasPrecision(18, 6);
             e.Property(t => t.Price).HasPrecision(18, 6);
             e.Property(t => t.Amount).HasPrecision(18, 2);
-            e.Property(t => t.CostBasis).HasPrecision(18, 2);
+            e.Property(t => t.CostChange).HasPrecision(18, 2);
             e.Property(t => t.Note).HasMaxLength(500);
             e.Property(t => t.Source).HasMaxLength(20);
             e.Property(t => t.ExternalId).HasMaxLength(64);

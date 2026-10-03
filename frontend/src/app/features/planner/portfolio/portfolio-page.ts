@@ -84,16 +84,19 @@ export class PortfolioPage {
       ? `/api/instruments/quote?symbol=${encodeURIComponent(chosen.symbol)}`
       : undefined;
   });
-  /** The holding whose share count is being changed, with the draft. */
+  /** The holding being edited: its GAK, or a purchase or sale of more shares. */
   protected readonly counting = signal<{
     accountId: string;
     instrumentId: string;
     currency: string | null;
+    mode: 'gak' | 'buy' | 'sell';
     /** The count and GAK when the form opened, so only what was changed is sent. */
     quantityWas: number;
     averageWas: string;
-    quantity: string;
     average: string;
+    tradeQuantity: string;
+    tradePrice: string;
+    tradeDate: string;
   } | null>(null);
 
   // Patches read the latest draft, so quick successive inputs never overwrite each other.
@@ -139,10 +142,13 @@ export class PortfolioPage {
       accountId,
       instrumentId: p.instrumentId,
       currency: p.currency,
+      mode: 'gak',
       quantityWas: p.quantity,
       averageWas: average,
-      quantity: String(p.quantity),
       average,
+      tradeQuantity: '',
+      tradePrice: '',
+      tradeDate: '',
     });
   }
 
@@ -164,17 +170,36 @@ export class PortfolioPage {
   protected async saveCount(event: Event) {
     event.preventDefault();
     const draft = this.counting();
-    const quantity = parse(draft?.quantity);
-    if (!draft || quantity === null) return;
-    // The GAK is only sent when it was changed; a changed count alone is traded at today's price.
-    const average = draft.average !== draft.averageWas ? parse(draft.average) : null;
-    if (quantity === draft.quantityWas && average === null) {
-      this.counting.set(null);
+    if (!draft) return;
+    const holding = { id: draft.instrumentId };
+
+    if (draft.mode === 'gak') {
+      const average = draft.average !== draft.averageWas ? parse(draft.average) : null;
+      if (average === null) {
+        this.counting.set(null);
+        return;
+      }
+      await this.saveHolding(draft.accountId, holding, draft.quantityWas, '', null, {
+        averagePrice: average,
+      });
       return;
     }
-    await this.saveHolding(draft.accountId, { id: draft.instrumentId }, quantity, '', null, {
-      averagePrice: average,
-    });
+
+    // A trade is booked as the new count, at the price and date given (today's when left empty).
+    const traded = parse(draft.tradeQuantity);
+    if (!traded) return;
+    const quantity = draft.quantityWas + (draft.mode === 'buy' ? traded : -traded);
+    if (quantity < 0) {
+      this.error.set(this.i18n.t().planner.portfolioPage.sellTooMany);
+      return;
+    }
+    await this.saveHolding(
+      draft.accountId,
+      holding,
+      quantity,
+      draft.tradePrice,
+      draft.tradeDate || null,
+    );
   }
 
   private async saveHolding(

@@ -244,17 +244,7 @@
                   <tr class="count-row">
                     <td colspan="6">
                       <form class="holding-form" (submit)="saveCount($event)">
-                        <div class="holding-form__row">
-                          <label class="form-field">
-                            <span>{{ p.ownedNow }}</span>
-                            <input
-                              type="text"
-                              inputmode="decimal"
-                              required
-                              [value]="draft.quantity"
-                              (input)="patchCounting({ quantity: $any($event.target).value })"
-                            />
-                          </label>
+                        @if (draft.mode === 'gak') {
                           <label class="form-field">
                             <span>{{ p.avgPrice(draft.currency ?? '') }}</span>
                             <input
@@ -264,8 +254,44 @@
                               (input)="patchCounting({ average: $any($event.target).value })"
                             />
                           </label>
-                        </div>
-                        <small class="hint">{{ p.correctAverageHint }}</small>
+                          <small class="hint">{{ p.correctAverageHint }}</small>
+                        } @else {
+                          <div class="holding-form__row">
+                            <label class="form-field">
+                              <span>{{
+                                draft.mode === 'buy' ? p.boughtQuantity : p.soldQuantity
+                              }}</span>
+                              <input
+                                type="text"
+                                inputmode="decimal"
+                                required
+                                [value]="draft.tradeQuantity"
+                                (input)="
+                                  patchCounting({ tradeQuantity: $any($event.target).value })
+                                "
+                              />
+                            </label>
+                            <label class="form-field">
+                              <span>{{ p.tradePrice(draft.currency ?? '') }}</span>
+                              <input
+                                type="text"
+                                inputmode="decimal"
+                                [value]="draft.tradePrice"
+                                (input)="patchCounting({ tradePrice: $any($event.target).value })"
+                              />
+                            </label>
+                          </div>
+                          <label class="form-field">
+                            <span>{{ p.tradeDate }}</span>
+                            <input
+                              type="date"
+                              [max]="today"
+                              [value]="draft.tradeDate"
+                              (input)="patchCounting({ tradeDate: $any($event.target).value })"
+                            />
+                          </label>
+                          <small class="hint">{{ p.tradeHint(draft.quantityWas) }}</small>
+                        }
                         <div class="holding-form__buttons">
                           <button type="submit" class="btn btn--primary" [disabled]="busy()">
                             {{ t.save }}
@@ -273,6 +299,22 @@
                           <button type="button" class="link-button" (click)="counting.set(null)">
                             {{ t.cancel }}
                           </button>
+                          @if (draft.mode === 'gak') {
+                            <button
+                              type="button"
+                              class="link-button"
+                              (click)="patchCounting({ mode: 'buy' })"
+                            >
+                              {{ p.buy }}
+                            </button>
+                            <button
+                              type="button"
+                              class="link-button"
+                              (click)="patchCounting({ mode: 'sell' })"
+                            >
+                              {{ p.sell }}
+                            </button>
+                          }
                           @if (editing()?.instrumentId === pos.instrumentId) {
                             <span class="symbol-inline">
                               <input
