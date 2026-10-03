@@ -4,6 +4,9 @@
 #
 #   bash deploy/setup-gcp.sh <project-id>
 #
+# PREVIEW_SLOTS=3 bash deploy/setup-gcp.sh <project-id> sets up three preview environments
+# (the default); each pull request gets one of them while it is open.
+#
 # It is safe to run again: anything that already exists is left alone.
 # What it creates and why is described in deploy/README.md.
 set -euo pipefail
@@ -11,10 +14,14 @@ set -euo pipefail
 PROJECT_ID=${1:?usage: setup-gcp.sh <project-id> [region]}
 REGION=${2:-europe-west1}
 GITHUB_REPO=jonathanclausen/firecalc
+PREVIEW_SLOTS=${PREVIEW_SLOTS:-3}
 
 gcloud config set project "$PROJECT_ID" >/dev/null
 PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
 sa() { echo "firecalc-$1@$PROJECT_ID.iam.gserviceaccount.com"; }
+# Preview slot 1 is "-preview", slot n > 1 is "-preview-<n>" (the deploy workflow uses the same names).
+slot_suffix() { if [ "$1" = 1 ]; then echo -preview; else echo "-preview-$1"; fi; }
+SLOTS=$(seq "$PREVIEW_SLOTS")
 
 echo "== Enabling APIs"
 gcloud services enable \
@@ -85,28 +92,37 @@ db_secret() {
 
 echo "== Database connection strings (Secret Manager)"
 db_secret firecalc-db "$(sa api)" "Paste the Neon PRODUCTION connection string"
-db_secret firecalc-db-preview "$(sa api-preview)" "Paste the Neon DEV branch connection string"
+for n in $SLOTS; do
+  if [ "$n" = 1 ]; then branch=dev; else branch=preview-$n; fi
+  db_secret "firecalc-db$(slot_suffix "$n")" "$(sa api-preview)" \
+    "Paste the connection string of the Neon branch '$branch' (preview $n)"
+done
 
 echo "== Preview services (placeholders until the first preview deploy)"
-for service in api web; do
-  if ! gcloud run services describe "firecalc-$service-preview" --region="$REGION" >/dev/null 2>&1; then
-    if [ "$service" = api ]; then runtime=$(sa api-preview); else runtime=$(sa web); fi
-    gcloud run deploy "firecalc-$service-preview" --region="$REGION" \
-      --image=us-docker.pkg.dev/cloudrun/container/hello \
-      --service-account="$runtime" --no-allow-unauthenticated --max-instances=1 --quiet
-  fi
+for n in $SLOTS; do
+  for service in api web; do
+    name="firecalc-$service$(slot_suffix "$n")"
+    if ! gcloud run services describe "$name" --region="$REGION" >/dev/null 2>&1; then
+      if [ "$service" = api ]; then runtime=$(sa api-preview); else runtime=$(sa web); fi
+      gcloud run deploy "$name" --region="$REGION" \
+        --image=us-docker.pkg.dev/cloudrun/container/hello \
+        --service-account="$runtime" --no-allow-unauthenticated --max-instances=1 --quiet
+    fi
+  done
 done
 
 echo "== Permissions"
 # The web services may call the private APIs.
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --member="serviceAccount:$(sa web)" --role=roles/run.invoker --condition=None >/dev/null
-# Production deploys may manage any Cloud Run service; preview deploys only the two preview ones.
+# Production deploys may manage any Cloud Run service; preview deploys only the preview ones.
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --member="serviceAccount:$(sa deploy)" --role=roles/run.admin --condition=None >/dev/null
-for service in api web; do
-  gcloud run services add-iam-policy-binding "firecalc-$service-preview" --region="$REGION" \
-    --member="serviceAccount:$(sa deploy-preview)" --role=roles/run.admin >/dev/null
+for n in $SLOTS; do
+  for service in api web; do
+    gcloud run services add-iam-policy-binding "firecalc-$service$(slot_suffix "$n")" --region="$REGION" \
+      --member="serviceAccount:$(sa deploy-preview)" --role=roles/run.admin >/dev/null
+  done
 done
 for deployer in deploy deploy-preview; do
   gcloud artifacts repositories add-iam-policy-binding firecalc --location="$REGION" \
@@ -153,12 +169,13 @@ Done. Next, in GitHub (Settings > Secrets and variables > Actions):
     GCP_PROJECT_ID    $PROJECT_ID
     GCP_WIF_PROVIDER  $pool/providers/github
     GCP_REGION        $REGION        (only needed if not europe-west1)
+    PREVIEW_SLOTS     $PREVIEW_SLOTS
   Secrets
     ALLOWED_EMAILS    your Google address (comma-separate several)
 
-Then add both addresses to the OAuth client's "Authorized JavaScript origins":
+Then add these addresses to the OAuth client's "Authorized JavaScript origins":
 
     https://firecalc-web-$PROJECT_NUMBER.$REGION.run.app
-    https://firecalc-web-preview-$PROJECT_NUMBER.$REGION.run.app
+$(for n in $SLOTS; do echo "    https://firecalc-web$(slot_suffix "$n")-$PROJECT_NUMBER.$REGION.run.app"; done)
 
 DONE

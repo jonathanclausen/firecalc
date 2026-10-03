@@ -1,8 +1,11 @@
 # Builds both images and deploys them to Cloud Run.
-#   - Every push to main deploys production (firecalc-web, firecalc-api, database secret firecalc-db).
-#   - A pull request labelled "preview", or a manual run on any other branch, deploys that branch to the
-#     single preview environment (firecalc-web-preview, firecalc-api-preview, firecalc-db-preview), which
-#     uses its own dev database. The latest preview deploy wins.
+#   - Every push to main (or a manual run on main) deploys production
+#     (firecalc-web, firecalc-api, database secret firecalc-db).
+#   - Every pull request from this repository that changes frontend/ or backend/ gets its own preview
+#     environment from a small fixed pool (PREVIEW_SLOTS, default 1). Slot 1 is firecalc-{web,api}-preview
+#     with database secret firecalc-db-preview; slot n > 1 adds "-<n>". A slot is held through a
+#     "preview-slot-<n>" label on the pull request and released when it closes. The slots are fixed
+#     because Google sign-in needs every address registered in advance; there are no wildcards.
 # One-time Google Cloud setup and the repository variables it needs: deploy/README.md.
 # Until GCP_PROJECT_ID is set as a repository variable, this workflow skips itself.
 name: Deploy
@@ -12,35 +15,163 @@ on:
     branches: [main]
     paths: ["frontend/**", "backend/**", ".github/workflows/deploy.yml"]
   pull_request:
-    types: [labeled, opened, reopened, synchronize]
+    types: [opened, reopened, synchronize, ready_for_review, labeled, closed]
   workflow_dispatch:
+
+# A newer push to a pull request replaces its running preview deploy. Adding some other label
+# gets a group of its own so it doesn't cancel anything.
+concurrency:
+  group: >-
+    deploy-${{ github.event_name == 'pull_request' && format('pr-{0}{1}', github.event.pull_request.number,
+    (github.event.action == 'labeled' && github.event.label.name != 'preview') && format('-{0}', github.run_id) || '')
+    || 'production' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
   # Public OAuth client id: it identifies the app, it does not grant access.
   GOOGLE_CLIENT_ID: 42634988358-smce93h2vqaiho07k1brjftaa704n33q.apps.googleusercontent.com
-  # "" for production, "-preview" for the preview environment.
-  SUFFIX: ${{ (github.ref != 'refs/heads/main' || github.event_name == 'pull_request') && '-preview' || '' }}
 
 jobs:
-  deploy:
+  # Picks (or releases) this pull request's preview slot.
+  slot:
     if: >-
-      vars.GCP_PROJECT_ID != '' && (
-        github.event_name != 'pull_request' ||
-        (github.event.pull_request.head.repo.full_name == github.repository &&
-         contains(github.event.pull_request.labels.*.name, 'preview'))
+      vars.GCP_PROJECT_ID != '' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action != 'labeled' || github.event.label.name == 'preview')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    outputs:
+      slot: ${{ steps.pick.outputs.slot }}
+      suffix: ${{ steps.pick.outputs.suffix }}
+      fresh: ${{ steps.pick.outputs.fresh }}
+    steps:
+      - id: pick
+        uses: actions/github-script@v7
+        env:
+          PREVIEW_SLOTS: ${{ vars.PREVIEW_SLOTS || '1' }}
+        with:
+          script: |
+            const slots = Math.max(1, Number(process.env.PREVIEW_SLOTS) || 1);
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const action = context.payload.action;
+            const prefix = 'preview-slot-';
+            const slotOf = name => (name.startsWith(prefix) ? Number(name.slice(prefix.length)) || 0 : 0);
+            const removeLabel = (number, name) =>
+              github.rest.issues.removeLabel({ owner, repo, issue_number: number, name })
+                .catch(e => { if (e.status !== 404) throw e; });
+            // One comment per pull request, edited in place.
+            const marker = '<!-- firecalc-preview -->';
+            async function say(number, text) {
+              const comments = await github.paginate(github.rest.issues.listComments,
+                { owner, repo, issue_number: number, per_page: 100 });
+              const mine = comments.find(c => c.body?.startsWith(marker));
+              const body = `${marker}\n${text}`;
+              if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+              else await github.rest.issues.createComment({ owner, repo, issue_number: number, body });
+            }
+
+            const labels = (await github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: pr.number }))
+              .data.map(l => l.name);
+            const held = labels.filter(slotOf);
+
+            if (action === 'closed') {
+              for (const name of held) await removeLabel(pr.number, name);
+              if (held.length) await say(pr.number, 'The preview environment for this pull request has been released.');
+              return;
+            }
+
+            let slot = held.map(slotOf).find(n => n <= slots) || 0;
+            for (const name of held) if (slotOf(name) !== slot) await removeLabel(pr.number, name);
+
+            if (!slot && !labels.includes('preview')) {
+              const files = await github.paginate(github.rest.pulls.listFiles,
+                { owner, repo, pull_number: pr.number, per_page: 100 });
+              if (!files.some(f => /^(frontend|backend)\//.test(f.filename))) {
+                core.info('Nothing under frontend/ or backend/ changed, so no preview.');
+                return;
+              }
+            }
+
+            let fresh = false;
+            for (let attempt = 0; !slot && attempt < 3; attempt++) {
+              const open = await github.paginate(github.rest.pulls.list, { owner, repo, state: 'open', per_page: 100 });
+              const holders = new Map();
+              for (const p of open) {
+                const n = p.labels.map(l => slotOf(l.name)).find(Boolean);
+                if (n && n <= slots && p.number !== pr.number) holders.set(n, p);
+              }
+              let n = Array.from({ length: slots }, (_, i) => i + 1).find(i => !holders.has(i));
+              if (!n) {
+                const list = [...holders.values()].map(p => `#${p.number}`).join(', ');
+                if (!(action === 'labeled' && context.payload.label.name === 'preview')) {
+                  await say(pr.number,
+                    `No preview environment yet: ${slots === 1 ? 'the only one is' : `all ${slots} are`} in use (${list}). ` +
+                    'One frees up when one of those pull requests closes; push again then, or add the ' +
+                    '`preview` label to take over the one that was updated least recently.');
+                  return;
+                }
+                // Asked for with the label: take the slot of the least recently updated pull request.
+                const [victimSlot, victim] = [...holders.entries()]
+                  .sort((a, b) => a[1].updated_at.localeCompare(b[1].updated_at))[0];
+                n = victimSlot;
+                await removeLabel(victim.number, prefix + n);
+                await say(victim.number,
+                  `This pull request's preview environment was handed over to #${pr.number}. ` +
+                  'Push again once a slot is free, or add the `preview` label to take one back.');
+              }
+              await github.rest.issues.addLabels({ owner, repo, issue_number: pr.number, labels: [prefix + n] });
+              // Two runs may pick the same slot at once; the lower pull request number keeps it.
+              const rivals = await github.paginate(github.rest.issues.listForRepo,
+                { owner, repo, state: 'open', labels: prefix + n, per_page: 100 });
+              if (rivals.some(i => i.number < pr.number)) {
+                await removeLabel(pr.number, prefix + n);
+                continue;
+              }
+              slot = n;
+              fresh = true;
+            }
+            if (!slot) {
+              await say(pr.number, 'Could not get a preview environment. Push again to retry.');
+              return;
+            }
+            if (fresh) await say(pr.number, `Deploying to preview environment ${slot}…`);
+            core.setOutput('slot', slot);
+            core.setOutput('suffix', slot === 1 ? '-preview' : `-preview-${slot}`);
+            core.setOutput('fresh', fresh);
+
+  deploy:
+    needs: slot
+    if: >-
+      !cancelled() && vars.GCP_PROJECT_ID != '' && (
+        (github.event_name != 'pull_request' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'pull_request' && needs.slot.outputs.suffix != '')
       )
     runs-on: ubuntu-latest
+    env:
+      # "" for production, "-preview" or "-preview-<n>" for a preview slot.
+      SUFFIX: ${{ github.event_name == 'pull_request' && needs.slot.outputs.suffix || '' }}
+      # The deploy and API accounts are shared by all preview slots.
+      ROLE: ${{ github.event_name == 'pull_request' && '-preview' || '' }}
+    # Only one deploy at a time per environment, so a slot handed to another pull request
+    # isn't overwritten by an older run finishing late.
     concurrency:
-      group: deploy-${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'production' || 'preview' }}
+      group: cloud-run${{ github.event_name == 'pull_request' && needs.slot.outputs.suffix || '' }}
       cancel-in-progress: false
     environment:
-      name: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'production' || 'preview' }}
+      name: ${{ github.event_name == 'pull_request' && format('preview{0}', needs.slot.outputs.slot != '1' && format('-{0}', needs.slot.outputs.slot) || '') || 'production' }}
       url: ${{ steps.names.outputs.url }}
     permissions:
       contents: read
       id-token: write # lets the job sign in to Google Cloud without a stored key
+      issues: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,7 +183,7 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           # Production and preview deploy with separate accounts; the preview one can only touch
           # the preview services.
-          service_account: firecalc-deploy${{ env.SUFFIX }}@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+          service_account: firecalc-deploy${{ env.ROLE }}@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
 
       - uses: google-github-actions/setup-gcloud@v2
 
@@ -80,6 +211,43 @@ jobs:
           docker push "$API_IMAGE"
           docker push "$WEB_IMAGE"
 
+      - name: Reset the preview database
+        # A slot that just changed hands starts from its Neon branch's parent, so migrations
+        # from an earlier pull request don't linger. Skipped until NEON_API_KEY is set.
+        if: needs.slot.outputs.fresh == 'true'
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          NEON_BRANCH: ${{ needs.slot.outputs.slot == '1' && 'dev' || format('preview-{0}', needs.slot.outputs.slot) }}
+        run: |
+          if [ -z "$NEON_API_KEY" ] || [ -z "$NEON_PROJECT_ID" ]; then
+            echo "NEON_API_KEY or NEON_PROJECT_ID isn't set, so the database is kept as it is."
+            exit 0
+          fi
+          api="https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID"
+          neon() { curl -fsS -H "Authorization: Bearer $NEON_API_KEY" -H "Accept: application/json" "$@"; }
+          branch=$(neon "$api/branches" | jq -c --arg name "$NEON_BRANCH" '.branches[] | select(.name == $name)')
+          if [ -z "$branch" ]; then
+            echo "::error::There is no Neon branch named $NEON_BRANCH."
+            exit 1
+          fi
+          operations=$(neon -X POST -H "Content-Type: application/json" \
+            -d "$(jq -c '{source_branch_id: .parent_id}' <<< "$branch")" \
+            "$api/branches/$(jq -r .id <<< "$branch")/restore" | jq -r '.operations[].id')
+          # Wait for Neon to finish, so the API starts against the reset database.
+          for id in $operations; do
+            for _ in $(seq 60); do
+              status=$(neon "$api/operations/$id" | jq -r .operation.status)
+              [ "$status" = finished ] && break
+              if [ "$status" = failed ] || [ "$status" = error ]; then
+                echo "::error::Resetting Neon branch $NEON_BRANCH failed."
+                exit 1
+              fi
+              sleep 2
+            done
+          done
+          echo "Reset Neon branch $NEON_BRANCH from its parent."
+
       - name: Deploy API
         env:
           ALLOWED_EMAILS: ${{ secrets.ALLOWED_EMAILS }}
@@ -95,7 +263,7 @@ jobs:
           gcloud run deploy "firecalc-api$SUFFIX" \
             --image="$API_IMAGE" \
             --region="$REGION" \
-            --service-account="firecalc-api$SUFFIX@$PROJECT_ID.iam.gserviceaccount.com" \
+            --service-account="firecalc-api$ROLE@$PROJECT_ID.iam.gserviceaccount.com" \
             --no-allow-unauthenticated \
             --set-env-vars="^;^$vars" \
             --set-secrets="ConnectionStrings__Default=firecalc-db$SUFFIX:latest" \
@@ -115,3 +283,30 @@ jobs:
             --cpu=1 --memory=512Mi --cpu-boost \
             --quiet
           echo "Live at https://$WEB_HOST" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post the address on the pull request
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          OUTCOME: ${{ job.status }}
+          SLOT: ${{ needs.slot.outputs.slot }}
+          URL: ${{ steps.names.outputs.url }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const number = context.payload.pull_request.number;
+            const sha = context.payload.pull_request.head.sha.slice(0, 7);
+            const run = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const { OUTCOME, SLOT, URL } = process.env;
+            const text = OUTCOME === 'success'
+              ? `**Preview:** ${URL}\n\nCommit ${sha} in preview environment ${SLOT}. It sleeps when idle, so the first visit takes a few seconds.`
+              : OUTCOME === 'cancelled'
+                ? `The preview deploy of ${sha} was cancelled ([run](${run})).`
+                : `The preview deploy of ${sha} failed ([run](${run})).`;
+            const marker = '<!-- firecalc-preview -->';
+            const comments = await github.paginate(github.rest.issues.listComments,
+              { owner, repo, issue_number: number, per_page: 100 });
+            const mine = comments.find(c => c.body?.startsWith(marker));
+            const body = `${marker}\n${text}`;
+            if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number: number, body });
