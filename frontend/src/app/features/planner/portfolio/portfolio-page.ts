@@ -14,13 +14,14 @@ import type { Lang } from '../../../core/i18n/translations';
 import { CurrencySettings } from '../../../core/settings/currency';
 import { MoneyPipe } from '../../../shared/money.pipe';
 import { InstrumentChoice, InstrumentPicker } from './instrument-picker';
+import { PortfolioHistoryCard } from './history/portfolio-history';
 import { DecimalInput } from '../../../shared/decimal-input';
 import { formatDecimal, parseDecimal } from '../../../shared/parse-decimal';
 
 /** Holdings per investment account, valued with the latest stored prices (/planner/portfolio). */
 @Component({
   selector: 'app-portfolio-page',
-  imports: [RouterLink, MoneyPipe, InstrumentPicker, DecimalInput],
+  imports: [RouterLink, MoneyPipe, InstrumentPicker, DecimalInput, PortfolioHistoryCard],
   templateUrl: './portfolio-page.html',
   styleUrl: './portfolio-page.scss',
 })

@@ -1,0 +1,85 @@
+@let h = i18n.t().planner.portfolioPage.history;
+<section class="card history" [attr.aria-label]="h.title">
+  <div class="card__header">
+    <h2>{{ h.title }}</h2>
+  </div>
+
+  <div class="controls">
+    <div class="ranges" role="radiogroup" [attr.aria-label]="h.range">
+      @for (r of ranges; track r) {
+        <button
+          type="button"
+          role="radio"
+          [attr.aria-checked]="range() === r"
+          [class.active]="range() === r"
+          (click)="pick(r)"
+        >
+          {{ h.ranges[r] }}
+        </button>
+      }
+    </div>
+    <div class="dates">
+      <label class="form-field">
+        <span>{{ h.from }}</span>
+        <input
+          type="date"
+          [value]="history.value()?.from ?? customFrom()"
+          [max]="customTo() || today"
+          (change)="setFrom($any($event.target).value)"
+        />
+      </label>
+      <label class="form-field">
+        <span>{{ h.to }}</span>
+        <input
+          type="date"
+          [value]="history.value()?.to ?? customTo()"
+          [max]="today"
+          (change)="setTo($any($event.target).value)"
+        />
+      </label>
+    </div>
+  </div>
+
+  @if (history.error()) {
+    <p class="alert" role="alert">{{ h.error }}</p>
+  } @else if (history.hasValue() && points().length < 2) {
+    <p class="muted">{{ h.empty }}</p>
+  } @else if (history.hasValue()) {
+    @let s = summary()!;
+    <div class="charts" [class.charts--loading]="history.isLoading()">
+      <div class="panel">
+        <div class="panel__head">
+          <h3>{{ h.returnTitle }}</h3>
+          <strong [class.up]="s.returnPct > 0" [class.down]="s.returnPct < 0">{{
+            signedPercent(s.returnPct)
+          }}</strong>
+          <small>{{ h.returnHint }}</small>
+        </div>
+        <app-line-chart
+          [dates]="dates()"
+          [series]="returnSeries()"
+          [format]="formatPercent"
+          [zeroLine]="true"
+          [ariaLabel]="h.returnTitle"
+        />
+      </div>
+      <div class="panel">
+        <div class="panel__head">
+          <h3>{{ h.valueTitle }}</h3>
+          <strong>{{ formatMoney(s.value, false) }}</strong>
+          <small [class.up]="s.gain > 0" [class.down]="s.gain < 0">{{
+            h.change(signedMoney(s.gain))
+          }}</small>
+        </div>
+        <app-line-chart
+          [dates]="dates()"
+          [series]="valueSeries()"
+          [format]="formatMoney"
+          [ariaLabel]="h.valueTitle"
+        />
+      </div>
+    </div>
+  } @else {
+    <p class="muted">{{ i18n.t().planner.loading }}</p>
+  }
+</section>

@@ -44,6 +44,13 @@ public static class PortfolioEndpoints
             return new PortfolioDto(user.Currency, asOf, accounts.Sum(a => a.Value), accounts.Sum(a => a.DayChange), accounts);
         });
 
+        // The combined value of all investment accounts per day, with the return excluding deposits.
+        api.MapGet("/portfolio/history", async (DateOnly? from, DateOnly? to, ClaimsPrincipal principal, FireCalcDbContext db, PortfolioHistory history, CancellationToken ct) =>
+        {
+            var user = await db.GetOrCreateUserAsync(principal, ct);
+            return await history.BuildAsync(user.Id, user.Currency, from, to, ct);
+        });
+
         // Account values on a date, used to pre-fill a snapshot.
         api.MapGet("/portfolio/values", async (DateOnly? date, ClaimsPrincipal principal, FireCalcDbContext db, PortfolioValuation valuation, CancellationToken ct) =>
         {

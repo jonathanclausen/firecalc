@@ -1,0 +1,161 @@
+:host {
+  display: block;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+/* A short stroke sample, so a dashed line reads as dashed in the legend too. */
+.key {
+  display: inline-block;
+  width: 16px;
+  height: 0;
+  border-top: 2px solid currentColor;
+  margin-right: 6px;
+  vertical-align: middle;
+
+  .legend & {
+    margin-right: 0;
+  }
+
+  &--value {
+    color: var(--series-contrib);
+  }
+  &--return {
+    color: var(--series-interest);
+  }
+  &--deposits {
+    color: var(--text-muted);
+  }
+  &--dashed {
+    border-top-style: dashed;
+  }
+}
+
+.chart__plot {
+  position: relative;
+  width: 100%;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    touch-action: pan-y;
+    outline: none;
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-ring);
+      outline-offset: 4px;
+      border-radius: 6px;
+    }
+  }
+}
+
+.grid {
+  stroke: var(--grid);
+  stroke-width: 1;
+
+  &--zero {
+    stroke: var(--text-muted);
+  }
+}
+
+.axis-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+
+  &--value {
+    stroke: var(--series-contrib);
+  }
+  &--return {
+    stroke: var(--series-interest);
+  }
+  &--deposits {
+    stroke: var(--text-muted);
+    stroke-width: 1.5;
+  }
+  &--dashed {
+    stroke-dasharray: 5 4;
+  }
+}
+
+.marker {
+  stroke: var(--surface-card);
+  stroke-width: 2;
+
+  &--value {
+    fill: var(--series-contrib);
+  }
+  &--return {
+    fill: var(--series-interest);
+  }
+  &--deposits {
+    fill: var(--text-muted);
+  }
+}
+
+.crosshair {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.tooltip {
+  position: absolute;
+  min-width: 180px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  font-size: 0.8125rem;
+  pointer-events: none;
+  z-index: 1;
+
+  &--flipped {
+    transform: translateX(-100%);
+  }
+}
+
+.tooltip__title {
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.tooltip__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 0;
+  color: var(--text-secondary);
+  white-space: nowrap;
+
+  strong {
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+}

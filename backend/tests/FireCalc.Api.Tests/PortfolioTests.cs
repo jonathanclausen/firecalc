@@ -495,4 +495,61 @@ public class PortfolioTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [InlineData("ABC:xunknown", null)]
     public void Saxo_symbols_map_to_price_symbols(string saxo, string? expected) =>
         Assert.Equal(expected, FireCalc.Api.Portfolio.SaxoXlsx.YahooSymbol(saxo));
+    [Fact]
+    public async Task History_shows_value_and_a_return_that_ignores_deposits()
+    {
+        var m = factory.MarketData;
+        var d0 = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-10);
+        m.Prices["TWR.CO"] = new("DKK", [new(d0, 100m), new(d0.AddDays(1), 110m), new(d0.AddDays(3), 121m)]);
+        var client = NewOwner();
+        var account = await CreateAccount(client);
+
+        // 10 shares at 100, then the price rises 10 %, 10 more are bought with new money, and it rises 10 % again.
+        await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "TWR.CO" }, quantity = 10, unitPrice = 100, date = d0 });
+        await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "TWR.CO" }, quantity = 20, unitPrice = 110, date = d0.AddDays(2) });
+
+        var all = await client.GetFromJsonAsync<JsonElement>($"/api/portfolio/history?to={d0.AddDays(3):yyyy-MM-dd}");
+        var points = all.GetProperty("points").EnumerateArray().ToList();
+        Assert.Equal(d0.ToString("yyyy-MM-dd"), points[0].GetProperty("date").GetString());
+        var last = points[^1];
+        Assert.Equal(2420m, last.GetProperty("value").GetDecimal());
+        Assert.Equal(2100m, last.GetProperty("netDeposits").GetDecimal());
+        Assert.Equal(21m, last.GetProperty("returnPct").GetDecimal()); // 1.1 × 1.1, the new money doesn't count
+
+        // A later start measures from that day.
+        var part = await client.GetFromJsonAsync<JsonElement>($"/api/portfolio/history?from={d0.AddDays(1):yyyy-MM-dd}&to={d0.AddDays(3):yyyy-MM-dd}");
+        var partPoints = part.GetProperty("points").EnumerateArray().ToList();
+        Assert.Equal(0m, partPoints[0].GetProperty("returnPct").GetDecimal());
+        Assert.Equal(10m, partPoints[^1].GetProperty("returnPct").GetDecimal());
+    }
+
+    [Fact]
+    public async Task History_counts_shares_moved_in_as_money_put_in_not_as_a_gain()
+    {
+        var m = factory.MarketData;
+        var d0 = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-10);
+        m.Prices["MOVE.CO"] = new("DKK", [new(d0, 100m), new(d0.AddDays(2), 120m)]);
+        var client = NewOwner();
+        var account = await CreateAccount(client);
+
+        await client.PostAsJsonAsync($"/api/accounts/{account}/transactions", new { date = d0, type = "deposit", amount = 1000 });
+        // 10 shares arrive from another broker the next day, worth 1,000 at that day's price.
+        var res = await client.PostAsJsonAsync($"/api/accounts/{account}/transactions", new
+        {
+            date = d0.AddDays(1),
+            type = "securityIn",
+            instrument = new { symbol = "MOVE.CO" },
+            quantity = 10,
+            amount = 0,
+        });
+        Assert.Equal(HttpStatusCode.Created, res.StatusCode);
+
+        var history = await client.GetFromJsonAsync<JsonElement>($"/api/portfolio/history?to={d0.AddDays(2):yyyy-MM-dd}");
+        var points = history.GetProperty("points").EnumerateArray().ToList();
+        Assert.Equal(0m, points[1].GetProperty("returnPct").GetDecimal());
+        Assert.Equal(2000m, points[1].GetProperty("netDeposits").GetDecimal());
+        // Then the shares rise 20 %: 200 gained on 2,000.
+        Assert.Equal(2200m, points[2].GetProperty("value").GetDecimal());
+        Assert.Equal(10m, points[2].GetProperty("returnPct").GetDecimal());
+    }
 }

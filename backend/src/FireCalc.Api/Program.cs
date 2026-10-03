@@ -28,6 +28,7 @@ builder.Services.AddHttpClient<IMarketData, YahooMarketData>(c =>
 builder.Services.AddSingleton<PriceRefreshState>();
 builder.Services.AddScoped<PriceService>();
 builder.Services.AddScoped<PortfolioValuation>();
+builder.Services.AddScoped<PortfolioHistory>();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddGoogleAuth(builder.Configuration);

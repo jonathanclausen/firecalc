@@ -23,73 +23,88 @@ public record AccountHoldings(
 /// </summary>
 public static class PortfolioCalculator
 {
-    private const decimal Dust = 0.000001m;
-
     public static AccountHoldings Calculate(IEnumerable<PortfolioTransaction> transactions, DateOnly asOf)
     {
-        var positions = new Dictionary<Guid, Position>();
-        Position Pos(Guid id) => positions.TryGetValue(id, out var p) ? p : positions[id] = new Position();
+        var replay = new PortfolioReplay();
+        foreach (var day in transactions.Where(t => t.Date <= asOf).GroupBy(t => t.Date).OrderBy(g => g.Key))
+            replay.ApplyDay(day);
+        return replay.Result();
+    }
+}
 
-        decimal cash = 0, netDeposits = 0;
+/// <summary>
+/// Plays transactions forward one day at a time, so a history can be valued day by day without
+/// replaying everything for each date. Cost uses the average cost method (gennemsnitsmetoden, as Danish
+/// tax does): a sale takes out the average cost of the shares sold.
+/// </summary>
+public sealed class PortfolioReplay
+{
+    private const decimal Dust = 0.000001m;
+    private readonly Dictionary<Guid, Position> positions = [];
 
+    public decimal Cash { get; private set; }
+    public decimal NetDeposits { get; private set; }
+
+    /// <summary>Shares held per instrument, with what they cost, in the user's currency.</summary>
+    public IEnumerable<(Guid InstrumentId, decimal Quantity, decimal Cost)> Holdings =>
+        positions.Where(kv => kv.Value.Quantity > Dust).Select(kv => (kv.Key, kv.Value.Quantity, kv.Value.Cost));
+
+    /// <summary>Applies one day's transactions. Days must come in date order.</summary>
+    public void ApplyDay(IEnumerable<PortfolioTransaction> day)
+    {
         // Within a day, shares going out are handled before shares coming in, so that a split or
         // ISIN change booked as "out old, in new" carries the cost over to the new line.
-        var days = transactions
-            .Where(t => t.Date <= asOf)
-            .OrderBy(t => t.Date).ThenBy(t => t.CreatedAt)
-            .GroupBy(t => t.Date);
+        decimal carriedCost = 0;
+        var ordered = day.OrderBy(t => t.CreatedAt).OrderBy(t => t.Type == TransactionType.SecurityIn ? 1 : 0).ToList();
+        var sharesIn = ordered.Where(t => t.Type == TransactionType.SecurityIn && t.InstrumentId is not null).Sum(t => t.Quantity);
 
-        foreach (var day in days)
+        foreach (var t in ordered)
         {
-            decimal carriedCost = 0;
-            var ordered = day.OrderBy(t => t.Type == TransactionType.SecurityIn ? 1 : 0).ToList();
-            var sharesIn = ordered.Where(t => t.Type == TransactionType.SecurityIn && t.InstrumentId is not null).Sum(t => t.Quantity);
+            Cash += t.Amount;
+            if (t.Type == TransactionType.Deposit || t.Type == TransactionType.Withdrawal) NetDeposits += t.Amount;
+            if (t.InstrumentId is not { } id) continue;
+            if (!positions.TryGetValue(id, out var p)) positions[id] = p = new Position();
 
-            foreach (var t in ordered)
+            switch (t.Type)
             {
-                cash += t.Amount;
-                if (t.Type == TransactionType.Deposit || t.Type == TransactionType.Withdrawal) netDeposits += t.Amount;
-                if (t.InstrumentId is not { } id) continue;
-                var p = Pos(id);
-
-                switch (t.Type)
+                case TransactionType.Buy:
+                    p.Quantity += t.Quantity;
+                    p.Cost += -t.Amount;
+                    break;
+                case TransactionType.Sell:
                 {
-                    case TransactionType.Buy:
-                        p.Quantity += t.Quantity;
-                        p.Cost += -t.Amount;
-                        break;
-                    case TransactionType.Sell:
-                    {
-                        var cost = p.TakeOut(t.Quantity);
-                        p.Realized += t.Amount - cost;
-                        break;
-                    }
-                    case TransactionType.SecurityOut:
-                        carriedCost += p.TakeOut(t.Quantity) + t.Amount;
-                        break;
-                    case TransactionType.SecurityIn:
-                        p.Quantity += t.Quantity;
-                        p.Cost += -t.Amount + (sharesIn > 0 ? carriedCost * t.Quantity / sharesIn : 0);
-                        break;
-                    case TransactionType.CostCorrection when t.CostChange is { } change && p.Quantity > Dust:
-                        p.Cost = Math.Max(0, p.Cost + change);
-                        break;
-                    case TransactionType.Dividend:
-                    case TransactionType.Tax:
-                        // Withholding tax booked against a share reduces that share's dividend.
-                        p.Dividends += t.Amount;
-                        break;
+                    var cost = p.TakeOut(t.Quantity);
+                    p.Realized += t.Amount - cost;
+                    break;
                 }
+                case TransactionType.SecurityOut:
+                    carriedCost += p.TakeOut(t.Quantity) + t.Amount;
+                    break;
+                case TransactionType.SecurityIn:
+                    p.Quantity += t.Quantity;
+                    p.Cost += -t.Amount + (sharesIn > 0 ? carriedCost * t.Quantity / sharesIn : 0);
+                    break;
+                case TransactionType.CostCorrection when t.CostChange is { } change && p.Quantity > Dust:
+                    p.Cost = Math.Max(0, p.Cost + change);
+                    break;
+                case TransactionType.Dividend:
+                case TransactionType.Tax:
+                    // Withholding tax booked against a share reduces that share's dividend.
+                    p.Dividends += t.Amount;
+                    break;
             }
         }
+    }
 
+    public AccountHoldings Result()
+    {
         var holdings = positions
             .Select(kv => new Holding(kv.Key, kv.Value.Quantity, Math.Round(kv.Value.Cost, 2), Math.Round(kv.Value.Realized, 2), kv.Value.Dividends))
             .ToList();
         return new AccountHoldings(
             holdings,
-            cash,
-            netDeposits,
+            Cash,
+            NetDeposits,
             holdings.Sum(h => h.RealizedGain),
             holdings.Sum(h => h.Dividends));
     }

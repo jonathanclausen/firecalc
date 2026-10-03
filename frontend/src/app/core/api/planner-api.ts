@@ -155,6 +155,22 @@ export interface Portfolio {
   accounts: AccountPortfolio[];
 }
 
+export interface HistoryPoint {
+  date: string;
+  value: number;
+  netDeposits: number;
+  /** Time-weighted return in percent since the start of the period. */
+  returnPct: number;
+}
+
+export interface PortfolioHistory {
+  currency: string;
+  firstDate: string | null;
+  from: string;
+  to: string;
+  points: HistoryPoint[];
+}
+
 export interface Transaction {
   id: string;
   accountId: string;
