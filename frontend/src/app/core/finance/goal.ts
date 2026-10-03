@@ -32,8 +32,8 @@ export function requiredMonthlySaving(
 }
 
 /**
- * Average change in net worth per month between the first and the latest snapshot.
- * Includes both deposits and market moves. Null until there are two snapshots a month apart.
+ * Average change in net worth per month between the first and the latest point.
+ * Includes both deposits and market moves. Null until there are two points a month apart.
  */
 export function averageMonthlyChange(series: { date: string; total: number }[]): number | null {
   if (series.length < 2) return null;

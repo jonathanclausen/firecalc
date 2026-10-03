@@ -6,6 +6,7 @@ public class FireCalcDbContext(DbContextOptions<FireCalcDbContext> options) : Db
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<AccountBalance> Balances => Set<AccountBalance>();
     public DbSet<Snapshot> Snapshots => Set<Snapshot>();
     public DbSet<SnapshotEntry> SnapshotEntries => Set<SnapshotEntry>();
     public DbSet<Goal> Goals => Set<Goal>();
@@ -31,6 +32,14 @@ public class FireCalcDbContext(DbContextOptions<FireCalcDbContext> options) : Db
             e.HasIndex(a => a.UserId);
             e.Property(a => a.Name).HasMaxLength(100);
             e.Property(a => a.Type).HasConversion<string>().HasMaxLength(20);
+        });
+
+        b.Entity<AccountBalance>(e =>
+        {
+            e.ToTable("AccountBalances");
+            e.HasKey(x => new { x.AccountId, x.Date });
+            e.HasOne<Account>().WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.Balance).HasPrecision(18, 2);
         });
 
         b.Entity<Snapshot>(e =>

@@ -11,14 +11,8 @@ export const plannerRoutes: Routes = [
         pathMatch: 'full',
         loadComponent: () => import('./dashboard/dashboard-page').then((m) => m.DashboardPage),
       },
-      {
-        path: 'snapshot',
-        loadComponent: () => import('./snapshot/snapshot-page').then((m) => m.SnapshotPage),
-      },
-      {
-        path: 'snapshot/:id',
-        loadComponent: () => import('./snapshot/snapshot-page').then((m) => m.SnapshotPage),
-      },
+      // Snapshots became balances on each account.
+      { path: 'snapshot', redirectTo: 'accounts' },
       {
         path: 'accounts',
         loadComponent: () => import('./accounts/accounts-page').then((m) => m.AccountsPage),

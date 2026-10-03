@@ -19,27 +19,16 @@ export interface Account {
   name: string;
   type: AccountType;
   archived: boolean;
+  /** Valued from its transactions; balances can't be entered by hand. */
+  tracked: boolean;
+  /** Latest balance entered by hand, and its date. */
+  balance: number | null;
+  balanceDate: string | null;
 }
 
-export interface SnapshotEntry {
-  accountId: string;
-  accountName: string;
-  accountType: AccountType;
+export interface AccountBalance {
+  date: string;
   balance: number;
-}
-
-export interface Snapshot {
-  id: string;
-  date: string;
-  note: string | null;
-  total: number;
-  entries: SnapshotEntry[];
-}
-
-export interface SaveSnapshot {
-  date: string;
-  note: string | null;
-  entries: { accountId: string; balance: number }[];
 }
 
 export interface Goal {
@@ -55,11 +44,24 @@ export interface SeriesPoint {
   byType: Partial<Record<AccountType, number>>;
 }
 
+export interface AccountValue {
+  id: string;
+  name: string;
+  type: AccountType;
+  value: number;
+  tracked: boolean;
+  balanceDate: string | null;
+}
+
 export interface Dashboard {
   currency: string;
+  /** Today: the portfolio at live prices plus each other account's latest balance. */
   latest: SeriesPoint | null;
-  changeSincePrevious: number | null;
+  /** Change since changeSince, a month ago. */
+  change: number | null;
+  changeSince: string | null;
   series: SeriesPoint[];
+  accounts: AccountValue[];
   goal: { goal: Goal; current: number; remaining: number; progressPct: number } | null;
 }
 
@@ -246,16 +248,14 @@ export class PlannerApi {
     return firstValueFrom(this.http.delete<void>(`/api/accounts/${id}`));
   }
 
-  createSnapshot(body: SaveSnapshot) {
-    return firstValueFrom(this.http.post<Snapshot>('/api/snapshots', body));
+  saveBalance(accountId: string, body: AccountBalance) {
+    return firstValueFrom(
+      this.http.put<AccountBalance>(`/api/accounts/${accountId}/balances`, body),
+    );
   }
 
-  updateSnapshot(id: string, body: SaveSnapshot) {
-    return firstValueFrom(this.http.put<Snapshot>(`/api/snapshots/${id}`, body));
-  }
-
-  deleteSnapshot(id: string) {
-    return firstValueFrom(this.http.delete<void>(`/api/snapshots/${id}`));
+  deleteBalance(accountId: string, date: string) {
+    return firstValueFrom(this.http.delete<void>(`/api/accounts/${accountId}/balances/${date}`));
   }
 
   saveGoal(body: Goal) {

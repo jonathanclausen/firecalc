@@ -28,12 +28,12 @@ All under `/api` and require an allowed Google account. `GET /healthz` is public
 | GET | `/me` | Signed-in user |
 | GET, POST | `/accounts` | `?includeArchived=true` to include archived |
 | PUT, DELETE | `/accounts/{id}` | Delete only works while the account has no balances; archive otherwise |
-| GET, POST | `/snapshots` | One snapshot per date: `{ date, note?, entries: [{ accountId, balance }] }` |
-| GET, PUT, DELETE | `/snapshots/{id}` | |
+| GET, PUT | `/accounts/{id}/balances` | Balances entered by hand for accounts without transactions. PUT `{ date, balance }` adds or replaces that date's balance |
+| DELETE | `/accounts/{id}/balances/{date}` | |
 | GET, PUT, DELETE | `/goal` | `{ name?, targetAmount, targetDate?, expectedAnnualReturnPct? }`; GET is 204 when unset |
-| GET | `/dashboard` | Net worth series by account type, latest total, change, goal progress |
+| GET | `/dashboard` | Net worth today (portfolio live, other accounts at their latest balance), a series at month ends and balance dates, each account's part, change over the last month, goal progress |
 | GET | `/portfolio` | Positions, cash and gains per investment account. `?date=` values on another day |
-| GET | `/portfolio/values` | Each portfolio account's value on `?date=`, used to pre-fill snapshots |
+| GET | `/portfolio/values` | Each portfolio account's value on `?date=` |
 | GET | `/portfolio/history` | All investment accounts together, day by day for `?from=&to=`: value, net money put in, and time-weighted return in percent |
 | GET, POST | `/accounts/{id}/transactions` | Investment accounts only. `{ date, type, instrument?: { id? \| isin? \| symbol?, name? }, quantity?, price?, amount, note? }` |
 | PUT, DELETE | `/transactions/{id}` | |

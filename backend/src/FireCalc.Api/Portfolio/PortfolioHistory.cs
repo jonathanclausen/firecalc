@@ -23,15 +23,35 @@ public sealed class PortfolioHistory(FireCalcDbContext db, PriceService prices)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var end = to is { } t && t < today ? t : today;
+        var days = await DailyAsync(userId, currency, end, ct);
+        if (days.Count == 0) return new(currency, null, from ?? end, end, []);
+
+        var first = days[0].Date;
+        var start = from is { } f && f > first ? f : first;
+        if (start > end) start = end;
+        var startIndex = days.First(d => d.Date == start).Index;
+        var points = days
+            .Where(d => d.Date >= start)
+            .Select(d => new HistoryPoint(d.Date, Math.Round(d.Value, 2), Math.Round(d.PutIn, 2), Math.Round((d.Index / startIndex - 1) * 100, 2)))
+            .ToList();
+        return new(currency, first, start, end, Thin(points));
+    }
+
+    /// <summary>One entry per day from the first transaction to <paramref name="end"/>.</summary>
+    public record Day(DateOnly Date, decimal Value, decimal PutIn, decimal Index);
+
+    /// <summary>
+    /// Every day's combined value, money put in so far, and the time-weighted return as an index that
+    /// starts at 1. Empty when there are no transactions.
+    /// </summary>
+    public async Task<List<Day>> DailyAsync(Guid userId, string currency, DateOnly end, CancellationToken ct)
+    {
         var transactions = await db.Transactions.AsNoTracking()
             .Where(x => db.Accounts.Any(a => a.Id == x.AccountId && a.UserId == userId && a.Type == AccountType.Investment))
             .ToListAsync(ct);
-        if (transactions.Count == 0) return new(currency, null, from ?? end, end, []);
+        if (transactions.Count == 0) return [];
 
         var first = transactions.Min(x => x.Date);
-        var start = from is { } f && f > first ? f : first;
-        if (start > end) start = end;
-
         var instrumentIds = transactions.Select(x => x.InstrumentId).OfType<Guid>().Distinct().ToList();
         await prices.RefreshAsync(instrumentIds, first, currency, ct);
 
@@ -50,8 +70,8 @@ public sealed class PortfolioHistory(FireCalcDbContext db, PriceService prices)
 
         var byDay = transactions.GroupBy(x => x.Date).ToDictionary(g => g.Key, g => g.ToList());
         var replay = new PortfolioReplay();
-        var points = new List<HistoryPoint>();
-        decimal index = 1, startIndex = 1, previousValue = 0, previousDeposits = 0, putIn = 0;
+                decimal index = 1, previousValue = 0, previousDeposits = 0, putIn = 0;
+        var days = new List<Day>();
 
         // Market value of shares on a day; before the first known price (or rate) they count at what they cost.
         decimal Worth(Guid id, decimal quantity, decimal cost, DateOnly day)
@@ -89,14 +109,12 @@ public sealed class PortfolioHistory(FireCalcDbContext db, PriceService prices)
             var flow = replay.NetDeposits - previousDeposits + moved;
             putIn += flow;
             if (previousValue > 1) index *= (value - flow) / previousValue;
-            if (day == start) startIndex = index;
-            if (day >= start)
-                points.Add(new HistoryPoint(day, Math.Round(value, 2), Math.Round(putIn, 2), Math.Round((index / startIndex - 1) * 100, 2)));
+            days.Add(new Day(day, value, putIn, index));
             previousValue = value;
             previousDeposits = replay.NetDeposits;
         }
 
-        return new(currency, first, start, end, Thin(points));
+        return days;
     }
 
     /// <summary>Keeps about <see cref="MaxPoints"/> evenly spaced points, always with the first and last.</summary>

@@ -27,7 +27,21 @@ public class Account
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
-/// <summary>One check-in: the balance of each account on a given date.</summary>
+/// <summary>
+/// The balance of an account on a date, entered by hand for accounts without transactions (savings, cash).
+/// It counts until a newer one is entered.
+/// </summary>
+public class AccountBalance
+{
+    public Guid AccountId { get; set; }
+    public DateOnly Date { get; set; }
+    public decimal Balance { get; set; }
+}
+
+/// <summary>
+/// One check-in: the balance of each account on a given date. Replaced by <see cref="AccountBalance"/>; the
+/// table is kept, unused, until the copied balances have been checked.
+/// </summary>
 public class Snapshot
 {
     public Guid Id { get; set; } = Guid.CreateVersion7();

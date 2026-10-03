@@ -7,7 +7,7 @@
     <p class="lede">{{ d.lede }}</p>
   </div>
   @if ((accounts.value()?.length ?? 0) > 0) {
-    <a class="btn btn--primary" routerLink="/planner/snapshot">+ {{ t.newSnapshot }}</a>
+    <a class="btn btn--secondary" routerLink="/planner/accounts">{{ d.updateBalances }}</a>
   }
 </section>
 
@@ -15,17 +15,20 @@
   <p class="alert" role="alert">{{ t.error }}</p>
 } @else if (loading()) {
   <p class="muted">{{ t.loading }}</p>
-} @else if (accounts.value()!.length === 0 && snapshots.value()!.length === 0) {
+} @else if (accounts.value()!.length === 0 && !dashboard.value()!.latest) {
   <section class="card empty">
     <h2>{{ d.startTitle }}</h2>
     <p>{{ d.startText }}</p>
     <a class="btn btn--primary" routerLink="/planner/accounts">{{ d.startAction }}</a>
   </section>
-} @else if (snapshots.value()!.length === 0) {
+} @else if (!dashboard.value()!.latest) {
   <section class="card empty">
     <h2>{{ d.firstTitle }}</h2>
     <p>{{ d.firstText }}</p>
-    <a class="btn btn--primary" routerLink="/planner/snapshot">{{ t.newSnapshot }}</a>
+    <div class="empty__actions">
+      <a class="btn btn--primary" routerLink="/planner/portfolio">{{ d.firstPortfolio }}</a>
+      <a class="btn btn--secondary" routerLink="/planner/accounts">{{ d.firstBalance }}</a>
+    </div>
   </section>
 } @else {
   @let dash = dashboard.value()!;
@@ -35,11 +38,11 @@
       <span class="hero__label">{{ d.netWorth }}</span>
       <strong class="hero__value">{{ dash.latest!.total | money: false : cur }}</strong>
       <span class="hero__sub">
-        {{ d.latest(i18n.date(dash.latest!.date)) }}
-        @if (dash.changeSincePrevious !== null) {
+        {{ d.liveNote }}
+        @if (dash.change !== null && dash.changeSince) {
           <br />
-          <span [class.up]="dash.changeSincePrevious > 0">{{
-            d.change(signed(dash.changeSincePrevious))
+          <span [class.up]="dash.change > 0">{{
+            d.change(signed(dash.change), i18n.date(dash.changeSince))
           }}</span>
         }
       </span>
@@ -117,43 +120,30 @@
 
   <section class="card">
     <div class="card__header">
-      <h2>{{ d.historyTitle }}</h2>
+      <h2>{{ d.accountsTitle }}</h2>
+      <a class="link-button" routerLink="/planner/accounts">{{ d.update }}</a>
     </div>
-    @if (deleteError()) {
-      <p class="alert" role="alert">{{ t.error }}</p>
-    }
-    <div class="table-scroll">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>{{ d.date }}</th>
-            <th>{{ d.note }}</th>
-            <th class="num">{{ d.total }}</th>
-            <th class="num">{{ d.changeCol }}</th>
-            <th>
-              <span class="visually-hidden">{{ t.edit }}</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (s of history(); track s.id) {
-            <tr>
-              <td class="nowrap">{{ i18n.date(s.date) }}</td>
-              <td class="note">{{ s.note }}</td>
-              <td class="num">{{ s.total | money: false : cur }}</td>
-              <td class="num" [class.up]="(s.change ?? 0) > 0" [class.down]="(s.change ?? 0) < 0">
-                {{ s.change === null ? '–' : signed(s.change) }}
-              </td>
-              <td class="actions">
-                <a class="link-button" [routerLink]="['/planner/snapshot', s.id]">{{ t.edit }}</a>
-                <button type="button" class="link-button link-button--danger" (click)="remove(s)">
-                  {{ t.delete }}
-                </button>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+    <ul class="account-list">
+      @for (acc of dash.accounts; track acc.id) {
+        <li>
+          <span class="account-list__name">
+            <i class="type-dot type-dot--{{ acc.type }}"></i>
+            <span>
+              {{ acc.name }}
+              <small>
+                @if (acc.tracked) {
+                  {{ d.live }}
+                } @else if (acc.balanceDate) {
+                  {{ d.balanceFrom(i18n.date(acc.balanceDate)) }}
+                } @else {
+                  {{ d.noBalance }}
+                }
+              </small>
+            </span>
+          </span>
+          <strong class="account-list__value">{{ acc.value | money: false : cur }}</strong>
+        </li>
+      }
+    </ul>
   </section>
 }

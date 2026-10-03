@@ -53,86 +53,88 @@ public class PlannerTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Snapshots_record_balances_per_date_and_can_be_edited()
+    public async Task Balances_are_kept_per_account_and_date()
     {
         var client = NewOwner();
-        var depot = await CreateAccount(client, "Depot", "investment");
         var savings = await CreateAccount(client, "Opsparing", "savings");
 
-        var create = await client.PostAsJsonAsync("/api/snapshots", new
-        {
-            date = "2026-01-01",
-            entries = new[] { new { accountId = depot, balance = 100000.50m }, new { accountId = savings, balance = 25000m } },
-        });
-        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
-        var snapshot = await create.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal(125000.50m, snapshot.GetProperty("total").GetDecimal());
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = "2026-01-01", balance = 25000m })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = "2026-02-01", balance = 26000m })).StatusCode);
+        // The same date again replaces that day's balance.
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = "2026-02-01", balance = 26500.5m })).StatusCode);
 
-        var id = snapshot.GetProperty("id").GetString();
-        var edit = await client.PutAsJsonAsync($"/api/snapshots/{id}", new
-        {
-            date = "2026-01-02",
-            note = "after bonus",
-            entries = new[] { new { accountId = depot, balance = 110000m } },
-        });
-        Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
-        var edited = await edit.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("2026-01-02", edited.GetProperty("date").GetString());
-        Assert.Equal(110000m, edited.GetProperty("total").GetDecimal());
-        Assert.Equal(1, edited.GetProperty("entries").GetArrayLength());
+        var list = await client.GetFromJsonAsync<JsonElement>($"/api/accounts/{savings}/balances");
+        Assert.Equal(2, list.GetArrayLength());
+        Assert.Equal("2026-02-01", list[0].GetProperty("date").GetString());
+        Assert.Equal(26500.5m, list[0].GetProperty("balance").GetDecimal());
+
+        var account = (await client.GetFromJsonAsync<JsonElement>("/api/accounts"))[0];
+        Assert.False(account.GetProperty("tracked").GetBoolean());
+        Assert.Equal(26500.5m, account.GetProperty("balance").GetDecimal());
+        Assert.Equal("2026-02-01", account.GetProperty("balanceDate").GetString());
 
         // The account now has history, so it can only be archived, not deleted.
-        var delete = await client.DeleteAsync($"/api/accounts/{depot}");
-        Assert.Equal(HttpStatusCode.Conflict, delete.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.DeleteAsync($"/api/accounts/{savings}")).StatusCode);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/accounts/{savings}/balances/2026-02-01")).StatusCode);
+        Assert.Equal(1, (await client.GetFromJsonAsync<JsonElement>($"/api/accounts/{savings}/balances")).GetArrayLength());
     }
 
     [Fact]
-    public async Task Only_one_snapshot_per_date()
-    {
-        var client = NewOwner();
-        var depot = await CreateAccount(client, "Depot", "investment");
-        var body = new { date = "2026-03-01", entries = new[] { new { accountId = depot, balance = 1m } } };
-
-        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/snapshots", body)).StatusCode);
-        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/snapshots", body)).StatusCode);
-    }
-
-    [Fact]
-    public async Task Snapshot_rejects_accounts_of_another_user_and_negative_balances()
+    public async Task Balances_reject_other_users_negative_amounts_future_dates_and_tracked_accounts()
     {
         var other = await CreateAccount(NewOwner(), "Not mine", "cash");
         var client = NewOwner();
         var mine = await CreateAccount(client, "Mine", "cash");
+        var tomorrow = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
 
-        var foreign = await client.PostAsJsonAsync("/api/snapshots", new { date = "2026-01-01", entries = new[] { new { accountId = other, balance = 1m } } });
-        Assert.Equal(HttpStatusCode.BadRequest, foreign.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync($"/api/accounts/{other}/balances", new { date = "2026-01-01", balance = 1m })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync($"/api/accounts/{mine}/balances", new { date = "2026-01-01", balance = -1m })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync($"/api/accounts/{mine}/balances", new { date = tomorrow, balance = 1m })).StatusCode);
 
-        var negative = await client.PostAsJsonAsync("/api/snapshots", new { date = "2026-01-01", entries = new[] { new { accountId = mine, balance = -1m } } });
-        Assert.Equal(HttpStatusCode.BadRequest, negative.StatusCode);
+        var depot = await CreateAccount(client, "Depot", "investment");
+        await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = "2026-01-02", type = "deposit", amount = 1000 });
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PutAsJsonAsync($"/api/accounts/{depot}/balances", new { date = "2026-01-03", balance = 1m })).StatusCode);
     }
 
     [Fact]
-    public async Task Dashboard_shows_history_and_goal_progress()
+    public async Task Dashboard_adds_the_live_portfolio_to_the_latest_balances()
     {
         var client = NewOwner();
         Assert.Equal(HttpStatusCode.NoContent, (await client.GetAsync("/api/goal")).StatusCode);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var d0 = today.AddMonths(-3);
+        factory.MarketData.Prices["DASH.CO"] = new("DKK", [new(d0, 100m), new(today.AddDays(-1), 150m)]);
 
         var depot = await CreateAccount(client, "Depot", "investment");
         var savings = await CreateAccount(client, "Opsparing", "savings");
-        await client.PostAsJsonAsync("/api/snapshots", new { date = "2026-01-01", entries = new[] { new { accountId = depot, balance = 400000m }, new { accountId = savings, balance = 100000m } } });
-        await client.PostAsJsonAsync("/api/snapshots", new { date = "2026-06-01", entries = new[] { new { accountId = depot, balance = 600000m }, new { accountId = savings, balance = 150000m } } });
+        // 1,000 shares at 100, now worth 150 each.
+        await client.PutAsJsonAsync($"/api/accounts/{depot}/holdings", new { instrument = new { symbol = "DASH.CO" }, quantity = 1000, unitPrice = 100, date = d0 });
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = d0, balance = 100000m });
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddDays(-10), balance = 150000m });
 
-        var goal = await client.PutAsJsonAsync("/api/goal", new { targetAmount = 5000000m, targetDate = "2040-01-01" });
+        var goal = await client.PutAsJsonAsync("/api/goal", new { targetAmount = 3000000m, targetDate = "2040-01-01" });
         Assert.Equal(HttpStatusCode.OK, goal.StatusCode);
 
         var dash = await client.GetFromJsonAsync<JsonElement>("/api/dashboard");
-        Assert.Equal(2, dash.GetProperty("series").GetArrayLength());
-        Assert.Equal(750000m, dash.GetProperty("latest").GetProperty("total").GetDecimal());
-        Assert.Equal(600000m, dash.GetProperty("latest").GetProperty("byType").GetProperty("investment").GetDecimal());
-        Assert.Equal(250000m, dash.GetProperty("changeSincePrevious").GetDecimal());
-        Assert.Equal(15.0m, dash.GetProperty("goal").GetProperty("progressPct").GetDecimal());
-        Assert.Equal(4250000m, dash.GetProperty("goal").GetProperty("remaining").GetDecimal());
-        Assert.Equal("FIRE", dash.GetProperty("goal").GetProperty("goal").GetProperty("name").GetString());
+        var latest = dash.GetProperty("latest");
+        Assert.Equal(today.ToString("yyyy-MM-dd"), latest.GetProperty("date").GetString());
+        Assert.Equal(300000m, latest.GetProperty("total").GetDecimal());
+        Assert.Equal(150000m, latest.GetProperty("byType").GetProperty("investment").GetDecimal());
+
+        // The first point is the day it all started, then month ends, the balance entered, and today.
+        var series = dash.GetProperty("series").EnumerateArray().ToList();
+        Assert.Equal(d0.ToString("yyyy-MM-dd"), series[0].GetProperty("date").GetString());
+        Assert.Equal(200000m, series[0].GetProperty("total").GetDecimal());
+        Assert.True(series.Count >= 4);
+
+        var accounts = dash.GetProperty("accounts").EnumerateArray().ToList();
+        Assert.True(accounts[0].GetProperty("tracked").GetBoolean());
+        Assert.Equal(150000m, accounts[0].GetProperty("value").GetDecimal());
+        Assert.Equal(today.AddDays(-10).ToString("yyyy-MM-dd"), accounts[1].GetProperty("balanceDate").GetString());
+
+        Assert.Equal(10.0m, dash.GetProperty("goal").GetProperty("progressPct").GetDecimal());
+        Assert.Equal(2700000m, dash.GetProperty("goal").GetProperty("remaining").GetDecimal());
     }
 
     [Fact]

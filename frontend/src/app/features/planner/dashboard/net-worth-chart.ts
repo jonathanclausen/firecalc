@@ -26,7 +26,7 @@ interface Layer {
   line: string;
 }
 
-/** Stacked areas of net worth by account type, one point per snapshot, on a time axis. */
+/** Stacked areas of net worth by account type, one point per date, on a time axis. */
 @Component({
   selector: 'app-net-worth-chart',
   imports: [MoneyPipe],
@@ -66,7 +66,7 @@ export class NetWorthChart {
 
   private readonly times = computed(() => this.series().map((p) => Date.parse(p.date)));
 
-  /** Time domain; a single snapshot gets a month either side so it sits in the middle. */
+  /** Time domain; a single point gets a month either side so it sits in the middle. */
   private readonly domain = computed(() => {
     const ts = this.times();
     const min = Math.min(...ts);
@@ -97,7 +97,7 @@ export class NetWorthChart {
     return PAD.top + this.innerHeight - (value / this.yMax()) * this.innerHeight;
   }
 
-  /** Snapshot dates to label, spaced so they don't collide; always includes the latest. */
+  /** Dates to label, spaced so they don't collide; always includes the latest. */
   protected readonly xTicks = computed(() => {
     const n = this.series().length;
     const picked: number[] = [];
