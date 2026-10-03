@@ -417,4 +417,82 @@ public class PortfolioTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(20m, later.GetProperty("quantity").GetDecimal());
         Assert.Equal(7800m, later.GetProperty("costBasis").GetDecimal()); // 5,700 + 5 × 420
     }
+    // The shape of Saxo's export: one sheet, shared strings, dates as Excel serial numbers.
+    private static byte[] SaxoXlsx(params object[][] rows)
+    {
+        string[] header = ["Kunde-id", "Handelsdato", "Valørdato", "Type", "Instrument", "Instrumentets ISIN", "Instrumentvaluta", "Børsbeskrivelse", "Instrumentsymbol", "Begivenhed", "Beløb", "Ordre-ID", "Omregningssats"];
+        var strings = new List<string>();
+        string Cell(object v, int col, int row)
+        {
+            var r = $"{(char)('A' + col)}{row}";
+            if (v is DateOnly d) return $"<x:c r=\"{r}\"><x:v>{d.ToDateTime(TimeOnly.MinValue).ToOADate()}</x:v></x:c>";
+            if (v is decimal or int) return $"<x:c r=\"{r}\"><x:v>{Convert.ToString(v, System.Globalization.CultureInfo.InvariantCulture)}</x:v></x:c>";
+            strings.Add((string)v);
+            return $"<x:c r=\"{r}\" t=\"s\"><x:v>{strings.Count - 1}</x:v></x:c>";
+        }
+        var sheetRows = new[] { header.Cast<object>().ToArray() }.Concat(rows)
+            .Select((cells, i) => $"<x:row r=\"{i + 1}\">{string.Concat(cells.Select((c, col) => Cell(c, col, i + 1)))}</x:row>");
+        const string ns = "xmlns:x=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"";
+        var sheet = $"<x:worksheet {ns}><x:sheetData>{string.Concat(sheetRows)}</x:sheetData></x:worksheet>";
+        var shared = $"<x:sst {ns}>{string.Concat(strings.Select(t => $"<x:si><x:t>{System.Security.SecurityElement.Escape(t)}</x:t></x:si>"))}</x:sst>";
+        using var stream = new MemoryStream();
+        using (var zip = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create))
+        {
+            void Add(string path, string xml)
+            {
+                using var w = new StreamWriter(zip.CreateEntry(path).Open());
+                w.Write(xml);
+            }
+            Add("xl/workbook.xml", $"<x:workbook {ns}><x:sheets><x:sheet name=\"Transaktioner\" sheetId=\"1\" r:id=\"rId2\" /></x:sheets></x:workbook>");
+            Add("xl/_rels/workbook.xml.rels", "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId2\" Type=\"worksheet\" Target=\"worksheets/sheet1.xml\" /></Relationships>");
+            Add("xl/worksheets/sheet1.xml", sheet);
+            Add("xl/sharedStrings.xml", shared);
+        }
+        return stream.ToArray();
+    }
+
+    [Fact]
+    public async Task Saxo_export_imports_trades_dividends_and_cash()
+    {
+        var client = NewOwner();
+        var account = await CreateAccount(client, "Saxo");
+        var file = SaxoXlsx(
+            ["1", new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 1), "Corporate action", "iShares S&P 500 Info Technology Sector UCITS ETF", "IE00B3WJKG14", "EUR", "Xetra", "QDVE:xetr", "Kontantudbytte", 10m, "", 7.46m],
+            ["1", new DateOnly(2026, 9, 22), new DateOnly(2026, 9, 24), "Handel", "iShares S&P 500 Info Technology Sector UCITS ETF", "IE00B3WJKG14", "EUR", "Xetra", "QDVE:xetr", "Købt 66 @ 46.63 EUR", -23061.96m, "5445589278", 7.49m],
+            ["1", new DateOnly(2026, 2, 5), new DateOnly(2026, 2, 9), "Handel", "Novo Nordisk B A/S", "DK0062498333", "DKK", "Copenhagen", "NOVOb:xcse", "Solgt -5 @ 2,203.00 DKK", 11005m, "5369220793", 1m],
+            ["1", new DateOnly(2026, 1, 5), new DateOnly(2026, 1, 7), "Handel", "Novo Nordisk B A/S", "DK0062498333", "DKK", "Copenhagen", "NOVOb:xcse", "Købt 9 @ 2,000.00 DKK", -18000m, "5369220700", 1m],
+            ["1", new DateOnly(2024, 12, 16), new DateOnly(2024, 12, 17), "Corporate action", "Palo Alto Networks Inc.", "US6974351057", "USD", "NASDAQ", "PANW:xnas", "Aktiesplit", 0m, "0", 1m],
+            ["1", new DateOnly(2025, 3, 2), new DateOnly(2025, 3, 2), "Kontantbeløb", "", "", "DKK", "Unknown", "", "Renter", 24.41m, "", 1m],
+            ["1", new DateOnly(2025, 3, 2), new DateOnly(2025, 3, 2), "Kontantbeløb", "", "", "DKK", "Unknown", "", "Renter", 24.41m, "", 1m],
+            ["1", new DateOnly(2025, 1, 1), new DateOnly(2025, 1, 1), "Kontantoverførsel", "", "", "DKK", "Unknown", "", "Indbetaling", 40000m, "", 1m]);
+
+        var content = new ByteArrayContent(file);
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        var res = await client.PostAsync($"/api/accounts/{account}/import/saxo?commit=true", content);
+        var result = await res.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(7, result.GetProperty("new").GetInt32()); // the two equal interest rows both count
+        Assert.Contains("split", result.GetProperty("skipped")[0].GetProperty("reason").GetString());
+
+        var again = await client.PostAsync($"/api/accounts/{account}/import/saxo?commit=true", new ByteArrayContent(file));
+        Assert.Equal(0, (await again.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("new").GetInt32());
+
+        var acc = (await client.GetFromJsonAsync<JsonElement>("/api/portfolio")).GetProperty("accounts")[0];
+        Assert.Equal(40000 - 18000 + 11005 - 23061.96m + 10 + 48.82m, acc.GetProperty("cash").GetDecimal());
+        var positions = acc.GetProperty("positions").EnumerateArray().ToList();
+        var qdve = positions.Single(p => p.GetProperty("isin").GetString() == "IE00B3WJKG14");
+        Assert.Equal(66m, qdve.GetProperty("quantity").GetDecimal());
+        Assert.Equal("QDVE.DE", qdve.GetProperty("symbol").GetString());
+        var novo = positions.Single(p => p.GetProperty("isin").GetString() == "DK0062498333");
+        Assert.Equal(4m, novo.GetProperty("quantity").GetDecimal());
+        Assert.Equal("NOVO-B.CO", novo.GetProperty("symbol").GetString());
+    }
+
+    [Theory]
+    [InlineData("QDVE:xetr", "QDVE.DE")]
+    [InlineData("NOVOb:xcse", "NOVO-B.CO")]
+    [InlineData("NDA_FI:xhel", "NDA-FI.HE")]
+    [InlineData("NVDA:xnas", "NVDA")]
+    [InlineData("ABC:xunknown", null)]
+    public void Saxo_symbols_map_to_price_symbols(string saxo, string? expected) =>
+        Assert.Equal(expected, FireCalc.Api.Portfolio.SaxoXlsx.YahooSymbol(saxo));
 }

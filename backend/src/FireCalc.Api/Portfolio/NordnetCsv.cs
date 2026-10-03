@@ -14,7 +14,9 @@ public record ImportRow(
     string? Name,
     decimal Quantity,
     decimal? Price,
-    decimal Amount);
+    decimal Amount,
+    /// <summary>The price symbol when the file says it (Saxo does), so no lookup by ISIN is needed.</summary>
+    string? Symbol = null);
 
 public record ImportIssue(int Line, string Reason);
 

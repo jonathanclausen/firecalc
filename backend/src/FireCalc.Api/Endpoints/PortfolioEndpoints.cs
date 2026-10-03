@@ -112,8 +112,10 @@ public static class PortfolioEndpoints
 
         // The browser sends the file as the raw request body. Without ?commit=true nothing is saved,
         // and the response is a preview of what would be imported.
-        api.MapPost("/accounts/{accountId:guid}/import/nordnet", async (Guid accountId, bool? commit, HttpRequest request, ClaimsPrincipal principal, FireCalcDbContext db, CancellationToken ct) =>
+        api.MapPost("/accounts/{accountId:guid}/import/{broker}", async (Guid accountId, string broker, bool? commit, HttpRequest request, ClaimsPrincipal principal, FireCalcDbContext db, CancellationToken ct) =>
         {
+            broker = broker.ToLowerInvariant();
+            if (broker is not ("nordnet" or "saxo")) return Results.NotFound();
             var user = await db.GetOrCreateUserAsync(principal, ct);
             var account = await db.Accounts.SingleOrDefaultAsync(a => a.Id == accountId && a.UserId == user.Id, ct);
             if (account is null) return Results.NotFound();
@@ -124,12 +126,13 @@ public static class PortfolioEndpoints
             if (buffer.Length == 0) return Results.Problem("Choose a file to import.", statusCode: StatusCodes.Status400BadRequest);
             if (buffer.Length > MaxImportBytes) return Results.Problem("The file is too large.", statusCode: StatusCodes.Status413PayloadTooLarge);
 
-            var parsed = NordnetCsv.Parse(buffer.ToArray(), user.Currency);
+            // Saxo's export is an .xlsx; Nordnet's is a CSV.
+            var parsed = broker == "saxo" ? SaxoXlsx.Parse(buffer.ToArray()) : NordnetCsv.Parse(buffer.ToArray(), user.Currency);
             if (parsed.Error is not null) return Results.Problem(parsed.Error, statusCode: StatusCodes.Status400BadRequest);
 
             var ids = parsed.Rows.Select(r => r.ExternalId).ToList();
             var existing = (await db.Transactions
-                    .Where(t => t.AccountId == accountId && t.Source == "nordnet" && ids.Contains(t.ExternalId!))
+                    .Where(t => t.AccountId == accountId && t.Source == broker && ids.Contains(t.ExternalId!))
                     .Select(t => t.ExternalId!)
                     .ToListAsync(ct))
                 .ToHashSet();
@@ -147,6 +150,7 @@ public static class PortfolioEndpoints
                         instruments[row.Isin!] = instrument;
                         db.Instruments.Add(instrument);
                     }
+                    instrument.Symbol ??= row.Symbol;
                     // Older transactions may need price history that isn't stored yet.
                     instrument.PricesCheckedAt = null;
                 }
@@ -161,7 +165,7 @@ public static class PortfolioEndpoints
                     Price = r.Price,
                     Amount = r.Amount,
                     Note = r.Type == TransactionType.Other ? Truncate(r.RawType, 500) : null,
-                    Source = "nordnet",
+                    Source = broker,
                     ExternalId = Truncate(r.ExternalId, 64),
                     // Keeps the file's order for rows on the same day (Nordnet lists newest first).
                     CreatedAt = DateTimeOffset.UtcNow.AddTicks(-r.Line),

@@ -36,7 +36,7 @@ All under `/api` and require an allowed Google account. `GET /healthz` is public
 | GET | `/portfolio/values` | Each portfolio account's value on `?date=`, used to pre-fill snapshots |
 | GET, POST | `/accounts/{id}/transactions` | Investment accounts only. `{ date, type, instrument?: { id? \| isin? \| symbol?, name? }, quantity?, price?, amount, note? }` |
 | PUT, DELETE | `/transactions/{id}` | |
-| POST | `/accounts/{id}/import/nordnet` | Body is the Nordnet CSV export as-is. Previews unless `?commit=true`; rows already imported are skipped |
+| POST | `/accounts/{id}/import/{nordnet\|saxo}` | Body is the Nordnet CSV or Saxo .xlsx export as-is. Previews unless `?commit=true`; rows already imported are skipped |
 | PUT | `/accounts/{id}/holdings` | `{ instrument, quantity, unitPrice?, amount?, date?, averagePrice? }`: sets how many shares you own. The first shares need `unitPrice` (per share, in the share's currency) or `amount`; later changes default to today's price. `date` (default today, not in the future) books the change on that day and converts a foreign `unitPrice` at that day's exchange rate. `averagePrice` corrects the average price paid per share (GAK, in the share's currency) by booking a `costCorrection` that sets the cost without moving money, so it also works for imported or transferred shares. Delete that row to undo it. The change is booked as a buy or sale, paired with money in or out so cash stays put |
 | GET | `/instruments/quote` | `?symbol=` latest price, to check a search result against your broker |
 | GET | `/instruments/search` | `?q=` name, ticker or ISIN |

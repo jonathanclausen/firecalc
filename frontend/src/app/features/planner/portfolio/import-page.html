@@ -46,7 +46,7 @@
         <input
           #fileInput
           type="file"
-          accept=".csv,text/csv,text/plain"
+          accept=".csv,.xlsx,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           (change)="chooseFile(fileInput)"
         />
       </label>
@@ -104,8 +104,15 @@
 
     <aside class="card how">
       <h2>{{ p.howTitle }}</h2>
+      <h3>Nordnet</h3>
       <ol>
         @for (step of p.how; track $index) {
+          <li>{{ step }}</li>
+        }
+      </ol>
+      <h3>Saxo</h3>
+      <ol>
+        @for (step of p.howSaxo; track $index) {
           <li>{{ step }}</li>
         }
       </ol>

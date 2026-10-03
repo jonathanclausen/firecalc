@@ -6,7 +6,7 @@ import { Auth } from '../../../core/auth/auth';
 import { I18n } from '../../../core/i18n/i18n';
 import { CurrencySettings } from '../../../core/settings/currency';
 
-/** Uploads a Nordnet transaction export: preview first, then import (/planner/portfolio/import). */
+/** Uploads a Nordnet or Saxo transaction export: preview first, then import (/planner/portfolio/import). */
 @Component({
   selector: 'app-import-page',
   imports: [RouterLink],
@@ -56,7 +56,7 @@ export class ImportPage {
     const file = this.file();
     if (!file || !this.accountId()) return;
     return this.run(async () => {
-      const result = await this.api.importNordnet(this.accountId(), file.data, commit);
+      const result = await this.api.importTransactions(this.accountId(), file.data, commit);
       if (commit) {
         this.done.set(result);
         this.preview.set(null);
