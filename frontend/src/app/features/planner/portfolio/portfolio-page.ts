@@ -10,15 +10,17 @@ import {
   Position,
 } from '../../../core/api/planner-api';
 import { I18n } from '../../../core/i18n/i18n';
+import type { Lang } from '../../../core/i18n/translations';
 import { CurrencySettings } from '../../../core/settings/currency';
 import { MoneyPipe } from '../../../shared/money.pipe';
 import { InstrumentChoice, InstrumentPicker } from './instrument-picker';
-import { parseDecimal } from '../../../shared/parse-decimal';
+import { DecimalInput } from '../../../shared/decimal-input';
+import { formatDecimal, parseDecimal } from '../../../shared/parse-decimal';
 
 /** Holdings per investment account, valued with the latest stored prices (/planner/portfolio). */
 @Component({
   selector: 'app-portfolio-page',
-  imports: [RouterLink, MoneyPipe, InstrumentPicker],
+  imports: [RouterLink, MoneyPipe, InstrumentPicker, DecimalInput],
   templateUrl: './portfolio-page.html',
   styleUrl: './portfolio-page.scss',
 })
@@ -137,7 +139,7 @@ export class PortfolioPage {
 
   protected startCount(accountId: string, p: Position) {
     this.adding.set(null);
-    const average = currentAverage(p);
+    const average = currentAverage(p, this.i18n.lang());
     this.counting.set({
       accountId,
       instrumentId: p.instrumentId,
@@ -155,8 +157,9 @@ export class PortfolioPage {
   protected async saveAdd(event: Event) {
     event.preventDefault();
     const draft = this.adding();
-    const quantity = parse(draft?.quantity);
-    if (!draft?.instrument || quantity === null || parse(draft.price) === null) return;
+    const quantity = parse(draft?.quantity, this.i18n.lang());
+    if (!draft?.instrument || quantity === null || parse(draft.price, this.i18n.lang()) === null)
+      return;
     const { id, isin, symbol, name } = draft.instrument;
     await this.saveHolding(
       draft.accountId,
@@ -174,7 +177,8 @@ export class PortfolioPage {
     const holding = { id: draft.instrumentId };
 
     if (draft.mode === 'gak') {
-      const average = draft.average !== draft.averageWas ? parse(draft.average) : null;
+      const average =
+        draft.average !== draft.averageWas ? parse(draft.average, this.i18n.lang()) : null;
       if (average === null) {
         this.counting.set(null);
         return;
@@ -186,7 +190,7 @@ export class PortfolioPage {
     }
 
     // A trade is booked as the new count, at the price and date given (today's when left empty).
-    const traded = parse(draft.tradeQuantity);
+    const traded = parse(draft.tradeQuantity, this.i18n.lang());
     if (!traded) return;
     const quantity = draft.quantityWas + (draft.mode === 'buy' ? traded : -traded);
     if (quantity < 0) {
@@ -217,7 +221,7 @@ export class PortfolioPage {
       await this.api.setHolding(accountId, {
         instrument,
         quantity,
-        unitPrice: parse(price),
+        unitPrice: parse(price, this.i18n.lang()),
         date,
         ...extra,
       });
@@ -270,9 +274,9 @@ export class PortfolioPage {
   }
 }
 
-function parse(raw: string | undefined): number | null {
+function parse(raw: string | undefined, lang: Lang): number | null {
   if (raw === undefined || raw.trim() === '') return null;
-  const value = parseDecimal(raw);
+  const value = parseDecimal(raw, lang);
   return value !== null && value >= 0 ? value : null;
 }
 
@@ -280,11 +284,11 @@ function parse(raw: string | undefined): number | null {
  * The average price paid per share in the share's own currency, for showing in the form. Foreign
  * shares are converted back at today's rate, so it can differ slightly from the broker's GAK.
  */
-function currentAverage(p: Position): string {
+function currentAverage(p: Position, lang: Lang): string {
   if (p.quantity <= 0 || p.costBasis <= 0) return '';
   const perShare =
     p.price && p.value > 0 && !p.priceMissing
       ? (p.costBasis * p.price) / p.value
       : p.costBasis / p.quantity;
-  return String(Math.round(perShare * 100) / 100).replace('.', ',');
+  return formatDecimal(Math.round(perShare * 100) / 100, lang);
 }

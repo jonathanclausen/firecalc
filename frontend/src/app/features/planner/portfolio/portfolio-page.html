@@ -133,6 +133,7 @@
               <input
                 type="text"
                 inputmode="decimal"
+                appDecimal
                 required
                 [value]="draft.quantity"
                 (input)="patchAdding({ quantity: $any($event.target).value })"
@@ -143,6 +144,7 @@
               <input
                 type="text"
                 inputmode="decimal"
+                appDecimal
                 required
                 [value]="draft.price"
                 (input)="patchAdding({ price: $any($event.target).value })"
@@ -250,6 +252,7 @@
                             <input
                               type="text"
                               inputmode="decimal"
+                              appDecimal
                               [value]="draft.average"
                               (input)="patchCounting({ average: $any($event.target).value })"
                             />
@@ -264,6 +267,7 @@
                               <input
                                 type="text"
                                 inputmode="decimal"
+                                appDecimal
                                 required
                                 [value]="draft.tradeQuantity"
                                 (input)="
@@ -276,6 +280,7 @@
                               <input
                                 type="text"
                                 inputmode="decimal"
+                                appDecimal
                                 [value]="draft.tradePrice"
                                 (input)="patchCounting({ tradePrice: $any($event.target).value })"
                               />

@@ -4,13 +4,15 @@ import { Router, RouterLink } from '@angular/router';
 import { Account, PlannerApi, Snapshot, today } from '../../../core/api/planner-api';
 import { Auth } from '../../../core/auth/auth';
 import { I18n } from '../../../core/i18n/i18n';
+import type { Lang } from '../../../core/i18n/translations';
 import { MoneyPipe } from '../../../shared/money.pipe';
-import { parseDecimal } from '../../../shared/parse-decimal';
+import { DecimalInput } from '../../../shared/decimal-input';
+import { formatDecimal, parseDecimal } from '../../../shared/parse-decimal';
 
 /** Records a new snapshot (route /planner/snapshot) or edits one (/planner/snapshot/:id). */
 @Component({
   selector: 'app-snapshot-page',
-  imports: [RouterLink, MoneyPipe],
+  imports: [RouterLink, MoneyPipe, DecimalInput],
   templateUrl: './snapshot-page.html',
   styleUrl: './snapshot-page.scss',
 })
@@ -59,7 +61,7 @@ export class SnapshotPage {
 
   protected readonly total = computed(() => {
     const balances = this.balances();
-    return this.rows().reduce((sum, a) => sum + (parse(balances[a.id]) ?? 0), 0);
+    return this.rows().reduce((sum, a) => sum + (parse(balances[a.id], this.i18n.lang()) ?? 0), 0);
   });
 
   constructor() {
@@ -70,7 +72,7 @@ export class SnapshotPage {
       filled.set(true);
       const source = this.id() ? this.editing() : (this.snapshots.value()?.[0] ?? null);
       const values: Record<string, string> = {};
-      for (const e of source?.entries ?? []) values[e.accountId] = String(e.balance);
+      for (const e of source?.entries ?? []) values[e.accountId] = this.format(e.balance);
       this.balances.set(values);
       if (this.id() && source) {
         this.date.set(source.date);
@@ -84,10 +86,15 @@ export class SnapshotPage {
       if (this.id() || !filled() || values.size === 0) return;
       this.balances.update((b) => {
         const next = { ...b };
-        for (const [accountId, value] of values) next[accountId] = String(value);
+        for (const [accountId, value] of values) next[accountId] = this.format(value);
         return next;
       });
     });
+  }
+
+  /** A balance as the field shows it, with thousands separators. */
+  protected format(value: number) {
+    return formatDecimal(value, this.i18n.lang());
   }
 
   protected setBalance(accountId: string, raw: string) {
@@ -100,7 +107,7 @@ export class SnapshotPage {
     const visible = new Set(this.rows().map((a) => a.id));
     const entries = Object.entries(this.balances())
       .filter(([id]) => visible.has(id))
-      .map(([accountId, raw]) => ({ accountId, balance: parse(raw) }))
+      .map(([accountId, raw]) => ({ accountId, balance: parse(raw, this.i18n.lang()) }))
       .filter((e): e is { accountId: string; balance: number } => e.balance !== null);
     if (entries.length === 0) {
       this.error.set(t.snapshot.noEntries);
@@ -124,8 +131,8 @@ export class SnapshotPage {
 }
 
 /** Parses a balance field; empty or invalid text means "no balance". */
-function parse(raw: string | undefined): number | null {
+function parse(raw: string | undefined, lang: Lang): number | null {
   if (raw === undefined || raw.trim() === '') return null;
-  const value = parseDecimal(raw);
+  const value = parseDecimal(raw, lang);
   return value !== null && value >= 0 ? value : null;
 }

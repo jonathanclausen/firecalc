@@ -66,6 +66,7 @@
             <input
               type="text"
               inputmode="decimal"
+              appDecimal
               [value]="balances()[a.id] ?? ''"
               (input)="setBalance(a.id, $any($event.target).value)"
             />
@@ -73,14 +74,14 @@
           </span>
           @if (portfolioValue().get(a.id); as worth) {
             <span class="balance__portfolio">
-              @if (balances()[a.id] === worth.toString()) {
+              @if (balances()[a.id] === format(worth)) {
                 {{ s.filledFromPortfolio }}
               } @else {
                 {{ s.fromPortfolio(worth | money: false : currency()) }}
                 <button
                   type="button"
                   class="link-button"
-                  (click)="$event.preventDefault(); setBalance(a.id, worth.toString())"
+                  (click)="$event.preventDefault(); setBalance(a.id, format(worth))"
                 >
                   {{ s.usePortfolio }}
                 </button>
