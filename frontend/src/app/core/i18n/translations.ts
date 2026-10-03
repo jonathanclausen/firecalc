@@ -208,8 +208,9 @@ const da = {
       unarchive: 'Genaktivér',
       archivedBadge: 'Arkiveret',
       showArchived: 'Vis arkiverede',
-      inUse: 'Kontoen har saldi i historikken. Arkivér den i stedet.',
       confirmDelete: (name: string) => `Slet kontoen ${name}?`,
+      confirmDeleteHistory: (name: string) =>
+        `${name} har saldi eller handler. Slettes kontoen, forsvinder de også, og det kan ikke fortrydes. Vil du hellere beholde historikken, så vælg Arkivér. Slet alligevel?`,
       tracked: 'Følger porteføljen',
       seePortfolio: 'Se portefølje',
       balanceFrom: (date: string) => `pr. ${date}`,
@@ -630,8 +631,9 @@ const en: Translations = {
       unarchive: 'Restore',
       archivedBadge: 'Archived',
       showArchived: 'Show archived',
-      inUse: 'The account has balances in your history. Archive it instead.',
       confirmDelete: (name: string) => `Delete the account ${name}?`,
+      confirmDeleteHistory: (name: string) =>
+        `${name} has balances or transactions. Deleting the account removes them too, and it can't be undone. To keep the history, choose Archive instead. Delete anyway?`,
       tracked: 'Follows the portfolio',
       seePortfolio: 'See portfolio',
       balanceFrom: (date: string) => `as of ${date}`,

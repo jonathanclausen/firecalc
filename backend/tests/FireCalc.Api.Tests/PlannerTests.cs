@@ -165,6 +165,26 @@ public class PlannerTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task An_account_with_history_is_deleted_only_when_asked_with_its_history()
+    {
+        var client = NewOwner();
+        var depot = await CreateAccount(client, "Depot", "investment");
+        var savings = await CreateAccount(client, "Opsparing", "savings");
+        await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = "2026-01-02", type = "deposit", amount = 1000 });
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = "2026-01-02", balance = 500m });
+
+        Assert.Equal(HttpStatusCode.Conflict, (await client.DeleteAsync($"/api/accounts/{depot}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await NewOwner().DeleteAsync($"/api/accounts/{depot}?withHistory=true")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/accounts/{depot}?withHistory=true")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/accounts/{savings}?withHistory=true")).StatusCode);
+
+        var all = await client.GetFromJsonAsync<JsonElement>("/api/accounts?includeArchived=true");
+        Assert.Equal(0, all.GetArrayLength());
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/accounts/{depot}/transactions")).StatusCode);
+        Assert.Equal(0m, (await client.GetFromJsonAsync<JsonElement>("/api/portfolio")).GetProperty("value").GetDecimal());
+    }
+
+    [Fact]
     public async Task A_home_counts_with_its_equity_and_can_be_left_out()
     {
         var client = NewOwner();
