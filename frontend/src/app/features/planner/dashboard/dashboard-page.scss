@@ -147,33 +147,55 @@
   margin-top: 14px;
 }
 
-.nowrap {
-  white-space: nowrap;
-}
+.account-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 
-.note {
-  color: var(--text-secondary);
-}
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
 
-td.up {
-  color: var(--positive);
-}
-
-td.down {
-  color: var(--danger);
-}
-
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  white-space: nowrap;
-}
-
-// The note column gives way on phones so amounts and actions stay in view.
-@media (max-width: 560px) {
-  .data-table th:nth-child(2),
-  .data-table td.note {
-    display: none;
+    &:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
   }
+}
+
+.account-list__name {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+
+  .type-dot {
+    margin-top: 7px;
+    flex-shrink: 0;
+  }
+
+  small {
+    display: block;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+  }
+}
+
+.account-list__value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }

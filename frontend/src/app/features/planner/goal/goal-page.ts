@@ -4,10 +4,12 @@ import { Router, RouterLink } from '@angular/router';
 import { Goal, PlannerApi } from '../../../core/api/planner-api';
 import { Auth } from '../../../core/auth/auth';
 import { I18n } from '../../../core/i18n/i18n';
+import { DecimalInput } from '../../../shared/decimal-input';
+import { formatDecimal, parseDecimal } from '../../../shared/parse-decimal';
 
 @Component({
   selector: 'app-goal-page',
-  imports: [RouterLink],
+  imports: [RouterLink, DecimalInput],
   templateUrl: './goal-page.html',
 })
 export class GoalPage {
@@ -23,6 +25,7 @@ export class GoalPage {
   protected readonly targetAmount = signal('');
   protected readonly targetDate = signal('');
   protected readonly expectedReturn = signal('7');
+  protected readonly placeholder = computed(() => formatDecimal(5_000_000, this.i18n.lang()));
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
 
@@ -33,30 +36,28 @@ export class GoalPage {
       filled = true;
       const g = this.goal.value();
       if (!g) return;
-      this.targetAmount.set(String(g.targetAmount));
+      const lang = this.i18n.lang();
+      this.targetAmount.set(formatDecimal(g.targetAmount, lang));
       this.targetDate.set(g.targetDate ?? '');
-      this.expectedReturn.set(
-        g.expectedAnnualReturnPct === null ? '' : String(g.expectedAnnualReturnPct),
-      );
+      this.expectedReturn.set(formatDecimal(g.expectedAnnualReturnPct, lang));
     });
   }
 
   protected async save(event: Event) {
     event.preventDefault();
     const t = this.i18n.t().planner;
-    const amount = Number(this.targetAmount().replace(',', '.'));
-    if (!Number.isFinite(amount) || amount <= 0) {
+    const amount = parseDecimal(this.targetAmount(), this.i18n.lang());
+    if (amount === null || amount <= 0) {
       this.error.set(t.goalPage.invalidAmount);
       return;
     }
-    const rate =
-      this.expectedReturn().trim() === '' ? null : Number(this.expectedReturn().replace(',', '.'));
+    const rate = parseDecimal(this.expectedReturn(), this.i18n.lang());
     await this.run(() =>
       this.api.saveGoal({
         name: this.goal.value()?.name ?? 'FIRE',
         targetAmount: amount,
         targetDate: this.targetDate() || null,
-        expectedAnnualReturnPct: rate !== null && Number.isFinite(rate) ? rate : null,
+        expectedAnnualReturnPct: rate,
       }),
     );
   }

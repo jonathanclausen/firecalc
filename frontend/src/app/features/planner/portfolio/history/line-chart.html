@@ -1,0 +1,103 @@
+<div class="chart">
+  @if (series().length > 1) {
+    <ul class="legend" [attr.aria-label]="i18n.t().chart.legend">
+      @for (s of series(); track s.key) {
+        <li>
+          <span class="key key--{{ s.key }}" [class.key--dashed]="s.dashed"></span>{{ s.label }}
+        </li>
+      }
+    </ul>
+  }
+
+  <div class="chart__plot">
+    <svg
+      [attr.viewBox]="'0 0 ' + width() + ' ' + height"
+      [attr.width]="width()"
+      [attr.height]="height"
+      role="img"
+      [attr.aria-label]="ariaLabel()"
+      tabindex="0"
+      (pointerdown)="onPointerMove($event)"
+      (pointermove)="onPointerMove($event)"
+      (pointerleave)="onPointerLeave($event)"
+      (keydown)="onKey($event)"
+      (blur)="hoverIndex.set(null)"
+    >
+      @for (tick of yTicks(); track tick) {
+        <line
+          class="grid"
+          [class.grid--zero]="zeroLine() && tick === 0"
+          [attr.x1]="pad.left"
+          [attr.x2]="width() - pad.right"
+          [attr.y1]="y(tick)"
+          [attr.y2]="y(tick)"
+        />
+        <text class="axis-label" text-anchor="end" [attr.x]="pad.left - 8" [attr.y]="y(tick) + 4">
+          {{ format()(tick, true) }}
+        </text>
+      }
+
+      @for (i of xTicks(); track i) {
+        <text class="axis-label" text-anchor="middle" [attr.x]="xAt(i)" [attr.y]="height - 8">
+          {{ i18n.date(dates()[i], 'short') }}
+        </text>
+      }
+
+      @for (s of paths(); track s.key) {
+        <path class="line line--{{ s.key }}" [class.line--dashed]="s.dashed" [attr.d]="s.d" />
+      }
+
+      @let h = hovered();
+      @if (h !== null) {
+        @let i = h;
+        <line
+          class="crosshair"
+          [attr.x1]="xAt(i)"
+          [attr.x2]="xAt(i)"
+          [attr.y1]="pad.top"
+          [attr.y2]="height - pad.bottom"
+        />
+        @for (s of series(); track s.key) {
+          <circle
+            class="marker marker--{{ s.key }}"
+            r="5"
+            [attr.cx]="xAt(i)"
+            [attr.cy]="y(s.values[i])"
+          />
+        }
+      }
+    </svg>
+
+    @let hv = hovered();
+    @if (hv !== null) {
+      @let i = hv;
+      <div
+        class="tooltip"
+        [class.tooltip--flipped]="tooltipFlipped() && !narrow()"
+        [style.left.px]="
+          narrow()
+            ? tooltipFlipped()
+              ? pad.left
+              : null
+            : tooltipFlipped()
+              ? xAt(i) - 12
+              : xAt(i) + 12
+        "
+        [style.right.px]="narrow() && !tooltipFlipped() ? pad.right : null"
+        [style.top.px]="pad.top"
+        role="status"
+      >
+        <div class="tooltip__title">{{ i18n.date(dates()[i]) }}</div>
+        @for (s of series(); track s.key) {
+          <div class="tooltip__row">
+            <span
+              ><i class="key key--{{ s.key }}" [class.key--dashed]="s.dashed"></i
+              >{{ s.label }}</span
+            >
+            <strong>{{ format()(s.values[i], false) }}</strong>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

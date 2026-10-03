@@ -15,7 +15,7 @@ import { I18n } from '../../core/i18n/i18n';
 import { BrandMark } from '../../shared/brand-mark';
 import { LangSwitch } from '../../shared/lang-switch';
 
-type NavLabel = 'overview' | 'newSnapshot' | 'accounts' | 'goal';
+type NavLabel = 'overview' | 'portfolio' | 'accounts' | 'goal';
 
 /** Frame for the "My finances" pages: sign-in gate, then an app shell (sidebar, or app bar and tab bar on phones). */
 @Component({
@@ -30,7 +30,7 @@ export class PlannerShell {
   protected readonly i18n = inject(I18n);
   protected readonly nav: { path: string; label: NavLabel; icon: string; exact: boolean }[] = [
     { path: '/planner', label: 'overview', icon: 'overview', exact: true },
-    { path: '/planner/snapshot', label: 'newSnapshot', icon: 'snapshot', exact: false },
+    { path: '/planner/portfolio', label: 'portfolio', icon: 'portfolio', exact: false },
     { path: '/planner/accounts', label: 'accounts', icon: 'accounts', exact: false },
     { path: '/planner/goal', label: 'goal', icon: 'goal', exact: false },
   ];

@@ -1,0 +1,44 @@
+@let p = i18n.t().planner.transactionsPage;
+<div class="search">
+  <input
+    type="search"
+    enterkeyhint="search"
+    autocomplete="off"
+    [attr.aria-label]="p.instrumentSearch"
+    [placeholder]="p.instrumentSearch"
+    [value]="query()"
+    (input)="query.set($any($event.target).value)"
+    (keydown.enter)="search($event)"
+  />
+  <button
+    type="button"
+    class="btn btn--secondary"
+    [disabled]="searching()"
+    (click)="search($event)"
+  >
+    {{ p.search }}
+  </button>
+</div>
+@if (knownMatches().length > 0 || matches() !== null) {
+  <ul class="matches">
+    @for (k of knownMatches(); track k.id) {
+      <li>
+        <button type="button" (click)="picked.emit(k)">
+          <strong>{{ k.name }}</strong>
+          <small>{{ k.label }}</small>
+        </button>
+      </li>
+    }
+    @for (m of matches(); track m.symbol) {
+      <li>
+        <button type="button" (click)="pickMatch(m)">
+          <strong>{{ m.name }}</strong>
+          <small>{{ m.symbol }}{{ m.exchange ? ' · ' + m.exchange : '' }}</small>
+        </button>
+      </li>
+    }
+  </ul>
+  @if (matches()?.length === 0) {
+    <small class="none">{{ p.noMatches }}</small>
+  }
+}

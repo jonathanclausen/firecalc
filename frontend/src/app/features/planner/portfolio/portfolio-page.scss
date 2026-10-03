@@ -1,0 +1,270 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+:host > .intro {
+  margin-bottom: 0;
+}
+
+.empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 28px;
+  background: var(--hero-bg);
+  color: var(--hero-text);
+  border-color: transparent;
+}
+
+.hero__label {
+  font-size: 0.8125rem;
+  color: var(--hero-muted);
+}
+
+.hero__value {
+  font-size: clamp(2.25rem, 5vw, 3.25rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero__sub {
+  font-size: 0.875rem;
+  color: var(--hero-muted);
+
+  .up {
+    color: var(--hero-positive);
+  }
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hero-border);
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  strong {
+    font-size: 1.125rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  small {
+    font-size: 0.75rem;
+    color: var(--hero-muted);
+  }
+}
+
+.kpi__label {
+  font-size: 0.8125rem;
+  color: var(--hero-muted);
+}
+
+.account-header {
+  align-items: flex-start;
+
+  h2 {
+    margin-bottom: 4px;
+  }
+}
+
+.security__button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  strong {
+    font-weight: 600;
+  }
+
+  small {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  &:hover strong {
+    color: var(--accent);
+  }
+}
+
+tr.open td {
+  border-bottom-color: transparent;
+}
+
+.count-row td {
+  padding-top: 0;
+  background: none;
+}
+
+.holding-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-input);
+  border: 1px solid var(--border);
+
+  .count-row & {
+    margin-bottom: 0;
+  }
+
+  input {
+    font-size: 1rem;
+  }
+}
+
+.holding-form__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.holding-form__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+
+  .ticker,
+  .symbol-inline {
+    margin-left: auto;
+  }
+}
+
+.symbol-inline {
+  display: inline-flex;
+  gap: 8px;
+
+  input {
+    width: 160px;
+    padding: 6px 10px;
+    font: inherit;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.chosen {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+
+.quote {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+
+  &--missing {
+    color: var(--danger);
+  }
+}
+
+.btn--small {
+  padding: 7px 12px;
+  font-size: 0.8125rem;
+}
+
+.show-sm {
+  display: none;
+}
+
+.badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--series-cash) 18%, transparent);
+  color: var(--text-primary);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+td small {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+td.up {
+  color: var(--positive);
+}
+
+td.down {
+  color: var(--danger);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.weight {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.weight__bar {
+  width: 56px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--track);
+  overflow: hidden;
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--series-contrib);
+  }
+}
+
+@media (max-width: 640px) {
+  .hide-sm {
+    display: none;
+  }
+
+  .show-sm {
+    display: inline;
+  }
+}

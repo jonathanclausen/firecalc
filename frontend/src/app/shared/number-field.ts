@@ -1,4 +1,7 @@
-import { Component, computed, input, model } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, model } from '@angular/core';
+import { I18n } from '../core/i18n/i18n';
+import { DecimalInput } from './decimal-input';
+import { formatDecimal, parseDecimal } from './parse-decimal';
 
 let nextId = 0;
 
@@ -11,14 +14,12 @@ let nextId = 0;
       <span class="field__control">
         <input
           [id]="id"
-          type="number"
+          type="text"
           inputmode="decimal"
-          [min]="min()"
-          [max]="max()"
-          [step]="step()"
-          [value]="value()"
+          appDecimal
+          [value]="text()"
           (input)="onInput($any($event.target).value)"
-          (blur)="$any($event.target).value = value()"
+          (blur)="text.set(formatted())"
         />
         @if (unit()) {
           <span class="field__unit">{{ unit() }}</span>
@@ -35,11 +36,12 @@ let nextId = 0;
         [step]="sliderStep()"
         [value]="value()"
         [style.--fill]="fillPercent()"
-        (input)="onInput($any($event.target).value)"
+        (input)="onSlide($any($event.target).value)"
       />
     }
   `,
   styleUrl: './number-field.scss',
+  imports: [DecimalInput],
 })
 export class NumberField {
   readonly label = input.required<string>();
@@ -53,6 +55,11 @@ export class NumberField {
   readonly sliderStep = input<number | null>(null);
 
   protected readonly id = `nf-${nextId++}`;
+  private readonly i18n = inject(I18n);
+
+  protected readonly formatted = computed(() => formatDecimal(this.value(), this.i18n.lang()));
+  /** What the field shows: the typed text while typing, the value with separators otherwise. */
+  protected readonly text = linkedSignal(() => this.formatted());
 
   protected readonly fillPercent = computed(() => {
     const max = this.sliderMax() ?? 1;
@@ -61,9 +68,16 @@ export class NumberField {
   });
 
   protected onInput(raw: string) {
-    if (raw === '') return;
-    const parsed = Number(raw);
-    if (!Number.isFinite(parsed)) return;
+    const parsed = parseDecimal(raw, this.i18n.lang());
+    if (parsed !== null) this.setValue(parsed);
+    this.text.set(raw);
+  }
+
+  protected onSlide(raw: string) {
+    this.setValue(Number(raw));
+  }
+
+  private setValue(parsed: number) {
     let next = Math.max(this.min(), parsed);
     const max = this.max();
     if (max !== null) next = Math.min(max, next);

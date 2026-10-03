@@ -28,12 +28,31 @@ All under `/api` and require an allowed Google account. `GET /healthz` is public
 | GET | `/me` | Signed-in user |
 | GET, POST | `/accounts` | `?includeArchived=true` to include archived |
 | PUT, DELETE | `/accounts/{id}` | Delete only works while the account has no balances; archive otherwise |
-| GET, POST | `/snapshots` | One snapshot per date: `{ date, note?, entries: [{ accountId, balance }] }` |
-| GET, PUT, DELETE | `/snapshots/{id}` | |
+| GET, PUT | `/accounts/{id}/balances` | Balances entered by hand for accounts without transactions. PUT `{ date, balance }` adds or replaces that date's balance |
+| DELETE | `/accounts/{id}/balances/{date}` | |
 | GET, PUT, DELETE | `/goal` | `{ name?, targetAmount, targetDate?, expectedAnnualReturnPct? }`; GET is 204 when unset |
-| GET | `/dashboard` | Net worth series by account type, latest total, change, goal progress |
+| GET | `/dashboard` | Net worth today (portfolio live, other accounts at their latest balance), a series at month ends and balance dates, each account's part, change over the last month, goal progress |
+| GET | `/portfolio` | Positions, cash and gains per investment account. `?date=` values on another day |
+| GET | `/portfolio/values` | Each portfolio account's value on `?date=` |
+| GET | `/portfolio/history` | All investment accounts together, day by day for `?from=&to=`: value, net money put in, and time-weighted return in percent |
+| GET, POST | `/accounts/{id}/transactions` | Investment accounts only. `{ date, type, instrument?: { id? \| isin? \| symbol?, name? }, quantity?, price?, amount, note? }` |
+| PUT, DELETE | `/transactions/{id}` | |
+| POST | `/accounts/{id}/import/{nordnet\|saxo}` | Body is the Nordnet CSV or Saxo .xlsx export as-is. Previews unless `?commit=true`; rows already imported are skipped |
+| PUT | `/accounts/{id}/holdings` | `{ instrument, quantity, unitPrice?, amount?, date?, averagePrice? }`: sets how many shares you own. The first shares need `unitPrice` (per share, in the share's currency) or `amount`; later changes default to today's price. `date` (default today, not in the future) books the change on that day and converts a foreign `unitPrice` at that day's exchange rate. `averagePrice` corrects the average price paid per share (GAK, in the share's currency) by booking a `costCorrection` that sets the cost without moving money, so it also works for imported or transferred shares. Delete that row to undo it. The change is booked as a buy or sale, paired with money in or out so cash stays put |
+| GET | `/instruments/quote` | `?symbol=` latest price, to check a search result against your broker |
+| GET | `/instruments/search` | `?q=` name, ticker or ISIN |
+| PUT | `/instruments/{id}` | `{ symbol }` to fix which price symbol a share uses |
 
 Account types are `investment`, `savings` and `cash`.
+
+### Portfolio prices
+
+A transaction's `amount` is the signed cash effect in the user's currency (a buy is negative, including
+fees), so cash is the sum of amounts and cost uses the average cost method. Prices come from Yahoo
+Finance's free, unofficial chart endpoint (symbols found by ISIN, Copenhagen preferred for Danish ISINs) and
+currency rates from Frankfurter (ECB). Both are fetched when a portfolio is viewed and the stored ones are
+more than six hours old, and daily closes are kept in Postgres, so no scheduled job or API key is needed.
+A position without a recent price is valued at what it cost until its symbol is fixed.
 
 ## Run locally
 

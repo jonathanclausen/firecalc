@@ -1,0 +1,192 @@
+@let t = i18n.t().planner;
+@let p = t.transactionsPage;
+<section class="intro">
+  <div>
+    <p class="eyebrow">{{ account()?.name ?? t.portfolioPage.title }}</p>
+    <h1>{{ p.title }}</h1>
+    <p class="lede">{{ p.lede }}</p>
+  </div>
+  <a class="btn btn--secondary" routerLink="/planner/portfolio">{{ p.backToPortfolio }}</a>
+</section>
+
+@if (accounts.error() || transactions.error()) {
+  <p class="alert" role="alert">{{ accounts.hasValue() && !account() ? p.notFound : t.error }}</p>
+} @else if (!accounts.hasValue() || !transactions.hasValue()) {
+  <p class="muted">{{ t.loading }}</p>
+} @else if (!account()) {
+  <p class="alert" role="alert">{{ p.notFound }}</p>
+} @else {
+  <div class="stack">
+    <form class="card tx-form" (submit)="save($event)">
+      <h2>{{ editingId() ? p.editTitle : p.add }}</h2>
+      @if (error(); as message) {
+        <p class="alert" role="alert">{{ message }}</p>
+      }
+
+      <div class="row">
+        <label class="form-field">
+          <span>{{ p.date }}</span>
+          <input
+            type="date"
+            required
+            [value]="date()"
+            (input)="date.set($any($event.target).value)"
+          />
+        </label>
+        <label class="form-field">
+          <span>{{ p.type }}</span>
+          <select (change)="type.set($any($event.target).value)">
+            @for (ty of types; track ty) {
+              <option [value]="ty" [selected]="ty === type()">{{ t.txTypes[ty] }}</option>
+            }
+          </select>
+        </label>
+      </div>
+
+      @if (allowsShares()) {
+        <div class="form-field">
+          <span>{{ p.instrument }}</span>
+          @if (instrument(); as chosen) {
+            <div class="chosen">
+              <strong>{{ chosen.label }}</strong>
+              <button type="button" class="link-button" (click)="instrument.set(null)">
+                {{ p.change }}
+              </button>
+            </div>
+          } @else {
+            <app-instrument-picker [known]="known()" (picked)="instrument.set($event)" />
+          }
+        </div>
+      }
+
+      <div class="row">
+        @if (allowsShares()) {
+          <label class="form-field">
+            <span>{{ p.quantity }}</span>
+            <input
+              type="text"
+              inputmode="decimal"
+              appDecimal
+              [required]="needsShares()"
+              [value]="quantity()"
+              (input)="quantity.set($any($event.target).value)"
+            />
+          </label>
+        }
+        <label class="form-field">
+          <span>{{ p.amount(currency()) }}</span>
+          <input
+            type="text"
+            inputmode="decimal"
+            appDecimal
+            required
+            [value]="amount()"
+            (input)="amount.set($any($event.target).value)"
+          />
+          <small>{{ p.amountHint }}</small>
+        </label>
+        @if (needsShares()) {
+          <label class="form-field">
+            <span>{{ p.price }}</span>
+            <input
+              type="text"
+              inputmode="decimal"
+              appDecimal
+              [value]="price()"
+              (input)="price.set($any($event.target).value)"
+            />
+          </label>
+        }
+      </div>
+
+      <label class="form-field">
+        <span>{{ p.note }}</span>
+        <input
+          type="text"
+          maxlength="500"
+          [value]="note()"
+          (input)="note.set($any($event.target).value)"
+        />
+      </label>
+
+      <div class="buttons">
+        <button
+          type="submit"
+          class="btn btn--primary"
+          [disabled]="busy() || (needsShares() && !instrument())"
+        >
+          {{ p.save }}
+        </button>
+        @if (editingId()) {
+          <button type="button" class="link-button" (click)="reset()">{{ t.cancel }}</button>
+        }
+      </div>
+    </form>
+
+    <section class="card">
+      <div class="card__header">
+        <h2>{{ p.title }}</h2>
+        <span class="muted">{{
+          t.portfolioPage.transactionCount(transactions.value()!.length)
+        }}</span>
+      </div>
+      @if (transactions.value()!.length === 0) {
+        <p class="muted">{{ p.empty }}</p>
+      } @else {
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>{{ p.date }}</th>
+                <th>{{ p.type }}</th>
+                <th class="num hide-sm">{{ p.quantity }}</th>
+                <th class="num">{{ p.amountCol }}</th>
+                <th>
+                  <span class="visually-hidden">{{ t.edit }}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (tx of transactions.value(); track tx.id) {
+                <tr [class.editing]="editingId() === tx.id">
+                  <td class="nowrap">{{ i18n.date(tx.date) }}</td>
+                  <td>
+                    {{ t.txTypes[tx.type] }}
+                    <small>
+                      {{ tx.instrumentName ?? tx.note }}
+                      @if (tx.type === 'costCorrection' && tx.price !== null) {
+                        · GAK {{ i18n.number(tx.price, 4) }}
+                      }
+                      @if (tx.source !== 'manual') {
+                        · {{ p.source[tx.source] ?? tx.source }}
+                      }
+                    </small>
+                  </td>
+                  <td class="num hide-sm">{{ tx.quantity ? i18n.number(tx.quantity, 4) : '' }}</td>
+                  <td class="num nowrap" [class.up]="tx.amount > 0" [class.down]="tx.amount < 0">
+                    {{ money(tx.amount) }}
+                  </td>
+                  <td class="actions">
+                    @if (tx.type !== 'costCorrection') {
+                      <button type="button" class="link-button" (click)="edit(tx)">
+                        {{ t.edit }}
+                      </button>
+                    }
+                    <button
+                      type="button"
+                      class="link-button link-button--danger"
+                      [disabled]="busy()"
+                      (click)="remove(tx)"
+                    >
+                      {{ t.delete }}
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  </div>
+}

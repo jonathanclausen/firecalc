@@ -6,9 +6,14 @@ public class FireCalcDbContext(DbContextOptions<FireCalcDbContext> options) : Db
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<AccountBalance> Balances => Set<AccountBalance>();
     public DbSet<Snapshot> Snapshots => Set<Snapshot>();
     public DbSet<SnapshotEntry> SnapshotEntries => Set<SnapshotEntry>();
     public DbSet<Goal> Goals => Set<Goal>();
+    public DbSet<Instrument> Instruments => Set<Instrument>();
+    public DbSet<InstrumentPrice> InstrumentPrices => Set<InstrumentPrice>();
+    public DbSet<FxRate> FxRates => Set<FxRate>();
+    public DbSet<PortfolioTransaction> Transactions => Set<PortfolioTransaction>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -27,6 +32,14 @@ public class FireCalcDbContext(DbContextOptions<FireCalcDbContext> options) : Db
             e.HasIndex(a => a.UserId);
             e.Property(a => a.Name).HasMaxLength(100);
             e.Property(a => a.Type).HasConversion<string>().HasMaxLength(20);
+        });
+
+        b.Entity<AccountBalance>(e =>
+        {
+            e.ToTable("AccountBalances");
+            e.HasKey(x => new { x.AccountId, x.Date });
+            e.HasOne<Account>().WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.Balance).HasPrecision(18, 2);
         });
 
         b.Entity<Snapshot>(e =>
@@ -51,6 +64,47 @@ public class FireCalcDbContext(DbContextOptions<FireCalcDbContext> options) : Db
             e.Property(g => g.Name).HasMaxLength(100);
             e.Property(g => g.TargetAmount).HasPrecision(18, 2);
             e.Property(g => g.ExpectedAnnualReturnPct).HasPrecision(5, 2);
+        });
+
+        b.Entity<Instrument>(e =>
+        {
+            e.HasIndex(i => i.Isin).IsUnique();
+            e.Property(i => i.Isin).HasMaxLength(12);
+            e.Property(i => i.Symbol).HasMaxLength(32);
+            e.Property(i => i.Name).HasMaxLength(200);
+            e.Property(i => i.Currency).HasMaxLength(3);
+        });
+
+        b.Entity<InstrumentPrice>(e =>
+        {
+            e.HasKey(p => new { p.InstrumentId, p.Date });
+            e.HasOne<Instrument>().WithMany().HasForeignKey(p => p.InstrumentId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(p => p.Close).HasPrecision(18, 6);
+        });
+
+        b.Entity<FxRate>(e =>
+        {
+            e.HasKey(r => new { r.Currency, r.QuoteCurrency, r.Date });
+            e.Property(r => r.Currency).HasMaxLength(3);
+            e.Property(r => r.QuoteCurrency).HasMaxLength(3);
+            e.Property(r => r.Rate).HasPrecision(18, 8);
+        });
+
+        b.Entity<PortfolioTransaction>(e =>
+        {
+            e.ToTable("PortfolioTransactions");
+            e.HasOne<Account>().WithMany().HasForeignKey(t => t.AccountId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(t => t.Instrument).WithMany().HasForeignKey(t => t.InstrumentId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(t => new { t.AccountId, t.Date });
+            e.HasIndex(t => new { t.AccountId, t.Source, t.ExternalId }).IsUnique();
+            e.Property(t => t.Type).HasConversion<string>().HasMaxLength(20);
+            e.Property(t => t.Quantity).HasPrecision(18, 6);
+            e.Property(t => t.Price).HasPrecision(18, 6);
+            e.Property(t => t.Amount).HasPrecision(18, 2);
+            e.Property(t => t.CostChange).HasPrecision(18, 2);
+            e.Property(t => t.Note).HasMaxLength(500);
+            e.Property(t => t.Source).HasMaxLength(20);
+            e.Property(t => t.ExternalId).HasMaxLength(64);
         });
     }
 }

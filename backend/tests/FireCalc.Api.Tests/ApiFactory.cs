@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using FireCalc.Api.Data;
+using FireCalc.Api.Portfolio;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -27,6 +28,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     private readonly string _connectionString;
 
+    /// <summary>Stands in for Yahoo and Frankfurter so tests never call the internet.</summary>
+    public FakeMarketData MarketData { get; } = new();
+
     public ApiFactory()
     {
         var server = Environment.GetEnvironmentVariable("FIRECALC_TEST_POSTGRES")
@@ -43,6 +47,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         builder.ConfigureTestServices(services =>
         {
+            services.AddSingleton<IMarketData>(MarketData);
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>
             {
                 o.ConfigurationManager = null;

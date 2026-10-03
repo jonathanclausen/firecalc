@@ -142,6 +142,105 @@
                 </button>
               </span>
             }
+
+            @if (acc.tracked) {
+              <div class="balance">
+                <span class="balance__text">{{ a.tracked }}</span>
+                <a class="link-button" routerLink="/planner/portfolio">{{ a.seePortfolio }}</a>
+              </div>
+            } @else if (!acc.archived || acc.balance !== null) {
+              <div class="balance">
+                <span class="balance__text">
+                  @if (acc.balance !== null && acc.balanceDate) {
+                    <strong>{{ acc.balance | money: false : currency() }}</strong>
+                    {{ a.balanceFrom(i18n.date(acc.balanceDate)) }}
+                  } @else {
+                    {{ a.noBalance }}
+                  }
+                </span>
+                <span class="actions">
+                  @if (!acc.archived && balanceDraft()?.id !== acc.id) {
+                    <button type="button" class="link-button" (click)="startBalance(acc)">
+                      {{ a.updateBalance }}
+                    </button>
+                  }
+                  @if (acc.balance !== null) {
+                    <button type="button" class="link-button" (click)="toggleHistory(acc)">
+                      {{ historyFor() === acc.id ? a.hideHistory : a.history }}
+                    </button>
+                  }
+                </span>
+              </div>
+            }
+
+            @if (balanceDraft(); as draft) {
+              @if (draft.id === acc.id) {
+                <form class="balance-form" (submit)="saveBalance(acc, $event)">
+                  <label class="form-field">
+                    <span>{{ a.balance }}</span>
+                    <input
+                      type="text"
+                      inputmode="decimal"
+                      appDecimal
+                      required
+                      [value]="draft.balance"
+                      (input)="
+                        balanceDraft.set({
+                          id: acc.id,
+                          balance: $any($event.target).value,
+                          date: draft.date,
+                        })
+                      "
+                    />
+                  </label>
+                  <label class="form-field">
+                    <span>{{ a.date }}</span>
+                    <input
+                      type="date"
+                      required
+                      [max]="today"
+                      [value]="draft.date"
+                      (input)="
+                        balanceDraft.set({
+                          id: acc.id,
+                          balance: draft.balance,
+                          date: $any($event.target).value,
+                        })
+                      "
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    class="btn btn--primary"
+                    [disabled]="busy() || !draft.balance"
+                  >
+                    {{ t.save }}
+                  </button>
+                  <button type="button" class="link-button" (click)="balanceDraft.set(null)">
+                    {{ t.cancel }}
+                  </button>
+                </form>
+              }
+            }
+
+            @if (historyFor() === acc.id) {
+              <ul class="history">
+                @for (b of history.value() ?? []; track b.date) {
+                  <li>
+                    <span>{{ i18n.date(b.date) }}</span>
+                    <span class="history__amount">{{ b.balance | money: false : currency() }}</span>
+                    <button
+                      type="button"
+                      class="link-button link-button--danger"
+                      [disabled]="busy()"
+                      (click)="removeBalance(acc, b)"
+                    >
+                      {{ t.delete }}
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
           </li>
         }
       </ul>

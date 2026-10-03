@@ -20,12 +20,11 @@
     <label class="form-field">
       <span>{{ g.targetAmount }} ({{ currency() }})</span>
       <input
-        type="number"
+        type="text"
         inputmode="decimal"
-        min="1"
-        step="any"
+        appDecimal
         required
-        placeholder="5000000"
+        [placeholder]="placeholder()"
         [value]="targetAmount()"
         (input)="targetAmount.set($any($event.target).value)"
       />
@@ -41,11 +40,9 @@
     <label class="form-field">
       <span>{{ g.expectedReturn }}</span>
       <input
-        type="number"
+        type="text"
         inputmode="decimal"
-        min="-100"
-        max="100"
-        step="0.1"
+        appDecimal
         [value]="expectedReturn()"
         (input)="expectedReturn.set($any($event.target).value)"
       />

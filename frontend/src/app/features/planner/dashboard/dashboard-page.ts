@@ -1,7 +1,7 @@
 import { httpResource } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Account, Dashboard, PlannerApi, Snapshot, today } from '../../../core/api/planner-api';
+import { Account, Dashboard, today } from '../../../core/api/planner-api';
 import {
   averageMonthlyChange,
   monthsBetween,
@@ -21,19 +21,14 @@ import { NetWorthChart } from './net-worth-chart';
 export class DashboardPage {
   protected readonly i18n = inject(I18n);
   private readonly currencySettings = inject(CurrencySettings);
-  private readonly api = inject(PlannerApi);
 
   protected readonly dashboard = httpResource<Dashboard>(() => '/api/dashboard');
   protected readonly accounts = httpResource<Account[]>(() => '/api/accounts');
-  protected readonly snapshots = httpResource<Snapshot[]>(() => '/api/snapshots');
 
   protected readonly loading = computed(
-    () => !this.dashboard.hasValue() || !this.accounts.hasValue() || !this.snapshots.hasValue(),
+    () => !this.dashboard.hasValue() || !this.accounts.hasValue(),
   );
-  protected readonly failed = computed(
-    () => !!(this.dashboard.error() || this.accounts.error() || this.snapshots.error()),
-  );
-  protected readonly deleteError = signal(false);
+  protected readonly failed = computed(() => !!(this.dashboard.error() || this.accounts.error()));
 
   /** Balances are stored in the user's own currency, whatever the header selector says. */
   protected readonly currency = computed(() => this.dashboard.value()?.currency ?? 'DKK');
@@ -63,30 +58,8 @@ export class DashboardPage {
     return { ...progress, rate, needed, barPct: Math.min(100, Math.max(0, progress.progressPct)) };
   });
 
-  /** Newest first, each with the change from the snapshot before it. */
-  protected readonly history = computed(() => {
-    const list = this.snapshots.value() ?? [];
-    return list.map((s, i) => ({
-      ...s,
-      change: i + 1 < list.length ? s.total - list[i + 1].total : null,
-    }));
-  });
-
   protected signed(value: number) {
     const text = this.currencySettings.format(value, { currency: this.currency() });
     return value > 0 ? `+${text}` : text;
-  }
-
-  protected async remove(snapshot: Snapshot) {
-    const t = this.i18n.t().planner.dashboard;
-    if (!confirm(t.confirmDelete(this.i18n.date(snapshot.date)))) return;
-    this.deleteError.set(false);
-    try {
-      await this.api.deleteSnapshot(snapshot.id);
-      this.snapshots.reload();
-      this.dashboard.reload();
-    } catch {
-      this.deleteError.set(true);
-    }
   }
 }

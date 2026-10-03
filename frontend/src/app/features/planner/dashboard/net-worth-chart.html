@@ -48,9 +48,11 @@
         <path class="line line--{{ layer.type }}" [attr.d]="layer.line" />
       }
 
-      <!-- One marker per snapshot on the total, so single snapshots show too. -->
-      @for (p of series(); track p.date; let i = $index) {
-        <circle class="marker" r="4" [attr.cx]="xAt(i)" [attr.cy]="y(p.total)" />
+      <!-- Markers on the total while there are few points, so a single point shows too. -->
+      @if (series().length <= 24) {
+        @for (p of series(); track p.date; let i = $index) {
+          <circle class="marker" r="4" [attr.cx]="xAt(i)" [attr.cy]="y(p.total)" />
+        }
       }
 
       @if (hovered(); as h) {

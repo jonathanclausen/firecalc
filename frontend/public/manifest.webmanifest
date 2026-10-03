@@ -1,0 +1,20 @@
+{
+  "name": "FireCalc",
+  "short_name": "FireCalc",
+  "description": "Din formue, portefølje og vej mod FIRE.",
+  "lang": "da",
+  "start_url": "/planner",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f6fa",
+  "theme_color": "#0d1b36",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Portefølje", "url": "/planner/portfolio", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
+    { "name": "Ny opgørelse", "url": "/planner/snapshot", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] }
+  ]
+}

@@ -54,6 +54,45 @@ namespace FireCalc.Api.Data.Migrations
                     b.ToTable("Accounts");
                 });
 
+            modelBuilder.Entity("FireCalc.Api.Data.AccountBalance", b =>
+                {
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("Balance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("AccountId", "Date");
+
+                    b.ToTable("AccountBalances", (string)null);
+                });
+
+            modelBuilder.Entity("FireCalc.Api.Data.FxRate", b =>
+                {
+                    b.Property<string>("Currency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("QuoteCurrency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("numeric(18,8)");
+
+                    b.HasKey("Currency", "QuoteCurrency", "Date");
+
+                    b.ToTable("FxRates");
+                });
+
             modelBuilder.Entity("FireCalc.Api.Data.Goal", b =>
                 {
                     b.Property<Guid>("Id")
@@ -85,6 +124,121 @@ namespace FireCalc.Api.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Goals");
+                });
+
+            modelBuilder.Entity("FireCalc.Api.Data.Instrument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("Isin")
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("PricesCheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Symbol")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Isin")
+                        .IsUnique();
+
+                    b.ToTable("Instruments");
+                });
+
+            modelBuilder.Entity("FireCalc.Api.Data.InstrumentPrice", b =>
+                {
+                    b.Property<Guid>("InstrumentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("Close")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.HasKey("InstrumentId", "Date");
+
+                    b.ToTable("InstrumentPrices");
+                });
+
+            modelBuilder.Entity("FireCalc.Api.Data.PortfolioTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("CostChange")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("InstrumentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal?>("Price")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstrumentId");
+
+                    b.HasIndex("AccountId", "Date");
+
+                    b.HasIndex("AccountId", "Source", "ExternalId")
+                        .IsUnique();
+
+                    b.ToTable("PortfolioTransactions", (string)null);
                 });
 
             modelBuilder.Entity("FireCalc.Api.Data.Snapshot", b =>
@@ -175,6 +329,15 @@ namespace FireCalc.Api.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("FireCalc.Api.Data.AccountBalance", b =>
+                {
+                    b.HasOne("FireCalc.Api.Data.Account", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FireCalc.Api.Data.Goal", b =>
                 {
                     b.HasOne("FireCalc.Api.Data.User", null)
@@ -182,6 +345,31 @@ namespace FireCalc.Api.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("FireCalc.Api.Data.InstrumentPrice", b =>
+                {
+                    b.HasOne("FireCalc.Api.Data.Instrument", null)
+                        .WithMany()
+                        .HasForeignKey("InstrumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FireCalc.Api.Data.PortfolioTransaction", b =>
+                {
+                    b.HasOne("FireCalc.Api.Data.Account", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FireCalc.Api.Data.Instrument", "Instrument")
+                        .WithMany()
+                        .HasForeignKey("InstrumentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Instrument");
                 });
 
             modelBuilder.Entity("FireCalc.Api.Data.Snapshot", b =>
