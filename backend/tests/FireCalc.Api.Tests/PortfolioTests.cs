@@ -370,4 +370,37 @@ public class PortfolioTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.InRange(position.GetProperty("costBasis").GetDecimal(), 540 * 24.07m * 8 - 0.05m, 540 * 24.07m * 8 + 0.05m);
         Assert.Equal(0m, acc.GetProperty("cash").GetDecimal());
     }
+    [Fact]
+    public async Task The_average_price_of_imported_shares_can_be_corrected()
+    {
+        var client = NewOwner();
+        var account = await CreateAccount(client);
+        var file = Utf16(
+            Header,
+            Row("201", "2026-03-01", "KØBT", "NOVO B", "DK0062498333", "15", "400", "-6.000"),
+            Row("200", "2023-03-30", "INDLÆG  OVERF.", "cBrain", "DK0060030286", "40", "0", "0"),
+            "");
+        await Import(client, account, file, commit: true);
+        var cbrain = (await client.GetFromJsonAsync<JsonElement>("/api/portfolio")).GetProperty("accounts")[0]
+            .GetProperty("positions").EnumerateArray().Single(p => p.GetProperty("isin").GetString() == "DK0060030286");
+        Assert.Equal(0m, cbrain.GetProperty("costBasis").GetDecimal());
+
+        var instrument = cbrain.GetProperty("instrumentId").GetString();
+        var res = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { id = instrument }, quantity = 40, averagePrice = 52.5m });
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+
+        // Importing the same file again keeps the correction, and no money moved.
+        await Import(client, account, file, commit: true);
+        var acc = (await client.GetFromJsonAsync<JsonElement>("/api/portfolio")).GetProperty("accounts")[0];
+        var corrected = acc.GetProperty("positions").EnumerateArray().Single(p => p.GetProperty("isin").GetString() == "DK0060030286");
+        Assert.Equal(2100m, corrected.GetProperty("costBasis").GetDecimal());
+        Assert.Equal(-6000m, acc.GetProperty("cash").GetDecimal());
+
+        // Correcting the bought shares keeps their cost in line with what Nordnet charged per share.
+        var novo = acc.GetProperty("positions").EnumerateArray().Single(p => p.GetProperty("isin").GetString() == "DK0062498333");
+        await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { id = novo.GetProperty("instrumentId").GetString() }, quantity = 15, averagePrice = 380 });
+        var after = (await client.GetFromJsonAsync<JsonElement>("/api/portfolio")).GetProperty("accounts")[0]
+            .GetProperty("positions").EnumerateArray().Single(p => p.GetProperty("isin").GetString() == "DK0062498333");
+        Assert.Equal(5700m, after.GetProperty("costBasis").GetDecimal());
+    }
 }

@@ -71,6 +71,9 @@ public static class PortfolioCalculator
                         p.Quantity += t.Quantity;
                         p.Cost += -t.Amount + (sharesIn > 0 ? carriedCost * t.Quantity / sharesIn : 0);
                         break;
+                    case TransactionType.CostCorrection when t.CostBasis is { } corrected && p.Quantity > Dust:
+                        p.Cost = corrected;
+                        break;
                     case TransactionType.Dividend:
                     case TransactionType.Tax:
                         // Withholding tax booked against a share reduces that share's dividend.

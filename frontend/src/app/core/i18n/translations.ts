@@ -275,8 +275,7 @@ const da = {
         `Ret gns. købskurs (GAK)${currency ? ' i ' + currency : ''} (valgfri)`,
       correctAverageHint:
         'Udfyld kun, hvis den er forkert. Afkastet regnes så ud fra den nye kurs.',
-      cannotCorrectAverage:
-        'Nogle af aktierne er importeret eller overført. Ret købene under Transaktioner i stedet.',
+      cannotCorrectAverage: 'Der blev ikke fundet en valutakurs for papiret. Prøv igen senere.',
       needPrice: 'Skriv kursen pr. aktie, så afkastet kan regnes ud.',
       chooseInstrument: 'Find papiret',
       priceNow: (price: string, date: string) =>
@@ -357,6 +356,7 @@ const da = {
       securityIn: 'Papirer ind',
       securityOut: 'Papirer ud',
       other: 'Andet',
+      costCorrection: 'Rettet GAK',
     } as Record<string, string>,
 
     goalPage: {
@@ -659,8 +659,7 @@ const en: Translations = {
         `Correct average purchase price (GAK)${currency ? ' in ' + currency : ''} (optional)`,
       correctAverageHint:
         'Only fill in if it is wrong. Your return is then worked out from the new price.',
-      cannotCorrectAverage:
-        'Some of these shares were imported or transferred. Correct the purchases under Transactions instead.',
+      cannotCorrectAverage: 'No exchange rate was found for this share. Try again later.',
       needPrice: 'Enter the price per share so the return can be worked out.',
       chooseInstrument: 'Find the security',
       priceNow: (price: string, date: string) =>
@@ -739,6 +738,7 @@ const en: Translations = {
       securityIn: 'Shares in',
       securityOut: 'Shares out',
       other: 'Other',
+      costCorrection: 'Corrected GAK',
     } as Record<string, string>,
 
     goalPage: {

@@ -151,6 +151,9 @@
                     {{ t.txTypes[tx.type] }}
                     <small>
                       {{ tx.instrumentName ?? tx.note }}
+                      @if (tx.type === 'costCorrection' && tx.price !== null) {
+                        · GAK {{ i18n.number(tx.price, 4) }}
+                      }
                       @if (tx.source !== 'manual') {
                         · {{ p.source[tx.source] ?? tx.source }}
                       }
@@ -161,9 +164,11 @@
                     {{ money(tx.amount) }}
                   </td>
                   <td class="actions">
-                    <button type="button" class="link-button" (click)="edit(tx)">
-                      {{ t.edit }}
-                    </button>
+                    @if (tx.type !== 'costCorrection') {
+                      <button type="button" class="link-button" (click)="edit(tx)">
+                        {{ t.edit }}
+                      </button>
+                    }
                     <button
                       type="button"
                       class="link-button link-button--danger"

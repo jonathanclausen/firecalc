@@ -74,7 +74,9 @@ export type TransactionType =
   | 'interest'
   | 'securityIn'
   | 'securityOut'
-  | 'other';
+  | 'other'
+  /** A corrected GAK; booked from the holding, not the transaction form. */
+  | 'costCorrection';
 
 export const TRANSACTION_TYPES: readonly TransactionType[] = [
   'buy',

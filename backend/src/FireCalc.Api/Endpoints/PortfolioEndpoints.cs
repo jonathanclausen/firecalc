@@ -253,7 +253,7 @@ public static class PortfolioEndpoints
 
             if (req.AveragePrice is { } average && req.Quantity > 0)
             {
-                var problem = await CorrectAveragePriceAsync(db, valuation, accountId, instrument.Id, user.Currency, average, ct);
+                var problem = await CorrectAveragePriceAsync(db, valuation, accountId, instrument, user.Currency, average, date, ct);
                 if (problem is not null) return problem;
             }
             return Results.Ok(new SetHoldingResult(req.Quantity.Value, change, amount.Value));
@@ -317,58 +317,74 @@ public static class PortfolioEndpoints
             .Check(type is null || !NeedsInstrument(type.Value) || req.Quantity > 0, "quantity", "Quantity is required.")
             .Check(type is not (TransactionType.Buy or TransactionType.Withdrawal or TransactionType.Fee) || amount <= 0, "amount", "This type takes money out, so the amount must be negative.")
             .Check(type is not (TransactionType.Sell or TransactionType.Deposit) || amount >= 0, "amount", "This type brings money in, so the amount must be positive.")
+            .Check(type is not TransactionType.CostCorrection, "type", "Correct the average price from the holding instead.")
             .Check(req.Note is null || req.Note.Trim().Length <= 500, "note", "Note must be at most 500 characters.");
     }
 
     /// <summary>Returns the instrument to use (or null for cash-only rows), or an error result.</summary>
     /// <summary>
-    /// Corrects what was paid for a holding typed in by hand: every purchase is scaled so the average price
-    /// per share (in the share's currency) becomes <paramref name="average"/>. Each purchase keeps its own
-    /// exchange rate, and the money paired with it moves along, so cash stays put.
+    /// Corrects what the shares held cost (GAK, in the share's currency) by booking a cost correction. It moves
+    /// no money and works the same for imported, transferred and typed-in shares. Purchases keep their own
+    /// exchange rates: the new cost uses the blended rate of what was paid so far, or the rate on
+    /// <paramref name="date"/> when nothing was paid (e.g. shares transferred in at 0 kr).
     /// </summary>
     private static async Task<IResult?> CorrectAveragePriceAsync(
-        FireCalcDbContext db, PortfolioValuation valuation, Guid accountId, Guid instrumentId, string currency, decimal average, CancellationToken ct)
+        FireCalcDbContext db, PortfolioValuation valuation, Guid accountId, Instrument instrument, string currency,
+        decimal average, DateOnly date, CancellationToken ct)
     {
         var all = await db.Transactions.Where(t => t.AccountId == accountId).ToListAsync(ct);
-        var own = all.Where(t => t.InstrumentId == instrumentId).ToList();
-        // Imported rows and transfers come from the broker, so they are corrected there, not overwritten here.
-        if (own.Any(t => t.Source != "manual" || t.Type is TransactionType.SecurityIn or TransactionType.SecurityOut))
-            return new Validation().Check(false, "averagePrice", "Some of these shares were imported or transferred. Correct the purchases under Transactions.").Problem();
-        var buys = own.Where(t => t.Type == TransactionType.Buy && t.Quantity > 0).ToList();
-        if (buys.Count == 0) return null;
+        var holding = PortfolioCalculator.Calculate(all, DateOnly.MaxValue).Holdings.FirstOrDefault(h => h.InstrumentId == instrument.Id);
+        if (holding is null || holding.Quantity <= 0) return null;
 
-        var paid = new List<(PortfolioTransaction Buy, decimal Native)>();
-        foreach (var buy in buys)
-        {
-            var native = buy.Price;
-            if (native is null)
-            {
-                // Older entries kept only the amount in kroner; that day's rate gives back the share's price.
-                var rate = await valuation.UnitPriceAsync(instrumentId, currency, buy.Date, 1m, ct);
-                if (rate is null or 0)
-                    return new Validation().Check(false, "averagePrice", "No exchange rate found for an earlier purchase. Try again later.").Problem();
-                native = Math.Abs(buy.Amount) / buy.Quantity / rate.Value;
-            }
-            paid.Add((buy, native.Value));
-        }
+        var nativeCost = NativeCost(all.Where(t => t.InstrumentId == instrument.Id));
+        decimal? rate = holding.CostBasis > 0 && nativeCost > 0 ? holding.CostBasis / nativeCost : null;
+        rate ??= await valuation.UnitPriceAsync(instrument.Id, currency, date, 1m, ct);
+        if (rate is null or 0)
+            return new Validation().Check(false, "averagePrice", "No exchange rate found for this share. Try again later.").Problem();
 
-        var nativeTotal = paid.Sum(p => p.Buy.Quantity * p.Native);
-        if (nativeTotal == 0) return null;
-        var factor = average * buys.Sum(b => b.Quantity) / nativeTotal;
-        var paired = new HashSet<Guid>();
-        foreach (var (buy, native) in paid)
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        db.Transactions.Add(new PortfolioTransaction
         {
-            var oldAmount = buy.Amount;
-            buy.Price = Math.Round(native * factor, 6);
-            buy.Amount = Math.Round(oldAmount * factor, 2);
-            var deposit = all.FirstOrDefault(t => t.InstrumentId is null && t.Type == TransactionType.Deposit && !paired.Contains(t.Id)
-                && t.Date == buy.Date && t.Note == buy.Note && t.Amount == -oldAmount);
-            if (deposit is null) continue;
-            deposit.Amount = -buy.Amount;
-            paired.Add(deposit.Id);
-        }
+            AccountId = accountId,
+            InstrumentId = instrument.Id,
+            Date = all.Where(t => t.InstrumentId == instrument.Id).Select(t => t.Date).DefaultIfEmpty(today).Max() is var last && last > today ? last : today,
+            Type = TransactionType.CostCorrection,
+            Quantity = holding.Quantity,
+            Price = average,
+            Amount = 0,
+            CostBasis = Math.Round(holding.Quantity * average * rate.Value, 2),
+            Note = $"GAK {average:0.####}{(instrument.Currency is { } c ? " " + c : "")}",
+        });
         await db.SaveChangesAsync(ct);
         return null;
+    }
+
+    /// <summary>
+    /// What the shares still held cost in their own currency, replayed with the average cost method like
+    /// <see cref="PortfolioCalculator"/>. Zero when a purchase has no price per share.
+    /// </summary>
+    private static decimal NativeCost(IEnumerable<PortfolioTransaction> transactions)
+    {
+        decimal quantity = 0, cost = 0;
+        foreach (var t in transactions.OrderBy(t => t.Date).ThenBy(t => t.CreatedAt))
+        {
+            switch (t.Type)
+            {
+                case TransactionType.Buy or TransactionType.SecurityIn:
+                    if (t.Type == TransactionType.Buy && t.Price is null) return 0;
+                    quantity += t.Quantity;
+                    cost += t.Quantity * (t.Price ?? 0);
+                    break;
+                case TransactionType.Sell or TransactionType.SecurityOut:
+                    cost -= quantity > 0 ? cost * Math.Min(1, t.Quantity / quantity) : 0;
+                    quantity -= t.Quantity;
+                    break;
+                case TransactionType.CostCorrection when t.Price is { } avg:
+                    cost = quantity * avg;
+                    break;
+            }
+        }
+        return cost;
     }
 
     private static async Task<object?> ResolveInstrumentAsync(InstrumentRef? r, FireCalcDbContext db, CancellationToken ct)
