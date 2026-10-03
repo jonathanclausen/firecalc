@@ -64,10 +64,8 @@
           </span>
           <span class="balance__input">
             <input
-              type="number"
+              type="text"
               inputmode="decimal"
-              min="0"
-              step="any"
               [value]="balances()[a.id] ?? ''"
               (input)="setBalance(a.id, $any($event.target).value)"
             />

@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { Goal, PlannerApi } from '../../../core/api/planner-api';
 import { Auth } from '../../../core/auth/auth';
 import { I18n } from '../../../core/i18n/i18n';
+import { parseDecimal } from '../../../shared/parse-decimal';
 
 @Component({
   selector: 'app-goal-page',
@@ -44,19 +45,18 @@ export class GoalPage {
   protected async save(event: Event) {
     event.preventDefault();
     const t = this.i18n.t().planner;
-    const amount = Number(this.targetAmount().replace(',', '.'));
-    if (!Number.isFinite(amount) || amount <= 0) {
+    const amount = parseDecimal(this.targetAmount());
+    if (amount === null || amount <= 0) {
       this.error.set(t.goalPage.invalidAmount);
       return;
     }
-    const rate =
-      this.expectedReturn().trim() === '' ? null : Number(this.expectedReturn().replace(',', '.'));
+    const rate = parseDecimal(this.expectedReturn());
     await this.run(() =>
       this.api.saveGoal({
         name: this.goal.value()?.name ?? 'FIRE',
         targetAmount: amount,
         targetDate: this.targetDate() || null,
-        expectedAnnualReturnPct: rate !== null && Number.isFinite(rate) ? rate : null,
+        expectedAnnualReturnPct: rate,
       }),
     );
   }

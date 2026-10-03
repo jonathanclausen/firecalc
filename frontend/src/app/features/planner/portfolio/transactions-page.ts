@@ -16,6 +16,7 @@ import { Auth } from '../../../core/auth/auth';
 import { I18n } from '../../../core/i18n/i18n';
 import { CurrencySettings } from '../../../core/settings/currency';
 import { InstrumentChoice, InstrumentPicker } from './instrument-picker';
+import { parseDecimal } from '../../../shared/parse-decimal';
 
 /** One investment account's transactions, with a form to add or edit one (/planner/portfolio/:accountId). */
 @Component({
@@ -173,6 +174,6 @@ export class TransactionsPage {
 
 function parse(raw: string): number | null {
   if (raw.trim() === '') return null;
-  const value = Number(raw.replace(',', '.'));
-  return Number.isFinite(value) ? value : null;
+  const value = parseDecimal(raw);
+  return value;
 }

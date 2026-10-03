@@ -270,6 +270,7 @@ export class PlannerApi {
       quantity: number;
       unitPrice: number | null;
       date?: string | null;
+      averagePrice?: number | null;
     },
   ) {
     return firstValueFrom(

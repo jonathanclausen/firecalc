@@ -94,6 +94,7 @@ public class PortfolioTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Theory]
     [InlineData("UDBYTTESKAT", TransactionType.Tax)]
     [InlineData("HÆVNING", TransactionType.Withdrawal)]
+    [InlineData("INDSÆTTELSE", TransactionType.Deposit)]
     [InlineData("DEBITRENTE", TransactionType.Interest)]
     [InlineData("KÖPT", TransactionType.Buy)]
     [InlineData("SÅLT", TransactionType.Sell)]
@@ -345,5 +346,28 @@ public class PortfolioTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
         var future = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "EQNR.OL" }, quantity = 12, unitPrice = 150, date = today.AddDays(2) });
         Assert.Equal(HttpStatusCode.BadRequest, future.StatusCode);
+    }
+    [Fact]
+    public async Task Correcting_the_average_price_rescales_what_was_paid()
+    {
+        var m = factory.MarketData;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        m.Prices["NESN.SW"] = new("CHF", [new(today, 30m)]);
+        m.Fx["CHF"] = [new(today.AddDays(-1), 8m)];
+        var client = NewOwner();
+        var account = await CreateAccount(client);
+
+        // A typo: 90 instead of 24.07, then 3 more bought at today's price.
+        await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "NESN.SW" }, quantity = 537, unitPrice = 90 });
+        await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "NESN.SW" }, quantity = 540 });
+
+        var res = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "NESN.SW" }, quantity = 540, averagePrice = 24.07m });
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+
+        var acc = (await client.GetFromJsonAsync<JsonElement>("/api/portfolio")).GetProperty("accounts")[0];
+        var position = acc.GetProperty("positions")[0];
+        Assert.Equal(540m, position.GetProperty("quantity").GetDecimal());
+        Assert.InRange(position.GetProperty("costBasis").GetDecimal(), 540 * 24.07m * 8 - 0.05m, 540 * 24.07m * 8 + 0.05m);
+        Assert.Equal(0m, acc.GetProperty("cash").GetDecimal());
     }
 }

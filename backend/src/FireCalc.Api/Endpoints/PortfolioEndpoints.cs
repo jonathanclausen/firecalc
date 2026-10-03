@@ -24,7 +24,7 @@ public static class PortfolioEndpoints
     public record UpdateInstrumentRequest(string? Symbol, string? Name);
 
     /// <summary>Amount is the total paid or received; UnitPrice is per share in the instrument's own currency.</summary>
-    public record SetHoldingRequest(InstrumentRef? Instrument, decimal? Quantity, decimal? Amount, decimal? UnitPrice, DateOnly? Date);
+    public record SetHoldingRequest(InstrumentRef? Instrument, decimal? Quantity, decimal? Amount, decimal? UnitPrice, DateOnly? Date, decimal? AveragePrice);
     public record SetHoldingResult(decimal Quantity, decimal Change, decimal Amount);
 
     public record ImportPreviewRow(int Line, DateOnly Date, TransactionType Type, string RawType, string? Name, decimal Quantity, decimal Amount);
@@ -196,6 +196,7 @@ public static class PortfolioEndpoints
                 .Check(req.Quantity is >= 0, "quantity", "Enter how many you own.")
                 .Check(req.Amount is null or >= 0, "amount", "The amount cannot be negative.")
                 .Check(req.UnitPrice is null or > 0, "unitPrice", "The price must be above 0.")
+                .Check(req.AveragePrice is null or > 0, "averagePrice", "The price must be above 0.")
                 .Check(req.Date is null || req.Date <= DateOnly.FromDateTime(DateTime.UtcNow), "date", "The purchase date cannot be in the future.");
             if (!v.IsValid) return v.Problem();
             var resolved = await ResolveInstrumentAsync(req.Instrument, db, ct);
@@ -213,16 +214,18 @@ public static class PortfolioEndpoints
             var current = PortfolioCalculator.Calculate(own, DateOnly.MaxValue).Holdings
                 .FirstOrDefault(h => h.InstrumentId == instrument.Id)?.Quantity ?? 0;
             var change = req.Quantity!.Value - current;
-            if (change == 0) return Results.Ok(new SetHoldingResult(current, 0, 0));
+            if (change == 0 && req.AveragePrice is null) return Results.Ok(new SetHoldingResult(current, 0, 0));
+            // For the first shares the average price is what they were bought at.
+            var unitPrice = req.UnitPrice ?? (current == 0 ? req.AveragePrice : null);
 
             // Without what was paid for the first shares there is no return to show, so ask for it.
-            if (current == 0 && req.Amount is null && req.UnitPrice is null)
+            if (current == 0 && req.Amount is null && unitPrice is null)
                 return new Validation().Check(false, "unitPrice", "Enter the average price you paid per share.").Problem();
 
-            var amount = req.Amount;
+            var amount = change == 0 ? 0 : req.Amount;
             if (amount is null)
             {
-                var price = await valuation.UnitPriceAsync(instrument.Id, user.Currency, date, req.UnitPrice, ct);
+                var price = await valuation.UnitPriceAsync(instrument.Id, user.Currency, date, unitPrice, ct);
                 if (price is null)
                     return new Validation().Check(false, "unitPrice", "No price found for this share. Enter the price per share.").Problem();
                 amount = Math.Round(Math.Abs(change) * price.Value, 2);
@@ -230,7 +233,7 @@ public static class PortfolioEndpoints
 
             var buying = change > 0;
             var note = $"{current:0.####} → {req.Quantity:0.####}";
-            db.Transactions.AddRange(
+            if (change != 0) db.Transactions.AddRange(
                 new PortfolioTransaction
                 {
                     AccountId = accountId, Date = date, Note = note,
@@ -243,10 +246,16 @@ public static class PortfolioEndpoints
                     AccountId = accountId, Date = date, Note = note, InstrumentId = instrument.Id,
                     Type = buying ? TransactionType.Buy : TransactionType.Sell,
                     Quantity = Math.Abs(change),
-                    Price = req.UnitPrice,
+                    Price = unitPrice,
                     Amount = buying ? -amount.Value : amount.Value,
                 });
             await db.SaveChangesAsync(ct);
+
+            if (req.AveragePrice is { } average && req.Quantity > 0)
+            {
+                var problem = await CorrectAveragePriceAsync(db, valuation, accountId, instrument.Id, user.Currency, average, ct);
+                if (problem is not null) return problem;
+            }
             return Results.Ok(new SetHoldingResult(req.Quantity.Value, change, amount.Value));
         });
 
@@ -312,6 +321,56 @@ public static class PortfolioEndpoints
     }
 
     /// <summary>Returns the instrument to use (or null for cash-only rows), or an error result.</summary>
+    /// <summary>
+    /// Corrects what was paid for a holding typed in by hand: every purchase is scaled so the average price
+    /// per share (in the share's currency) becomes <paramref name="average"/>. Each purchase keeps its own
+    /// exchange rate, and the money paired with it moves along, so cash stays put.
+    /// </summary>
+    private static async Task<IResult?> CorrectAveragePriceAsync(
+        FireCalcDbContext db, PortfolioValuation valuation, Guid accountId, Guid instrumentId, string currency, decimal average, CancellationToken ct)
+    {
+        var all = await db.Transactions.Where(t => t.AccountId == accountId).ToListAsync(ct);
+        var own = all.Where(t => t.InstrumentId == instrumentId).ToList();
+        // Imported rows and transfers come from the broker, so they are corrected there, not overwritten here.
+        if (own.Any(t => t.Source != "manual" || t.Type is TransactionType.SecurityIn or TransactionType.SecurityOut))
+            return new Validation().Check(false, "averagePrice", "Some of these shares were imported or transferred. Correct the purchases under Transactions.").Problem();
+        var buys = own.Where(t => t.Type == TransactionType.Buy && t.Quantity > 0).ToList();
+        if (buys.Count == 0) return null;
+
+        var paid = new List<(PortfolioTransaction Buy, decimal Native)>();
+        foreach (var buy in buys)
+        {
+            var native = buy.Price;
+            if (native is null)
+            {
+                // Older entries kept only the amount in kroner; that day's rate gives back the share's price.
+                var rate = await valuation.UnitPriceAsync(instrumentId, currency, buy.Date, 1m, ct);
+                if (rate is null or 0)
+                    return new Validation().Check(false, "averagePrice", "No exchange rate found for an earlier purchase. Try again later.").Problem();
+                native = Math.Abs(buy.Amount) / buy.Quantity / rate.Value;
+            }
+            paid.Add((buy, native.Value));
+        }
+
+        var nativeTotal = paid.Sum(p => p.Buy.Quantity * p.Native);
+        if (nativeTotal == 0) return null;
+        var factor = average * buys.Sum(b => b.Quantity) / nativeTotal;
+        var paired = new HashSet<Guid>();
+        foreach (var (buy, native) in paid)
+        {
+            var oldAmount = buy.Amount;
+            buy.Price = Math.Round(native * factor, 6);
+            buy.Amount = Math.Round(oldAmount * factor, 2);
+            var deposit = all.FirstOrDefault(t => t.InstrumentId is null && t.Type == TransactionType.Deposit && !paired.Contains(t.Id)
+                && t.Date == buy.Date && t.Note == buy.Note && t.Amount == -oldAmount);
+            if (deposit is null) continue;
+            deposit.Amount = -buy.Amount;
+            paired.Add(deposit.Id);
+        }
+        await db.SaveChangesAsync(ct);
+        return null;
+    }
+
     private static async Task<object?> ResolveInstrumentAsync(InstrumentRef? r, FireCalcDbContext db, CancellationToken ct)
     {
         if (r is null) return null;

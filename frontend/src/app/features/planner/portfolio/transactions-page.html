@@ -64,10 +64,8 @@
           <label class="form-field">
             <span>{{ p.quantity }}</span>
             <input
-              type="number"
+              type="text"
               inputmode="decimal"
-              min="0"
-              step="any"
               [required]="needsShares()"
               [value]="quantity()"
               (input)="quantity.set($any($event.target).value)"
@@ -77,9 +75,8 @@
         <label class="form-field">
           <span>{{ p.amount(currency()) }}</span>
           <input
-            type="number"
+            type="text"
             inputmode="decimal"
-            step="any"
             required
             [value]="amount()"
             (input)="amount.set($any($event.target).value)"
@@ -90,10 +87,8 @@
           <label class="form-field">
             <span>{{ p.price }}</span>
             <input
-              type="number"
+              type="text"
               inputmode="decimal"
-              min="0"
-              step="any"
               [value]="price()"
               (input)="price.set($any($event.target).value)"
             />

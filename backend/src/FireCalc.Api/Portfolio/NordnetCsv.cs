@@ -136,7 +136,7 @@ public static class NordnetCsv
         if (Has("RENTE", "RÄNTA", "KORKO", "INTEREST")) return TransactionType.Interest;
         if (Has("UDTAG", "UTTAG VP", "UTTAK VP", "SECURITY OUT", "OUTGOING")) return hasInstrument ? TransactionType.SecurityOut : TransactionType.Withdrawal;
         if (Has("INDLÆG", "INDSKUD VP", "INSÄTTNING VP", "INNSKUDD VP", "SECURITY IN", "INCOMING")) return hasInstrument ? TransactionType.SecurityIn : TransactionType.Deposit;
-        if (Has("INDBETALING", "INDSÆTNING", "INSÄTTNING", "INNSKUDD", "TALLETUS", "DEPOSIT")) return TransactionType.Deposit;
+        if (Has("INDBETALING", "INDSÆTNING", "INDSÆTTELSE", "INSÄTTNING", "INNSKUDD", "TALLETUS", "DEPOSIT")) return TransactionType.Deposit;
         if (Has("HÆVNING", "UDBETALING", "UTTAG", "UTTAK", "NOSTO", "WITHDRAWAL")) return TransactionType.Withdrawal;
         if (Has("GEBYR", "AFGIFT", "AVGIFT", "KURTAGE", "COURTAGE", "PALKKIO", "FEE")) return TransactionType.Fee;
 

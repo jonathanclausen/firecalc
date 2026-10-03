@@ -271,6 +271,12 @@ const da = {
       tradePrice: (currency: string) =>
         `Kurs pr. stk.${currency ? ' i ' + currency : ''} (valgfri)`,
       tradePriceHint: 'Kursen du handlede til. Tomt felt bruger dagens kurs.',
+      correctAverage: (currency: string) =>
+        `Ret gns. købskurs (GAK)${currency ? ' i ' + currency : ''} (valgfri)`,
+      correctAverageHint:
+        'Udfyld kun, hvis den er forkert. Afkastet regnes så ud fra den nye kurs.',
+      cannotCorrectAverage:
+        'Nogle af aktierne er importeret eller overført. Ret købene under Transaktioner i stedet.',
       needPrice: 'Skriv kursen pr. aktie, så afkastet kan regnes ud.',
       chooseInstrument: 'Find papiret',
       priceNow: (price: string, date: string) =>
@@ -649,6 +655,12 @@ const en: Translations = {
       tradePrice: (currency: string) =>
         `Price per share${currency ? ' in ' + currency : ''} (optional)`,
       tradePriceHint: 'The price you traded at. Leave empty to use today’s price.',
+      correctAverage: (currency: string) =>
+        `Correct average purchase price (GAK)${currency ? ' in ' + currency : ''} (optional)`,
+      correctAverageHint:
+        'Only fill in if it is wrong. Your return is then worked out from the new price.',
+      cannotCorrectAverage:
+        'Some of these shares were imported or transferred. Correct the purchases under Transactions instead.',
       needPrice: 'Enter the price per share so the return can be worked out.',
       chooseInstrument: 'Find the security',
       priceNow: (price: string, date: string) =>

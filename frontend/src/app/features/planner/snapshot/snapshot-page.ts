@@ -5,6 +5,7 @@ import { Account, PlannerApi, Snapshot, today } from '../../../core/api/planner-
 import { Auth } from '../../../core/auth/auth';
 import { I18n } from '../../../core/i18n/i18n';
 import { MoneyPipe } from '../../../shared/money.pipe';
+import { parseDecimal } from '../../../shared/parse-decimal';
 
 /** Records a new snapshot (route /planner/snapshot) or edits one (/planner/snapshot/:id). */
 @Component({
@@ -125,6 +126,6 @@ export class SnapshotPage {
 /** Parses a balance field; empty or invalid text means "no balance". */
 function parse(raw: string | undefined): number | null {
   if (raw === undefined || raw.trim() === '') return null;
-  const value = Number(raw.replace(',', '.'));
-  return Number.isFinite(value) && value >= 0 ? value : null;
+  const value = parseDecimal(raw);
+  return value !== null && value >= 0 ? value : null;
 }

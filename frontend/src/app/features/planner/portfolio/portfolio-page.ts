@@ -13,6 +13,7 @@ import { I18n } from '../../../core/i18n/i18n';
 import { CurrencySettings } from '../../../core/settings/currency';
 import { MoneyPipe } from '../../../shared/money.pipe';
 import { InstrumentChoice, InstrumentPicker } from './instrument-picker';
+import { parseDecimal } from '../../../shared/parse-decimal';
 
 /** Holdings per investment account, valued with the latest stored prices (/planner/portfolio). */
 @Component({
@@ -90,6 +91,7 @@ export class PortfolioPage {
     currency: string | null;
     quantity: string;
     price: string;
+    average: string;
   } | null>(null);
 
   // Patches read the latest draft, so quick successive inputs never overwrite each other.
@@ -136,6 +138,7 @@ export class PortfolioPage {
       currency: p.currency,
       quantity: String(p.quantity),
       price: '',
+      average: '',
     });
   }
 
@@ -159,7 +162,16 @@ export class PortfolioPage {
     const draft = this.counting();
     const quantity = parse(draft?.quantity);
     if (!draft || quantity === null) return;
-    await this.saveHolding(draft.accountId, { id: draft.instrumentId }, quantity, draft.price);
+    await this.saveHolding(
+      draft.accountId,
+      { id: draft.instrumentId },
+      quantity,
+      draft.price,
+      null,
+      {
+        averagePrice: parse(draft.average),
+      },
+    );
   }
 
   private async saveHolding(
@@ -168,6 +180,7 @@ export class PortfolioPage {
     quantity: number,
     price: string,
     date: string | null = null,
+    extra: { averagePrice?: number | null } = {},
   ) {
     const t = this.i18n.t().planner;
     this.busy.set(true);
@@ -178,14 +191,20 @@ export class PortfolioPage {
         quantity,
         unitPrice: parse(price),
         date,
+        ...extra,
       });
       this.adding.set(null);
       this.counting.set(null);
       this.portfolio.reload();
     } catch (e) {
-      const needsPrice =
-        e instanceof HttpErrorResponse && e.status === 400 && !!e.error?.errors?.unitPrice;
-      this.error.set(needsPrice ? t.portfolioPage.needPrice : t.error);
+      const errors = e instanceof HttpErrorResponse && e.status === 400 ? e.error?.errors : null;
+      this.error.set(
+        errors?.unitPrice
+          ? t.portfolioPage.needPrice
+          : errors?.averagePrice
+            ? t.portfolioPage.cannotCorrectAverage
+            : t.error,
+      );
     } finally {
       this.busy.set(false);
     }
@@ -225,6 +244,6 @@ export class PortfolioPage {
 
 function parse(raw: string | undefined): number | null {
   if (raw === undefined || raw.trim() === '') return null;
-  const value = Number(raw.replace(',', '.'));
-  return Number.isFinite(value) && value >= 0 ? value : null;
+  const value = parseDecimal(raw);
+  return value !== null && value >= 0 ? value : null;
 }

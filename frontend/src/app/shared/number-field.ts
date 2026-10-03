@@ -1,4 +1,5 @@
 import { Component, computed, input, model } from '@angular/core';
+import { parseDecimal } from './parse-decimal';
 
 let nextId = 0;
 
@@ -11,11 +12,8 @@ let nextId = 0;
       <span class="field__control">
         <input
           [id]="id"
-          type="number"
+          type="text"
           inputmode="decimal"
-          [min]="min()"
-          [max]="max()"
-          [step]="step()"
           [value]="value()"
           (input)="onInput($any($event.target).value)"
           (blur)="$any($event.target).value = value()"
@@ -61,9 +59,8 @@ export class NumberField {
   });
 
   protected onInput(raw: string) {
-    if (raw === '') return;
-    const parsed = Number(raw);
-    if (!Number.isFinite(parsed)) return;
+    const parsed = parseDecimal(raw);
+    if (parsed === null) return;
     let next = Math.max(this.min(), parsed);
     const max = this.max();
     if (max !== null) next = Math.min(max, next);
