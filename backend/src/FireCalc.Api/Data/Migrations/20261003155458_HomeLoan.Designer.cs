@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FireCalc.Api.Data.Migrations
 {
     [DbContext(typeof(FireCalcDbContext))]
-    [Migration("20261003160737_HomeAndLoans")]
-    partial class HomeAndLoans
+    [Migration("20261003155458_HomeLoan")]
+    partial class HomeLoan
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -41,9 +41,6 @@ namespace FireCalc.Api.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<bool>("PartOfHome")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("Type")
                         .IsRequired()

@@ -5,7 +5,7 @@
 namespace FireCalc.Api.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class HomeAndLoans : Migration
+    public partial class LoanAccounts : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -16,14 +16,6 @@ namespace FireCalc.Api.Data.Migrations
                 type: "boolean",
                 nullable: false,
                 defaultValue: false);
-
-            migrationBuilder.AddColumn<decimal>(
-                name: "Loan",
-                table: "AccountBalances",
-                type: "numeric(18,2)",
-                precision: 18,
-                scale: 2,
-                nullable: true);
         }
 
         /// <inheritdoc />
@@ -32,10 +24,6 @@ namespace FireCalc.Api.Data.Migrations
             migrationBuilder.DropColumn(
                 name: "PartOfHome",
                 table: "Accounts");
-
-            migrationBuilder.DropColumn(
-                name: "Loan",
-                table: "AccountBalances");
         }
     }
 }
