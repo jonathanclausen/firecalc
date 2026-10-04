@@ -86,7 +86,7 @@
           inputmode="decimal"
           appDecimal
           [value]="amountText(field.key)"
-          (change)="setAmount(field.key, $any($event.target).value)"
+          (input)="setAmount(field.key, $any($event.target).value)"
         />
       </label>
     }
@@ -98,7 +98,7 @@
           inputmode="decimal"
           appDecimal
           [value]="rateText(field.key)"
-          (change)="setRate(field.key, $any($event.target).value)"
+          (input)="setRate(field.key, $any($event.target).value)"
         />
       </label>
     }

@@ -219,7 +219,10 @@
     }
   }
 
+  // Positioned so absolutely placed content inside (a visually hidden header) stays in the
+  // scroll area instead of widening the page on phones.
   .table-scroll {
+    position: relative;
     overflow-x: auto;
   }
 
