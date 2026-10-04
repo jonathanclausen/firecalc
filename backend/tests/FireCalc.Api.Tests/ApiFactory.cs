@@ -23,6 +23,8 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string ProjectId = "firecalc-test";
     public const string OwnerEmail = "owner@example.com";
+    /// <summary>Allowed in like the owner, but not an admin.</summary>
+    public const string MemberEmail = "member@example.com";
 
     private static readonly SymmetricSecurityKey SigningKey = new(Encoding.UTF8.GetBytes(new string('k', 64)));
 
@@ -49,6 +51,8 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Auth:AllowedEmails:0", OwnerEmail);
         for (var i = 1; i <= MaxNewUsers; i++)
             builder.UseSetting($"Auth:AllowedEmails:{i}", $"owner{i}@example.com");
+        builder.UseSetting($"Auth:AllowedEmails:{MaxNewUsers + 1}", MemberEmail);
+        builder.UseSetting("Auth:AdminEmails:0", OwnerEmail);
 
         builder.ConfigureTestServices(services =>
         {
@@ -61,7 +65,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         });
     }
 
-    public HttpClient CreateClientFor(string email = OwnerEmail, string subject = "google-sub-1", bool emailVerified = true, string audience = ProjectId, string issuer = "https://securetoken.google.com/" + ProjectId)
+    public HttpClient CreateClientFor(string email = OwnerEmail, string subject = "google-sub-1", bool emailVerified = true, string audience = ProjectId, string issuer = "https://securetoken.google.com/" + ProjectId, string? signInProvider = null)
     {
         var token = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
@@ -69,7 +73,14 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             Audience = audience,
             Expires = DateTime.UtcNow.AddHours(1),
             Subject = new ClaimsIdentity([new Claim("sub", subject), new Claim("name", "Test Owner")]),
-            Claims = new Dictionary<string, object> { ["email"] = email, ["email_verified"] = emailVerified },
+            Claims = signInProvider is null
+                ? new Dictionary<string, object> { ["email"] = email, ["email_verified"] = emailVerified }
+                : new Dictionary<string, object>
+                {
+                    ["email"] = email,
+                    ["email_verified"] = emailVerified,
+                    ["firebase"] = new Dictionary<string, object> { ["sign_in_provider"] = signInProvider },
+                },
             SigningCredentials = new SigningCredentials(SigningKey, SecurityAlgorithms.HmacSha256),
         });
 

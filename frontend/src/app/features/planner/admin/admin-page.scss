@@ -1,0 +1,311 @@
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tile__label {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.tile__value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile__note {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.weeks {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 160px;
+  border-bottom: 1px solid var(--border);
+}
+
+.weeks__col {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+}
+
+.weeks__count {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.weeks__bar {
+  display: block;
+  width: min(100%, 28px);
+  max-height: calc(100% - 18px);
+  border-radius: 4px 4px 0 0;
+  background: var(--accent);
+
+  .weeks__col:hover & {
+    opacity: 0.8;
+  }
+}
+
+.weeks__bar--zero {
+  height: 0;
+}
+
+.weeks__axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.funnel__text {
+  margin-bottom: 12px;
+}
+
+.funnel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: minmax(110px, 9rem) 1fr 2.5rem;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.875rem;
+  }
+}
+
+.funnel__track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.funnel__bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.funnel__count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.users__header {
+  flex-wrap: wrap;
+}
+
+.users__search {
+  min-width: 0;
+  width: min(100%, 260px);
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-input);
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.chip {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--surface-hover);
+  }
+}
+
+.chip--active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+.chip__count {
+  margin-left: 4px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sort {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+
+  th[aria-sort='ascending'] &::after {
+    content: ' ↑';
+  }
+
+  th[aria-sort='descending'] &::after {
+    content: ' ↓';
+  }
+}
+
+.users__who {
+  display: flex;
+  flex-direction: column;
+
+  span {
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+  }
+
+  small {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+}
+
+.users__data {
+  color: var(--text-secondary);
+  min-width: 12rem;
+}
+
+.dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--track);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.dot--done {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.dots__count {
+  margin-left: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.status {
+  display: inline-block;
+  margin: 2px 4px 2px 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+}
+
+.status--started {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+.status--done {
+  background: var(--accent);
+  color: var(--surface-card);
+}
+
+.status--demo {
+  border: 1px dashed var(--border);
+  background: transparent;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+// Phones: one card per user instead of a wide table.
+@media (max-width: 720px) {
+  .users__table {
+    thead {
+      display: none;
+    }
+
+    tr {
+      display: block;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr:last-child {
+      border-bottom: 0;
+    }
+
+    td {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 0;
+      border: 0;
+      text-align: right;
+    }
+
+    td[data-label]::before {
+      content: attr(data-label);
+      color: var(--text-muted);
+      text-align: left;
+    }
+
+    td:first-child {
+      display: block;
+      padding-bottom: 6px;
+      text-align: left;
+    }
+  }
+}

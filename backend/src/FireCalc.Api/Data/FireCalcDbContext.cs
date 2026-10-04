@@ -29,6 +29,7 @@ public class FireCalcDbContext(DbContextOptions<FireCalcDbContext> options) : Db
             e.Property(u => u.Email).HasMaxLength(320);
             e.Property(u => u.Name).HasMaxLength(200);
             e.Property(u => u.Currency).HasMaxLength(3);
+            e.Property(u => u.SignInProvider).HasMaxLength(40);
         });
 
         b.Entity<Account>(e =>

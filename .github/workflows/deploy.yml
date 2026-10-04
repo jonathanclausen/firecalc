@@ -86,12 +86,19 @@ jobs:
       - name: Deploy API
         env:
           ALLOWED_EMAILS: ${{ secrets.ALLOWED_EMAILS }}
+          # Who sees the admin page. Falls back to the allow-list until its own secret is set.
+          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS || secrets.ALLOWED_EMAILS }}
         run: |
           # One Auth__AllowedEmails__<n> variable per comma-separated address.
           vars="Auth__FirebaseProjectId=$PROJECT_ID;Auth__OpenSignUp=$OPEN_SIGNUP"
           i=0
           for email in ${ALLOWED_EMAILS//,/ }; do
             vars="$vars;Auth__AllowedEmails__$i=$email"
+            i=$((i + 1))
+          done
+          i=0
+          for email in ${ADMIN_EMAILS//,/ }; do
+            vars="$vars;Auth__AdminEmails__$i=$email"
             i=$((i + 1))
           done
           # Private: only the web service's identity may call it.

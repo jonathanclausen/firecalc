@@ -28,6 +28,10 @@ public class User
     /// <summary>When the "getting started" checklist on the overview was hidden.</summary>
     public DateTimeOffset? ChecklistHiddenAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    /// <summary>When the user last used the app, to within an hour. Shown on the admin page.</summary>
+    public DateTimeOffset? LastSeenAt { get; set; }
+    /// <summary>How the user last signed in (Firebase's provider id: google.com, facebook.com, password).</summary>
+    public string? SignInProvider { get; set; }
 }
 
 public class Account

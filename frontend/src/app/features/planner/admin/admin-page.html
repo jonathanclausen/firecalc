@@ -1,0 +1,206 @@
+@let t = i18n.t().planner;
+@let a = t.admin;
+<section class="intro">
+  <div>
+    <p class="eyebrow">{{ a.eyebrow }}</p>
+    <h1>{{ a.title }}</h1>
+    <p class="lede">{{ a.lede }}</p>
+  </div>
+</section>
+
+@if (overview.error()) {
+  <p class="alert" role="alert">{{ t.error }}</p>
+} @else if (!overview.hasValue()) {
+  <p class="muted">{{ t.loading }}</p>
+} @else {
+  @let o = overview.value()!;
+  <section class="tiles">
+    <div class="card tile">
+      <span class="tile__label">{{ a.totals.users }}</span>
+      <strong class="tile__value">{{ o.totals.users }}</strong>
+    </div>
+    <div class="card tile">
+      <span class="tile__label">{{ a.totals.new7 }}</span>
+      <strong class="tile__value">{{ o.totals.newLast7Days }}</strong>
+      <span class="tile__note">{{ a.totals.new30(o.totals.newLast30Days) }}</span>
+    </div>
+    <div class="card tile">
+      <span class="tile__label">{{ a.totals.activated }}</span>
+      <strong class="tile__value">{{ o.totals.activated }}</strong>
+      <span class="tile__note">{{ a.totals.activatedShare(activatedPct()) }}</span>
+    </div>
+    <div class="card tile">
+      <span class="tile__label">{{ a.totals.active }}</span>
+      <strong class="tile__value">{{ o.totals.activeLast7Days }}</strong>
+    </div>
+  </section>
+
+  <div class="charts">
+    <section class="card">
+      <div class="card__header">
+        <h2>{{ a.signUps }}</h2>
+      </div>
+      <div class="weeks" role="img" [attr.aria-label]="a.signUpsAria">
+        @for (w of weeks(); track w.weekStart) {
+          <div class="weeks__col" [title]="a.week(shortDate(w.weekStart)) + ': ' + w.count">
+            <span class="weeks__count">{{ w.count || '' }}</span>
+            <span
+              class="weeks__bar"
+              [style.height.%]="w.height"
+              [class.weeks__bar--zero]="!w.count"
+            ></span>
+          </div>
+        }
+      </div>
+      <div class="weeks__axis" aria-hidden="true">
+        <span>{{ shortDate(weeks()[0].weekStart) }}</span>
+        <span>{{ shortDate(weeks()[weeks().length - 1].weekStart) }}</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card__header">
+        <h2>{{ a.funnel }}</h2>
+      </div>
+      <p class="muted funnel__text">{{ a.funnelText }}</p>
+      <ul class="funnel">
+        @for (s of funnel(); track s.key) {
+          <li>
+            <span class="funnel__label">{{ a.steps[s.key] }}</span>
+            <span class="funnel__track">
+              <span class="funnel__bar" [style.width.%]="s.width"></span>
+            </span>
+            <span class="funnel__count">{{ s.count }}</span>
+          </li>
+        }
+      </ul>
+    </section>
+  </div>
+
+  <section class="card users">
+    <div class="card__header users__header">
+      <h2>{{ a.users }}</h2>
+      <input
+        type="search"
+        class="users__search"
+        [placeholder]="a.search"
+        [attr.aria-label]="a.search"
+        [value]="search()"
+        (input)="setSearch($any($event.target).value)"
+      />
+    </div>
+    <div class="chips" role="group" [attr.aria-label]="a.columns.status">
+      @for (f of filters; track f) {
+        <button
+          type="button"
+          class="chip"
+          [class.chip--active]="filter() === f"
+          [attr.aria-pressed]="filter() === f"
+          (click)="setFilter(f)"
+        >
+          {{ a.filters[f] }} <span class="chip__count">{{ counts()[f] }}</span>
+        </button>
+      }
+    </div>
+
+    @if (filtered().length === 0) {
+      <p class="muted">{{ a.noUsers }}</p>
+    } @else {
+      <table class="data-table users__table">
+        <thead>
+          <tr>
+            <th [attr.aria-sort]="ariaSort('email')">
+              <button type="button" class="sort" (click)="sortBy('email')">
+                {{ a.columns.user }}
+              </button>
+            </th>
+            <th [attr.aria-sort]="ariaSort('createdAt')">
+              <button type="button" class="sort" (click)="sortBy('createdAt')">
+                {{ a.columns.created }}
+              </button>
+            </th>
+            <th [attr.aria-sort]="ariaSort('lastSeenAt')">
+              <button type="button" class="sort" (click)="sortBy('lastSeenAt')">
+                {{ a.columns.lastSeen }}
+              </button>
+            </th>
+            <th [attr.aria-sort]="ariaSort('stepsDone')">
+              <button type="button" class="sort" (click)="sortBy('stepsDone')">
+                {{ a.columns.progress }}
+              </button>
+            </th>
+            <th>{{ a.columns.data }}</th>
+            <th>{{ a.columns.status }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of shown(); track u.id) {
+            <tr>
+              <td>
+                <div class="users__who">
+                  @if (u.name) {
+                    <strong>{{ u.name }}</strong>
+                  }
+                  <span>{{ u.email }}</span>
+                  @if (u.signInProvider) {
+                    <small>{{ a.providers[u.signInProvider] ?? u.signInProvider }}</small>
+                  }
+                </div>
+              </td>
+              <td [attr.data-label]="a.columns.created">{{ date(u.createdAt) }}</td>
+              <td
+                [attr.data-label]="a.columns.lastSeen"
+                [title]="u.lastSeenAt ? date(u.lastSeenAt) : ''"
+              >
+                {{ ago(u.lastSeenAt) }}
+              </td>
+              <td [attr.data-label]="a.columns.progress">
+                <span class="dots">
+                  @for (key of stepKeys; track key) {
+                    <span
+                      class="dot"
+                      [class.dot--done]="u.steps[key]"
+                      [title]="a.steps[key]"
+                      [attr.aria-label]="a.steps[key]"
+                    ></span>
+                  }
+                  <span class="dots__count">{{ u.stepsDone }}/{{ stepKeys.length }}</span>
+                </span>
+              </td>
+              <td [attr.data-label]="a.columns.data" class="users__data">
+                {{ a.counts(u.accounts, u.homes, u.transactions, u.balances) }}
+              </td>
+              <td [attr.data-label]="a.columns.status">
+                <span class="status status--{{ status(u) }}">{{ a.filters[status(u)] }}</span>
+                @if (u.hasDemo) {
+                  <span class="status status--demo">{{ a.demoTag }}</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      @if (pageCount() > 1) {
+        <div class="pager">
+          <button
+            type="button"
+            class="btn btn--secondary"
+            [disabled]="page() === 0"
+            (click)="page.set(page() - 1)"
+          >
+            {{ a.previous }}
+          </button>
+          <span class="muted">{{ a.page(range().from, range().to, range().of) }}</span>
+          <button
+            type="button"
+            class="btn btn--secondary"
+            [disabled]="page() >= pageCount() - 1"
+            (click)="page.set(page() + 1)"
+          >
+            {{ a.next }}
+          </button>
+        </div>
+      }
+    }
+  </section>
+}

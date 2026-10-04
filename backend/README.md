@@ -19,6 +19,7 @@ from before Firebase carried over).
 | `Auth:FirebaseProjectId` | `Auth__FirebaseProjectId` | Firebase/GCP project id; tokens must be issued for it |
 | `Auth:OpenSignUp` | `Auth__OpenSignUp` | `true` lets anyone with a verified email in; default `false` |
 | `Auth:AllowedEmails` | `Auth__AllowedEmails__0` | One variable per allowed email, used while sign-up is closed |
+| `Auth:AdminEmails` | `Auth__AdminEmails__0` | Accounts that see the admin page (`/planner/admin`); everyone else gets 404 |
 | `Cors:AllowedOrigins` | `Cors__AllowedOrigins__0` | The frontend's origin |
 | `Auth:Authority` | `Auth__Authority` | Token issuer, default Firebase's for the project; override only to test against a local issuer |
 | `Database:MigrateOnStartup` | `Database__MigrateOnStartup` | Default `true`; applies EF migrations on boot |
@@ -70,6 +71,7 @@ The Google client id is set in `docker-compose.yml`. To get in, put your Google 
 
 ```
 Auth__AllowedEmails__0=you@gmail.com
+Auth__AdminEmails__0=you@gmail.com
 ```
 
 For quick backend iteration, run only the database in Docker and the API with hot reload:

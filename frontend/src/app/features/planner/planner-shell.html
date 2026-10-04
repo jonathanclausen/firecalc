@@ -32,6 +32,12 @@
               d="M8.5 7.5h7M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01"
             />
           }
+          @case ('admin') {
+            <circle cx="9" cy="8.5" r="3.5" />
+            <path
+              d="M3 19.5c.6-3.3 3-5.5 6-5.5s5.4 2.2 6 5.5M16 5.5a3.5 3.5 0 0 1 0 6.5M18 14.5c1.6.8 2.7 2.7 3 5"
+            />
+          }
           @case ('signOut') {
             <path
               d="M14 4h3.5A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5H14M10 8l-4 4 4 4M6 12h10"
@@ -71,6 +77,12 @@
             <ng-container *ngTemplateOutlet="icon; context: { $implicit: 'calculator' }" />
             {{ i18n.t().nav.compoundInterest }}
           </a>
+          @if (isAdmin()) {
+            <a routerLink="/planner/admin" routerLinkActive="active">
+              <ng-container *ngTemplateOutlet="icon; context: { $implicit: 'admin' }" />
+              {{ t.admin.nav }}
+            </a>
+          }
         </nav>
 
         <div class="sidebar__footer">
@@ -110,6 +122,16 @@
         </a>
         <div class="appbar__actions">
           <app-lang-switch />
+          @if (isAdmin()) {
+            <a
+              class="icon-button"
+              routerLink="/planner/admin"
+              [title]="t.admin.nav"
+              [attr.aria-label]="t.admin.nav"
+            >
+              <ng-container *ngTemplateOutlet="icon; context: { $implicit: 'admin' }" />
+            </a>
+          }
           <a
             class="icon-button avatar-button"
             routerLink="/planner/account"

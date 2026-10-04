@@ -32,6 +32,8 @@ builder.Services.AddScoped<PortfolioHistory>();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddFirebaseAuth(builder.Configuration);
+builder.Services.AddSingleton<AdminAccess>();
+builder.Services.AddSingleton<LastSeenThrottle>();
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
@@ -55,7 +57,7 @@ app.UseAuthorization();
 
 app.MapGet("/healthz", () => Results.Ok("ok"));
 
-var api = app.MapGroup("/api").RequireAuthorization(AuthSetup.OwnerPolicy);
+var api = app.MapGroup("/api").RequireAuthorization(AuthSetup.OwnerPolicy).AddEndpointFilter<LastSeenFilter>();
 api.MapMeEndpoints();
 api.MapAccountEndpoints();
 api.MapHomeEndpoints();
@@ -64,6 +66,7 @@ api.MapDashboardEndpoints();
 api.MapPortfolioEndpoints();
 api.MapScenarioEndpoints();
 api.MapDemoEndpoints();
+app.MapAdminEndpoints();
 
 app.Run();
 

@@ -367,6 +367,66 @@ const da = {
       } as Record<string, { title: string; text: string }>,
     },
 
+    admin: {
+      nav: 'Admin',
+      eyebrow: 'Admin',
+      title: 'Brugere',
+      lede: 'Hvem der er oprettet, og hvor langt de er nået. Kun antal og datoer, aldrig beløb.',
+      totals: {
+        users: 'Brugere i alt',
+        new7: 'Nye de sidste 7 dage',
+        new30: (n: number) => `${n} de sidste 30 dage`,
+        activated: 'I gang med egne tal',
+        activatedShare: (pct: number) => `${pct} % af alle`,
+        active: 'Aktive de sidste 7 dage',
+      },
+      signUps: 'Oprettelser pr. uge',
+      signUpsAria: 'Antal nye brugere pr. uge de sidste 12 uger.',
+      week: (label: string) => `Uge fra ${label}`,
+      funnel: 'Hvor langt de når',
+      funnelText:
+        'Antal brugere, der har klaret hvert trin i "Kom godt i gang". Eksempeldata tæller ikke.',
+      steps: {
+        signedUp: 'Oprettet',
+        account: 'Første konto',
+        import: 'Handler importeret',
+        goal: 'FIRE-tal sat',
+        profile: 'Fødselsdato',
+        scenario: 'Første plan',
+      } as Record<string, string>,
+      users: 'Brugere',
+      search: 'Søg på email',
+      filters: { all: 'Alle', notStarted: 'Ikke i gang', started: 'I gang', done: 'Færdig' },
+      columns: {
+        user: 'Bruger',
+        created: 'Oprettet',
+        lastSeen: 'Sidst set',
+        progress: 'Fremskridt',
+        data: 'Data',
+        status: 'Status',
+      },
+      never: 'Aldrig',
+      demoTag: 'Eksempeldata',
+      providers: {
+        'google.com': 'Google',
+        'facebook.com': 'Facebook',
+        password: 'Email og adgangskode',
+      } as Record<string, string>,
+      counts: (accounts: number, homes: number, transactions: number, balances: number) =>
+        [
+          `${accounts} ${accounts === 1 ? 'konto' : 'konti'}`,
+          homes ? `${homes} ${homes === 1 ? 'bolig' : 'boliger'}` : '',
+          `${transactions} ${transactions === 1 ? 'handel' : 'handler'}`,
+          `${balances} ${balances === 1 ? 'saldo' : 'saldi'}`,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      noUsers: 'Ingen brugere matcher.',
+      page: (from: number, to: number, of: number) => `${from}–${to} af ${of}`,
+      previous: 'Forrige',
+      next: 'Næste',
+    },
+
     demo: {
       banner: 'Du kigger på eksempeldata.',
       bannerText: 'Tallene er opdigtede. Fjern dem, når du vil i gang med dine egne.',
@@ -1203,6 +1263,66 @@ const en: Translations = {
           text: 'See when you reach your goal and what moves it.',
         },
       } as Record<string, { title: string; text: string }>,
+    },
+
+    admin: {
+      nav: 'Admin',
+      eyebrow: 'Admin',
+      title: 'Users',
+      lede: 'Who has signed up and how far they have come. Only counts and dates, never amounts.',
+      totals: {
+        users: 'Users in total',
+        new7: 'New in the last 7 days',
+        new30: (n: number) => `${n} in the last 30 days`,
+        activated: 'Using their own numbers',
+        activatedShare: (pct: number) => `${pct}% of all`,
+        active: 'Active in the last 7 days',
+      },
+      signUps: 'Sign-ups per week',
+      signUpsAria: 'New users per week for the last 12 weeks.',
+      week: (label: string) => `Week from ${label}`,
+      funnel: 'How far they get',
+      funnelText:
+        'Users who have done each step of "Getting started". Example data does not count.',
+      steps: {
+        signedUp: 'Signed up',
+        account: 'First account',
+        import: 'Trades imported',
+        goal: 'FIRE number set',
+        profile: 'Date of birth',
+        scenario: 'First plan',
+      } as Record<string, string>,
+      users: 'Users',
+      search: 'Search by email',
+      filters: { all: 'All', notStarted: 'Not started', started: 'Started', done: 'Done' },
+      columns: {
+        user: 'User',
+        created: 'Signed up',
+        lastSeen: 'Last seen',
+        progress: 'Progress',
+        data: 'Data',
+        status: 'Status',
+      },
+      never: 'Never',
+      demoTag: 'Example data',
+      providers: {
+        'google.com': 'Google',
+        'facebook.com': 'Facebook',
+        password: 'Email and password',
+      } as Record<string, string>,
+      counts: (accounts: number, homes: number, transactions: number, balances: number) =>
+        [
+          `${accounts} ${accounts === 1 ? 'account' : 'accounts'}`,
+          homes ? `${homes} ${homes === 1 ? 'home' : 'homes'}` : '',
+          `${transactions} ${transactions === 1 ? 'trade' : 'trades'}`,
+          `${balances} ${balances === 1 ? 'balance' : 'balances'}`,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      noUsers: 'No users match.',
+      page: (from: number, to: number, of: number) => `${from}–${to} of ${of}`,
+      previous: 'Previous',
+      next: 'Next',
     },
 
     demo: {
