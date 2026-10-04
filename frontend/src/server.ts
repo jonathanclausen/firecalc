@@ -17,7 +17,7 @@ const apiUrl = (process.env['API_URL'] ?? 'http://localhost:5080').replace(/\/$/
 
 /**
  * On Cloud Run the API is private and only accepts calls from this service's identity. Its ID
- * token goes in X-Serverless-Authorization, so the user's Google token keeps the Authorization
+ * token goes in X-Serverless-Authorization, so the user's Firebase token keeps the Authorization
  * header. Unset locally, where the API is reached directly.
  */
 const apiAudience = process.env['API_AUDIENCE'];
@@ -39,11 +39,20 @@ async function getServiceToken(): Promise<string | undefined> {
 
 /**
  * Settings the browser needs at runtime, so one build works in every environment.
- * The Google client id is public: it identifies the app, it does not grant access.
+ * Firebase's web config is public: it identifies the project, it does not grant access.
  */
 app.get('/app-config.json', (_req, res) => {
+  const projectId = process.env['FIREBASE_PROJECT_ID'] ?? '';
   res.set('Cache-Control', 'no-store');
-  res.json({ googleClientId: process.env['GOOGLE_CLIENT_ID'] ?? '' });
+  res.json({
+    firebase: {
+      apiKey: process.env['FIREBASE_API_KEY'] ?? '',
+      authDomain: process.env['FIREBASE_AUTH_DOMAIN'] || `${projectId}.firebaseapp.com`,
+      projectId,
+    },
+    // Local development only: point the browser at the Firebase Auth emulator, e.g. http://localhost:9099.
+    authEmulator: process.env['FIREBASE_AUTH_EMULATOR_URL'] ?? '',
+  });
 });
 
 /**

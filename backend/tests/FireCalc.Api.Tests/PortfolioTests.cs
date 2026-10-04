@@ -10,7 +10,7 @@ namespace FireCalc.Api.Tests;
 
 public class PortfolioTests(ApiFactory factory) : IClassFixture<ApiFactory>
 {
-    private HttpClient NewOwner() => factory.CreateClientFor(subject: Guid.NewGuid().ToString());
+    private HttpClient NewOwner() => factory.CreateClientForNewUser();
 
     // Header and row shapes copied from a real Nordnet export (Danish, UTF-16, tab-separated).
     private const string Header =

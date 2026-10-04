@@ -5,28 +5,32 @@ accounts, dated balance snapshots and a FIRE goal. The design is in the project 
 
 ## Sign-in and access
 
-The frontend signs in with Google Identity Services and sends the Google ID token as
-`Authorization: Bearer <token>`. The API validates it against Google's keys and the configured client id,
-then only lets in accounts listed in `Auth:AllowedEmails` with a verified email. With an empty list nobody
-gets in. Users are created on their first request, keyed by Google's `sub`.
+The frontend signs in with Firebase Authentication (Google, Facebook, or email and password) and sends the
+Firebase ID token as `Authorization: Bearer <token>`. The API validates it against Firebase's keys for
+`Auth:FirebaseProjectId` and requires a verified email. With `Auth:OpenSignUp` anyone with a verified email
+gets in; otherwise only `Auth:AllowedEmails` (empty means nobody). Firebase keeps one user per email, so
+every login of a person carries the same `sub`; users are created on their first request, keyed by it. A
+token with a new `sub` whose verified email matches an existing user takes that user over (how accounts
+from before Firebase carried over).
 
 | Setting | Env var on Cloud Run | Notes |
 |---|---|---|
 | `ConnectionStrings:Default` | `ConnectionStrings__Default` | Npgsql connection string |
-| `Auth:GoogleClientId` | `Auth__GoogleClientId` | OAuth client id from the GCP project |
-| `Auth:AllowedEmails` | `Auth__AllowedEmails__0` | One variable per allowed Google account |
+| `Auth:FirebaseProjectId` | `Auth__FirebaseProjectId` | Firebase/GCP project id; tokens must be issued for it |
+| `Auth:OpenSignUp` | `Auth__OpenSignUp` | `true` lets anyone with a verified email in; default `false` |
+| `Auth:AllowedEmails` | `Auth__AllowedEmails__0` | One variable per allowed email, used while sign-up is closed |
 | `Auth:AdminEmails` | `Auth__AdminEmails__0` | Accounts that see the admin page (`/planner/admin`); everyone else gets 404 |
 | `Cors:AllowedOrigins` | `Cors__AllowedOrigins__0` | The frontend's origin |
-| `Auth:Authority` | `Auth__Authority` | Token issuer, default Google; override only to test against a local issuer |
+| `Auth:Authority` | `Auth__Authority` | Token issuer, default Firebase's for the project; override only to test against a local issuer |
 | `Database:MigrateOnStartup` | `Database__MigrateOnStartup` | Default `true`; applies EF migrations on boot |
 
 ## Endpoints
 
-All under `/api` and require an allowed Google account. `GET /healthz` is public.
+All under `/api` and require a signed-in user with a verified email (and an allow-listed one while sign-up is closed). `GET /healthz` is public.
 
 | Method | Path | |
 |---|---|---|
-| GET | `/me` | Signed-in user |
+| GET, DELETE | `/me` | Signed-in user. DELETE removes the user and all their data |
 | GET, POST | `/accounts` | `?includeArchived=true` to include archived. POST `{ name, type, partOfHome? }`; `partOfHome` marks a `loan` taken for the home |
 | PUT, DELETE | `/accounts/{id}` | Delete only works while the account has no balances; archive otherwise |
 | GET, PUT | `/accounts/{id}/balances` | Balances entered by hand for accounts without transactions. PUT `{ date, balance, loan? }` adds or replaces that date's balance. For a `property` account `balance` is the home's value and `loan` what is owed on it; for a `loan` account `balance` is what is owed |

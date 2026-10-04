@@ -3,6 +3,7 @@ using System;
 using FireCalc.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FireCalc.Api.Data.Migrations
 {
     [DbContext(typeof(FireCalcDbContext))]
-    partial class FireCalcDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261004163751_FirebaseAuthSubject")]
+    partial class FirebaseAuthSubject
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -490,19 +493,12 @@ namespace FireCalc.Api.Data.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)");
 
-                    b.Property<DateTimeOffset?>("LastSeenAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("Name")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
                     b.Property<DateTimeOffset?>("OnboardedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("SignInProvider")
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
 
                     b.HasKey("Id");
 

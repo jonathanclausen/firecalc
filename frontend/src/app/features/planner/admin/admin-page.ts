@@ -15,6 +15,8 @@ export interface AdminUser {
   id: string;
   email: string;
   name: string | null;
+  /** Firebase's provider id from the latest sign-in: google.com, facebook.com or password. */
+  signInProvider: string | null;
   createdAt: string;
   lastSeenAt: string | null;
   onboarded: boolean;

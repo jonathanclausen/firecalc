@@ -16,6 +16,13 @@ namespace FireCalc.Api.Data.Migrations
                 table: "Users",
                 type: "timestamp with time zone",
                 nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "SignInProvider",
+                table: "Users",
+                type: "character varying(40)",
+                maxLength: 40,
+                nullable: true);
         }
 
         /// <inheritdoc />
@@ -23,6 +30,10 @@ namespace FireCalc.Api.Data.Migrations
         {
             migrationBuilder.DropColumn(
                 name: "LastSeenAt",
+                table: "Users");
+
+            migrationBuilder.DropColumn(
+                name: "SignInProvider",
                 table: "Users");
         }
     }

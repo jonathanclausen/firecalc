@@ -20,7 +20,7 @@ public static class AdminEndpoints
     }
 
     public record AdminUserDto(
-        Guid Id, string Email, string? Name, DateTimeOffset CreatedAt, DateTimeOffset? LastSeenAt,
+        Guid Id, string Email, string? Name, string? SignInProvider, DateTimeOffset CreatedAt, DateTimeOffset? LastSeenAt,
         bool Onboarded, bool HasDemo, Steps Steps, int StepsDone,
         int Accounts, int Homes, int Transactions, int Balances, int Scenarios);
 
@@ -50,7 +50,7 @@ public static class AdminEndpoints
         {
             var users = await db.Users.AsNoTracking()
                 .OrderByDescending(u => u.CreatedAt)
-                .Select(u => new { u.Id, u.Email, u.Name, u.CreatedAt, u.LastSeenAt, u.OnboardedAt, u.BirthDate })
+                .Select(u => new { u.Id, u.Email, u.Name, u.SignInProvider, u.CreatedAt, u.LastSeenAt, u.OnboardedAt, u.BirthDate })
                 .ToListAsync(ct);
 
             // Example data never counts as the user's own.
@@ -94,7 +94,7 @@ public static class AdminEndpoints
                     Profile: u.BirthDate is not null,
                     Scenario: scenarioCount > 0);
                 return new AdminUserDto(
-                    u.Id, u.Email, u.Name, u.CreatedAt, u.LastSeenAt, u.OnboardedAt is not null, demo.Contains(u.Id),
+                    u.Id, u.Email, u.Name, u.SignInProvider, u.CreatedAt, u.LastSeenAt, u.OnboardedAt is not null, demo.Contains(u.Id),
                     steps, steps.CountDone(), accountCount, homeCount, transactionCount, balances.GetValueOrDefault(u.Id), scenarioCount);
             }).ToArray();
 

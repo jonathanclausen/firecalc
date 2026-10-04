@@ -1,0 +1,50 @@
+@let t = i18n.t().planner;
+@let a = t.accountPage;
+<section class="intro">
+  <div>
+    <p class="eyebrow">{{ t.eyebrow }}</p>
+    <h1>{{ a.title }}</h1>
+    <p class="lede">{{ a.lede }}</p>
+  </div>
+</section>
+
+@if (error(); as key) {
+  <p class="alert" role="alert">{{ t.signIn.errors[key] }}</p>
+}
+
+<section class="card account-section">
+  <h2>{{ a.logins }}</h2>
+  <p class="muted">{{ a.loginsHint }}</p>
+  <ul class="logins">
+    @for (id of all; track id) {
+      @let linked = auth.providers().includes(id);
+      @if (linked || id !== 'password') {
+        <li>
+          <span>
+            <strong>{{ a.providers[id] }}</strong>
+            @if (id === 'password' || linked) {
+              <small>{{ auth.user()?.email }}</small>
+            }
+          </span>
+          @if (linked) {
+            <span class="badge">{{ a.linked }}</span>
+          } @else if (id !== 'password') {
+            <button type="button" class="btn btn--secondary" [disabled]="busy()" (click)="link(id)">
+              {{ a.link }}
+            </button>
+          }
+        </li>
+      }
+    }
+  </ul>
+</section>
+
+<section class="card account-section account-section--danger">
+  <h2>{{ a.deleteTitle }}</h2>
+  <p class="muted">{{ a.deleteText }}</p>
+  <div>
+    <button type="button" class="btn btn--danger" [disabled]="busy()" (click)="remove()">
+      {{ a.deleteButton }}
+    </button>
+  </div>
+</section>

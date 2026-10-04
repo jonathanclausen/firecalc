@@ -7,7 +7,7 @@ namespace FireCalc.Api.Tests;
 public class PlannerTests(ApiFactory factory) : IClassFixture<ApiFactory>
 {
     // Each test signs in as its own Google account so tests don't see each other's data.
-    private HttpClient NewOwner() => factory.CreateClientFor(subject: Guid.NewGuid().ToString());
+    private HttpClient NewOwner() => factory.CreateClientForNewUser();
 
     private static async Task<string> CreateAccount(HttpClient client, string name, string type)
     {

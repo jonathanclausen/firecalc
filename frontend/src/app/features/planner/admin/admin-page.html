@@ -142,6 +142,9 @@
                     <strong>{{ u.name }}</strong>
                   }
                   <span>{{ u.email }}</span>
+                  @if (u.signInProvider) {
+                    <small>{{ a.providers[u.signInProvider] ?? u.signInProvider }}</small>
+                  }
                 </div>
               </td>
               <td [attr.data-label]="a.columns.created">{{ date(u.createdAt) }}</td>

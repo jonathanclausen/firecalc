@@ -31,7 +31,7 @@ builder.Services.AddScoped<PortfolioValuation>();
 builder.Services.AddScoped<PortfolioHistory>();
 
 builder.Services.AddProblemDetails();
-builder.Services.AddGoogleAuth(builder.Configuration);
+builder.Services.AddFirebaseAuth(builder.Configuration);
 builder.Services.AddSingleton<AdminAccess>();
 builder.Services.AddSingleton<LastSeenThrottle>();
 

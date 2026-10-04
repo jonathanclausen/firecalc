@@ -17,7 +17,7 @@ public enum AccountType
 public class User
 {
     public Guid Id { get; set; } = Guid.CreateVersion7();
-    public required string GoogleSubject { get; set; }
+    public required string AuthSubject { get; set; }
     public required string Email { get; set; }
     public string? Name { get; set; }
     public string Currency { get; set; } = "DKK";
@@ -30,6 +30,8 @@ public class User
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     /// <summary>When the user last used the app, to within an hour. Shown on the admin page.</summary>
     public DateTimeOffset? LastSeenAt { get; set; }
+    /// <summary>How the user last signed in (Firebase's provider id: google.com, facebook.com, password).</summary>
+    public string? SignInProvider { get; set; }
 }
 
 public class Account

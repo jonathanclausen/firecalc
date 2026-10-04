@@ -26,15 +26,26 @@ public class AdminTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task The_overview_shows_how_each_user_last_signed_in()
+    {
+        var member = factory.CreateClientFor(email: ApiFactory.MemberEmail, subject: "member-facebook", signInProvider: "facebook.com");
+        await member.GetAsync("/api/me");
+
+        var overview = await Admin().GetFromJsonAsync<JsonElement>("/api/admin/overview");
+        var row = overview.GetProperty("users").EnumerateArray().Single(u => u.GetProperty("email").GetString() == ApiFactory.MemberEmail);
+        Assert.Equal("facebook.com", row.GetProperty("signInProvider").GetString());
+    }
+
+    [Fact]
     public async Task The_overview_shows_progress_and_counts_but_no_amounts()
     {
-        var saver = factory.CreateClientFor(email: ApiFactory.MemberEmail, subject: "saver");
+        var saver = factory.CreateClientForNewUser();
         var created = await saver.PostAsJsonAsync("/api/accounts", new { name = "Opsparing", type = "savings" });
         var accountId = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
         await saver.PutAsJsonAsync($"/api/accounts/{accountId}/balances", new { date = "2026-09-30", balance = 123_456.78m });
         await saver.PutAsJsonAsync("/api/goal", new { targetAmount = 7_654_321m });
 
-        var tourist = factory.CreateClientFor(email: ApiFactory.MemberEmail, subject: "tourist");
+        var tourist = factory.CreateClientForNewUser();
         await tourist.PostAsync("/api/demo", null);
 
         var res = await Admin().GetAsync("/api/admin/overview");

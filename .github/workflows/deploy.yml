@@ -18,8 +18,11 @@ on:
 env:
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
-  # Public OAuth client id: it identifies the app, it does not grant access.
-  GOOGLE_CLIENT_ID: 42634988358-smce93h2vqaiho07k1brjftaa704n33q.apps.googleusercontent.com
+  # Firebase's web API key is public: it identifies the project, it does not grant access.
+  FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+  # Anyone with a verified email may sign up unless the repository variable OPEN_SIGNUP is "false";
+  # then only the ALLOWED_EMAILS secret gets in.
+  OPEN_SIGNUP: ${{ vars.OPEN_SIGNUP || 'true' }}
   # "" for production, "-preview" for the preview environment.
   SUFFIX: ${{ (github.ref != 'refs/heads/main' || github.event_name == 'pull_request') && '-preview' || '' }}
 
@@ -87,7 +90,7 @@ jobs:
           ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS || secrets.ALLOWED_EMAILS }}
         run: |
           # One Auth__AllowedEmails__<n> variable per comma-separated address.
-          vars="Auth__GoogleClientId=$GOOGLE_CLIENT_ID"
+          vars="Auth__FirebaseProjectId=$PROJECT_ID;Auth__OpenSignUp=$OPEN_SIGNUP"
           i=0
           for email in ${ALLOWED_EMAILS//,/ }; do
             vars="$vars;Auth__AllowedEmails__$i=$email"
@@ -117,7 +120,7 @@ jobs:
             --region="$REGION" \
             --service-account="firecalc-web@$PROJECT_ID.iam.gserviceaccount.com" \
             --allow-unauthenticated \
-            --set-env-vars="^;^API_URL=$API_URL;API_AUDIENCE=$API_URL;GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID;NG_ALLOWED_HOSTS=$WEB_HOST" \
+            --set-env-vars="^;^API_URL=$API_URL;API_AUDIENCE=$API_URL;FIREBASE_API_KEY=$FIREBASE_API_KEY;FIREBASE_PROJECT_ID=$PROJECT_ID;NG_ALLOWED_HOSTS=$WEB_HOST" \
             --min-instances=0 --max-instances=2 \
             --cpu=1 --memory=512Mi --cpu-boost \
             --quiet

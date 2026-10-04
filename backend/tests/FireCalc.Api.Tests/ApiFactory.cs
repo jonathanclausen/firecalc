@@ -15,20 +15,23 @@ using Microsoft.IdentityModel.Tokens;
 namespace FireCalc.Api.Tests;
 
 /// <summary>
-/// Runs the API against a throwaway Postgres database and swaps Google's signing keys for a local test key,
+/// Runs the API against a throwaway Postgres database and swaps Firebase's signing keys for a local test key,
 /// so tests can mint ID tokens that go through the real issuer, audience and allow-list checks.
 /// Set FIRECALC_TEST_POSTGRES to point at a server (defaults to postgres/postgres on localhost).
 /// </summary>
-public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
+public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    public const string ClientId = "test-client.apps.googleusercontent.com";
+    public const string ProjectId = "firecalc-test";
     public const string OwnerEmail = "owner@example.com";
     /// <summary>Allowed in like the owner, but not an admin.</summary>
     public const string MemberEmail = "member@example.com";
 
     private static readonly SymmetricSecurityKey SigningKey = new(Encoding.UTF8.GetBytes(new string('k', 64)));
 
+    private const int MaxNewUsers = 200;
+
     private readonly string _connectionString;
+    private int _newUsers;
 
     /// <summary>Stands in for Yahoo and Frankfurter so tests never call the internet.</summary>
     public FakeMarketData MarketData { get; } = new();
@@ -44,9 +47,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Default", _connectionString);
-        builder.UseSetting("Auth:GoogleClientId", ClientId);
+        builder.UseSetting("Auth:FirebaseProjectId", ProjectId);
         builder.UseSetting("Auth:AllowedEmails:0", OwnerEmail);
-        builder.UseSetting("Auth:AllowedEmails:1", MemberEmail);
+        for (var i = 1; i <= MaxNewUsers; i++)
+            builder.UseSetting($"Auth:AllowedEmails:{i}", $"owner{i}@example.com");
+        builder.UseSetting($"Auth:AllowedEmails:{MaxNewUsers + 1}", MemberEmail);
         builder.UseSetting("Auth:AdminEmails:0", OwnerEmail);
 
         builder.ConfigureTestServices(services =>
@@ -60,21 +65,39 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         });
     }
 
-    public HttpClient CreateClientFor(string email = OwnerEmail, string subject = "google-sub-1", bool emailVerified = true, string audience = ClientId)
+    public HttpClient CreateClientFor(string email = OwnerEmail, string subject = "google-sub-1", bool emailVerified = true, string audience = ProjectId, string issuer = "https://securetoken.google.com/" + ProjectId, string? signInProvider = null)
     {
         var token = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
-            Issuer = "https://accounts.google.com",
+            Issuer = issuer,
             Audience = audience,
             Expires = DateTime.UtcNow.AddHours(1),
             Subject = new ClaimsIdentity([new Claim("sub", subject), new Claim("name", "Test Owner")]),
-            Claims = new Dictionary<string, object> { ["email"] = email, ["email_verified"] = emailVerified },
+            Claims = signInProvider is null
+                ? new Dictionary<string, object> { ["email"] = email, ["email_verified"] = emailVerified }
+                : new Dictionary<string, object>
+                {
+                    ["email"] = email,
+                    ["email_verified"] = emailVerified,
+                    ["firebase"] = new Dictionary<string, object> { ["sign_in_provider"] = signInProvider },
+                },
             SigningCredentials = new SigningCredentials(SigningKey, SecurityAlgorithms.HmacSha256),
         });
 
         var client = CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;
+    }
+
+    /// <summary>
+    /// A client for a fresh allowed user. Each gets its own email, since logins sharing a verified email
+    /// are the same user.
+    /// </summary>
+    public HttpClient CreateClientForNewUser()
+    {
+        var n = Interlocked.Increment(ref _newUsers);
+        if (n > MaxNewUsers) throw new InvalidOperationException($"Raise {nameof(MaxNewUsers)}.");
+        return CreateClientFor(email: $"owner{n}@example.com", subject: Guid.NewGuid().ToString());
     }
 
     public Task InitializeAsync() => Task.CompletedTask;

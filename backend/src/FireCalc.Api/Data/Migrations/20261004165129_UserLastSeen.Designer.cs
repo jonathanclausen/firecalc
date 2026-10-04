@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FireCalc.Api.Data.Migrations
 {
     [DbContext(typeof(FireCalcDbContext))]
-    [Migration("20261004161345_UserLastSeen")]
+    [Migration("20261004165129_UserLastSeen")]
     partial class UserLastSeen
     {
         /// <inheritdoc />
@@ -469,6 +469,11 @@ namespace FireCalc.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AuthSubject")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<DateOnly?>("BirthDate")
                         .HasColumnType("date");
 
@@ -488,11 +493,6 @@ namespace FireCalc.Api.Data.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)");
 
-                    b.Property<string>("GoogleSubject")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
                     b.Property<DateTimeOffset?>("LastSeenAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -503,9 +503,13 @@ namespace FireCalc.Api.Data.Migrations
                     b.Property<DateTimeOffset?>("OnboardedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("SignInProvider")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("GoogleSubject")
+                    b.HasIndex("AuthSubject")
                         .IsUnique();
 
                     b.ToTable("Users");
