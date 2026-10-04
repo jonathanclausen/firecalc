@@ -1,4 +1,4 @@
-# FireCalc
+# MinFormue
 
 A personal FIRE (financial independence, retire early) planner. It has a public compound interest calculator and a signed-in "My finances" area where you track your accounts with dated snapshots and follow your progress toward a FIRE number. Scenarios come next.
 

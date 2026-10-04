@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 
-/** The FireCalc logo mark. */
+/** The MinFormue logo mark. */
 @Component({
   selector: 'app-brand-mark',
   template: `

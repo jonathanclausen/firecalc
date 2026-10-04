@@ -1,6 +1,6 @@
 {
-  "name": "FireCalc",
-  "short_name": "FireCalc",
+  "name": "MinFormue",
+  "short_name": "MinFormue",
   "description": "Din formue, portefølje og vej mod FIRE.",
   "lang": "da",
   "start_url": "/planner",

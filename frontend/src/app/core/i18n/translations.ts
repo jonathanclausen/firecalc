@@ -13,7 +13,7 @@ export const LANGUAGES: readonly { code: Lang; label: string; locale: string }[]
 export const DEFAULT_LANG: Lang = 'da';
 
 const da = {
-  pageTitle: 'Renters rente · FireCalc',
+  pageTitle: 'Renters rente · MinFormue',
   nav: {
     main: 'Hovedmenu',
     compoundInterest: 'Renters rente',
@@ -112,7 +112,7 @@ const da = {
 
   planner: {
     eyebrow: 'Min økonomi',
-    pageTitle: 'Min økonomi · FireCalc',
+    pageTitle: 'Min økonomi · MinFormue',
     tabs: 'Min økonomi',
     overview: 'Overblik',
     accounts: 'Konti',
@@ -144,7 +144,7 @@ const da = {
       text: 'Dine konti, saldi og dit mål gemmes på din egen konto. Log ind med Google for at fortsætte.',
       deniedTitle: 'Den konto har ikke adgang',
       deniedText:
-        'FireCalc er låst til bestemte Google-konti. Log ind med en konto, der har adgang.',
+        'MinFormue er låst til bestemte Google-konti. Log ind med en konto, der har adgang.',
       unconfiguredTitle: 'Google-login er ikke sat op',
       unconfiguredText:
         'Frontend-serveren mangler et Google OAuth client id. Sæt GOOGLE_CLIENT_ID og genstart den.',
@@ -175,7 +175,7 @@ const da = {
       skipStep: 'Spring over',
       saving: 'Gemmer …',
       welcome: {
-        title: 'Velkommen til FireCalc',
+        title: 'Velkommen til MinFormue',
         text: 'Få overblik over din formue, sæt et mål for økonomisk frihed og se, hvornår du kan nå det. Det tager et par minutter at komme i gang, og du kan springe alt over.',
         points: [
           {
@@ -794,7 +794,7 @@ const da = {
 export type Translations = typeof da;
 
 const en: Translations = {
-  pageTitle: 'Compound interest · FireCalc',
+  pageTitle: 'Compound interest · MinFormue',
   nav: {
     main: 'Main',
     compoundInterest: 'Compound interest',
@@ -891,7 +891,7 @@ const en: Translations = {
 
   planner: {
     eyebrow: 'My finances',
-    pageTitle: 'My finances · FireCalc',
+    pageTitle: 'My finances · MinFormue',
     tabs: 'My finances',
     overview: 'Overview',
     accounts: 'Accounts',
@@ -923,7 +923,7 @@ const en: Translations = {
       text: 'Your accounts, balances and goal are stored on your own account. Sign in with Google to continue.',
       deniedTitle: "That account doesn't have access",
       deniedText:
-        'FireCalc is locked to specific Google accounts. Sign in with one that has access.',
+        'MinFormue is locked to specific Google accounts. Sign in with one that has access.',
       unconfiguredTitle: 'Google sign-in is not set up',
       unconfiguredText:
         'The frontend server has no Google OAuth client id. Set GOOGLE_CLIENT_ID and restart it.',
@@ -954,7 +954,7 @@ const en: Translations = {
       skipStep: 'Skip',
       saving: 'Saving …',
       welcome: {
-        title: 'Welcome to FireCalc',
+        title: 'Welcome to MinFormue',
         text: 'See your net worth in one place, set a goal for financial independence and find out when you can reach it. Getting started takes a couple of minutes, and you can skip anything.',
         points: [
           {
