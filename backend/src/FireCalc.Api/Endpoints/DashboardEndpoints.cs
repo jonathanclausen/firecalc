@@ -19,6 +19,13 @@ public static class DashboardEndpoints
     /// </summary>
     public record AccountValue(Guid Id, string Name, AccountType Type, decimal Value, bool Tracked, DateOnly? BalanceDate, decimal? HomeValue = null, decimal? HomeLoan = null);
 
+    /// <summary>
+    /// How much was put aside per month lately, from up to the last 12 months: money put into the investment
+    /// accounts (deposits less withdrawals) and the growth of savings and cash balances. Each part is null
+    /// until it has a month of history.
+    /// </summary>
+    public record SavingPace(DateOnly Since, decimal? InvestedPerMonth, decimal? SavedPerMonth);
+
     public record DashboardDto(
         string Currency,
         SeriesPoint? Latest,
@@ -26,7 +33,8 @@ public static class DashboardEndpoints
         DateOnly? ChangeSince,
         List<SeriesPoint> Series,
         List<AccountValue> Accounts,
-        GoalProgress? Goal);
+        GoalProgress? Goal,
+        SavingPace? Pace = null);
 
     public static void MapDashboardEndpoints(this RouteGroupBuilder api)
     {
@@ -46,7 +54,8 @@ public static class DashboardEndpoints
                 .ToDictionary(g => g.Key, g => g.OrderBy(b => b.Date).ToList());
 
             // Accounts with transactions are valued from them: daily for the history, live for today.
-            var days = (await history.DailyAsync(user.Id, user.Currency, today, ct)).ToDictionary(d => d.Date, d => d.Value);
+            var daily = await history.DailyAsync(user.Id, user.Currency, today, ct);
+            var days = daily.ToDictionary(d => d.Date, d => d.Value);
             var live = (await valuation.ValueAsync(user.Id, user.Currency, today, refresh: false, ct)).ToDictionary(a => a.AccountId, a => a.Value);
             var manual = accounts.Where(a => !live.ContainsKey(a.Id)).ToList();
 
@@ -102,7 +111,37 @@ public static class DashboardEndpoints
                         a.Type == AccountType.Property ? balances.GetValueOrDefault(a.Id)?[^1].Loan ?? 0 : null))
                 .ToList();
 
-            return new DashboardDto(user.Currency, latest, change, since, series, values, Progress(goal, latest));
+            return new DashboardDto(user.Currency, latest, change, since, series, values, Progress(goal, latest), Pace());
+
+            // Per month over the last year, or over the shorter time there is data for.
+            SavingPace Pace()
+            {
+                var yearAgo = today.AddYears(-1);
+                static decimal? PerMonth(decimal change, DateOnly from, DateOnly to)
+                {
+                    var months = (to.DayNumber - from.DayNumber) / (365.2425m / 12);
+                    return months >= 1 ? Math.Round(change / months, 2) : null;
+                }
+
+                decimal? invested = null;
+                if (daily.Count > 0)
+                {
+                    var start = daily.LastOrDefault(d => d.Date <= yearAgo) ?? daily[0];
+                    invested = PerMonth(daily[^1].PutIn - start.PutIn, start.Date, today);
+                }
+
+                // Each savings account from its balance a year ago, or from its first balance if it is newer,
+                // so an account entered recently doesn't count its whole balance as saved.
+                decimal? saved = null;
+                foreach (var a in manual.Where(a => a.Type is AccountType.Savings or AccountType.Cash && !a.Archived))
+                {
+                    if (!balances.TryGetValue(a.Id, out var list)) continue;
+                    var start = list.LastOrDefault(b => b.Date <= yearAgo) ?? list[0];
+                    if (PerMonth(list[^1].Balance - start.Balance, start.Date, today) is { } perMonth)
+                        saved = (saved ?? 0) + perMonth;
+                }
+                return new SavingPace(yearAgo, invested, saved);
+            }
         });
     }
 

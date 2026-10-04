@@ -92,6 +92,11 @@ export interface Dashboard {
   series: SeriesPoint[];
   accounts: AccountValue[];
   goal: { goal: Goal; current: number; remaining: number; progressPct: number } | null;
+  /**
+   * Put aside per month over the last year (or the shorter time there is data for): money put into
+   * investment accounts, and growth of savings and cash. Null parts have under a month of history.
+   */
+  pace?: { since: string; investedPerMonth: number | null; savedPerMonth: number | null } | null;
 }
 
 export type TransactionType =

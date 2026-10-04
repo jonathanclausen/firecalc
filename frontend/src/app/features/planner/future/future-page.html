@@ -6,6 +6,36 @@
     <h1>{{ f.title }}</h1>
     <p class="lede">{{ f.lede }}</p>
   </div>
+</section>
+
+@if (hasHome()) {
+  <div class="controls">
+    <label class="switch">
+      <input
+        type="checkbox"
+        role="switch"
+        [checked]="includeHome()"
+        (change)="setIncludeHome($any($event.target).checked)"
+      />
+      <span class="switch__track" aria-hidden="true"></span>
+      {{ f.includeHome }}
+    </label>
+  </div>
+}
+
+@if (dashboard.error()) {
+  <p class="alert" role="alert">{{ t.error }}</p>
+} @else if (course(); as dash) {
+  <app-current-course [dashboard]="dash" />
+} @else if (!view()) {
+  <p class="muted">{{ t.loading }}</p>
+}
+
+<section class="intro scenarios-intro">
+  <div>
+    <h2>{{ f.scenariosTitle }}</h2>
+    <p class="lede">{{ f.scenariosLede }}</p>
+  </div>
   <div class="intro__actions">
     @if (birthDate() && !editingBirth()) {
       <span class="born">
@@ -63,18 +93,6 @@
   } @else {
     @let cur = currency();
     <div class="controls">
-      @if (hasHome()) {
-        <label class="switch">
-          <input
-            type="checkbox"
-            role="switch"
-            [checked]="includeHome()"
-            (change)="setIncludeHome($any($event.target).checked)"
-          />
-          <span class="switch__track" aria-hidden="true"></span>
-          {{ f.includeHome }}
-        </label>
-      }
       <label class="switch">
         <input
           type="checkbox"

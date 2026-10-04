@@ -16,7 +16,10 @@ export interface ScenarioEvent {
 }
 
 export interface ScenarioAssumptions {
+  /** Added to investments each month until FIRE. */
   monthlySavings: number;
+  /** Added to savings and cash each month until FIRE (negative takes from them). */
+  monthlyToSavings?: number;
   investmentReturnPct: number;
   /** Return on savings and cash accounts. */
   savingsReturnPct: number;
@@ -157,6 +160,7 @@ export function project(
       withdrawing = 0;
       const change = savingsChanges.filter((e) => e.age < age).pop();
       flow = change ? (change.amount ?? 0) : s.monthlySavings;
+      savings = Math.max(0, savings + (s.monthlyToSavings ?? 0));
     }
     for (const e of s.events)
       if (e.kind === 'lumpSum' && e.age > prevAge && e.age <= age) flow += e.amount ?? 0;

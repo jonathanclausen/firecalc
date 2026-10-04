@@ -16,6 +16,7 @@ import { readStorage, writeStorage } from '../../../core/storage';
 import { MoneyPipe } from '../../../shared/money.pipe';
 import { INCLUDE_HOME_KEY } from '../dashboard/dashboard-page';
 import { LineChart, LineSeries } from '../portfolio/history/line-chart';
+import { CurrentCourse } from './current-course';
 import { SCENARIO_KEYS, startingPoint, yearly } from './future-data';
 
 const TODAYS_MONEY_KEY = 'firecalc.todaysMoney';
@@ -38,7 +39,7 @@ interface Row {
 /** Saved scenarios projected from today's net worth, side by side. */
 @Component({
   selector: 'app-future-page',
-  imports: [RouterLink, MoneyPipe, LineChart],
+  imports: [RouterLink, MoneyPipe, LineChart, CurrentCourse],
   templateUrl: './future-page.html',
   styleUrl: './future-page.scss',
 })
@@ -51,14 +52,16 @@ export class FuturePage {
   protected readonly includeHome = signal(readStorage(INCLUDE_HOME_KEY) !== 'false');
   protected readonly todaysMoney = signal(readStorage(TODAYS_MONEY_KEY) === 'true');
 
-  private readonly dashboard = httpResource<Dashboard>(() =>
+  protected readonly dashboard = httpResource<Dashboard>(() =>
     this.includeHome() ? '/api/dashboard' : '/api/dashboard?includeHome=false',
   );
   /** Keeps the previous dashboard on screen while the switch reloads it. */
-  private readonly view = linkedSignal<Dashboard | undefined, Dashboard | undefined>({
+  protected readonly view = linkedSignal<Dashboard | undefined, Dashboard | undefined>({
     source: () => this.dashboard.value(),
     computation: (value, previous) => value ?? previous?.value,
   });
+  /** The "keep going as now" projection needs something to start from. */
+  protected readonly course = computed(() => (this.view()?.latest ? this.view()! : null));
   protected readonly scenarios = httpResource<Scenario[]>(() => '/api/scenarios');
   private readonly accounts = httpResource<Account[]>(() => '/api/accounts');
 

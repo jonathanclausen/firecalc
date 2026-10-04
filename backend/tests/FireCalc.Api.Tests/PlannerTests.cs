@@ -216,4 +216,26 @@ public class PlannerTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var res = await NewOwner().PutAsJsonAsync("/api/goal", new { targetAmount = 0m });
         Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
     }
+
+    [Fact]
+    public async Task Dashboard_reports_how_much_was_put_aside_per_month_over_the_last_year()
+    {
+        var client = NewOwner();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var savings = await CreateAccount(client, "Opsparing", "savings");
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddYears(-2), balance = 10000m });
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddYears(-1), balance = 100000m });
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today, balance = 160000m });
+        // Entered for the first time a month ago: only its growth since then counts.
+        var cash = await CreateAccount(client, "Konto", "cash");
+        await client.PutAsJsonAsync($"/api/accounts/{cash}/balances", new { date = today.AddDays(-61), balance = 50000m });
+        await client.PutAsJsonAsync($"/api/accounts/{cash}/balances", new { date = today, balance = 52000m });
+        var depot = await CreateAccount(client, "Depot", "investment");
+        await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = today.AddMonths(-13), type = "deposit", amount = 50000m });
+        await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = today.AddMonths(-6), type = "deposit", amount = 60000m });
+
+        var pace = (await client.GetFromJsonAsync<JsonElement>("/api/dashboard")).GetProperty("pace");
+        Assert.InRange(pace.GetProperty("investedPerMonth").GetDecimal(), 4990m, 5010m);
+        Assert.InRange(pace.GetProperty("savedPerMonth").GetDecimal(), 5000m + 990m, 5000m + 1010m);
+    }
 }

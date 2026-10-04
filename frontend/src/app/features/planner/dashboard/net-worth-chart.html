@@ -64,6 +64,26 @@
         <path class="net" [attr.d]="d.net" />
       }
 
+      @if (futureX(); as fx) {
+        <rect
+          class="future"
+          [attr.x]="fx"
+          [attr.y]="pad.top"
+          [attr.width]="width() - pad.right - fx"
+          [attr.height]="height - pad.top - pad.bottom"
+        />
+        <line
+          class="today"
+          [attr.x1]="fx"
+          [attr.x2]="fx"
+          [attr.y1]="pad.top"
+          [attr.y2]="height - pad.bottom"
+        />
+        <text class="today-label" [attr.x]="fx + 6" [attr.y]="pad.top + 12">
+          {{ t.futurePage.expected }}
+        </text>
+      }
+
       <!-- Markers on the total while there are few points, so a single point shows too. -->
       @if (series().length <= 24) {
         @for (p of series(); track p.date; let i = $index) {
@@ -96,7 +116,12 @@
         [style.top.px]="pad.top"
         role="status"
       >
-        <div class="tooltip__title">{{ i18n.date(h.point.date) }}</div>
+        <div class="tooltip__title">
+          {{ i18n.date(h.point.date) }}
+          @if (isFuture(h.point.date)) {
+            <span class="tooltip__note">{{ t.futurePage.expected }}</span>
+          }
+        </div>
         <div class="tooltip__row tooltip__row--total">
           <span>{{ t.dashboard.total }}</span
           ><strong>{{ h.point.total | money: false : currency() }}</strong>

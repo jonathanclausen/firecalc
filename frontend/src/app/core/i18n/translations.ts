@@ -412,7 +412,7 @@ const da = {
     },
     futurePage: {
       title: 'Fremtid',
-      lede: 'Gem scenarier og se, hvordan din formue kan udvikle sig. Alt regnes fra din formue i dag.',
+      lede: 'Se hvor du står om 1, 2, 5 og 10 år, hvis du fortsætter som nu, og gem FIRE-scenarier. Alt regnes fra din formue i dag.',
       birthTitle: 'Hvornår er du født?',
       birthText: 'Scenarier bygger på din alder, fx "1 år fri fra 33 år" og "FIRE som 50-årig".',
       birthDate: 'Fødselsdato',
@@ -446,6 +446,24 @@ const da = {
       copy: 'Kopiér',
       note: 'Efter FIRE hæves udtræksraten af investeringer og opsparing hvert år. Afkast er før skat. Lån og restgæld står stille, og boligen stiger med den valgte procent. Formuen er investeringer + opsparing + friværdi − lån.',
       noBirth: 'Angiv din fødselsdato for at se scenarierne.',
+      expected: 'Forventet',
+      scenariosTitle: 'FIRE-scenarier',
+      scenariosLede:
+        'Gem planer med FIRE-alder, udtræksrate og begivenheder som orlov, og sammenlign dem frem til 90 år.',
+      course: {
+        title: 'Hvis du fortsætter som nu',
+        basis: (invested: string, saved: string) =>
+          `Det seneste år har du sat ${invested} om måneden ind på dine investeringer og ${saved} om måneden på din opsparing. Det fortsætter vi med.`,
+        basisNone:
+          'Der er endnu ikke et års historik at regne opsparingen ud fra, så kun afkast og renter tæller med.',
+        inYears: (years: number) => (years === 1 ? 'Om 1 år' : `Om ${years} år`),
+        fromToday: (change: string) => `${change} fra i dag`,
+        investmentReturn: 'Afkast på investeringer (%)',
+        savingsReturn: 'Rente på opsparing (%)',
+        homeGrowth: 'Boligens værdistigning (%)',
+        chartTitle: 'Formue de næste 10 år',
+        note: 'Afkast er før skat. Lån og restgæld står stille. Beløbene er i kroner på det tidspunkt.',
+      },
     },
 
     scenarioPage: {
@@ -916,7 +934,7 @@ const en: Translations = {
     },
     futurePage: {
       title: 'Future',
-      lede: 'Save scenarios and see how your net worth could develop. Everything starts from your net worth today.',
+      lede: 'See where you will be in 1, 2, 5 and 10 years if you keep going as now, and save FIRE scenarios. Everything starts from your net worth today.',
       birthTitle: 'When were you born?',
       birthText: 'Scenarios are based on your age, e.g. "1 year off from 33" and "FIRE at 50".',
       birthDate: 'Date of birth',
@@ -950,6 +968,24 @@ const en: Translations = {
       copy: 'Copy',
       note: 'After FIRE the withdrawal rate is taken from investments and savings each year. Returns are before tax. Loans stay as they are, and the home grows at the chosen rate. Net worth is investments + savings + home equity − loans.',
       noBirth: 'Enter your date of birth to see the scenarios.',
+      expected: 'Projected',
+      scenariosTitle: 'FIRE scenarios',
+      scenariosLede:
+        'Save plans with a FIRE age, withdrawal rate and events like time off, and compare them until 90.',
+      course: {
+        title: 'If you keep going as now',
+        basis: (invested: string, saved: string) =>
+          `Over the last year you put ${invested} a month into your investments and ${saved} a month into savings. The projection keeps that up.`,
+        basisNone:
+          "There isn't a year of history yet to work out your savings from, so only returns and interest count.",
+        inYears: (years: number) => (years === 1 ? 'In 1 year' : `In ${years} years`),
+        fromToday: (change: string) => `${change} from today`,
+        investmentReturn: 'Return on investments (%)',
+        savingsReturn: 'Interest on savings (%)',
+        homeGrowth: 'Home price growth (%)',
+        chartTitle: 'Net worth over the next 10 years',
+        note: 'Returns are before tax. Loans stay as they are. Amounts are in kroner of the time.',
+      },
     },
 
     scenarioPage: {

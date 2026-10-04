@@ -127,4 +127,11 @@ describe('projection', () => {
     expect(ageReaching(points, 1_500_000)).toBeCloseTo(30 + 10 / 12, 5);
     expect(ageReaching(points, 1e12)).toBeNull();
   });
+
+  it('can also add to savings each month', () => {
+    const s = { ...flat, monthlyToSavings: 2_000 };
+    const { points } = project(start, s, BIRTH, TODAY, 32);
+    expect(points[12].savings).toBe(100_000 + 12 * 2_000);
+    expect(points[12].investments).toBe(500_000 + 12 * 10_000);
+  });
 });
