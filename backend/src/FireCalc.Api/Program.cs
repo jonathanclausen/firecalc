@@ -31,7 +31,7 @@ builder.Services.AddScoped<PortfolioValuation>();
 builder.Services.AddScoped<PortfolioHistory>();
 
 builder.Services.AddProblemDetails();
-builder.Services.AddGoogleAuth(builder.Configuration);
+builder.Services.AddFirebaseAuth(builder.Configuration);
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p

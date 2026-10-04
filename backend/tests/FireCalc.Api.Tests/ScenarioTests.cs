@@ -6,7 +6,7 @@ namespace FireCalc.Api.Tests;
 
 public class ScenarioTests(ApiFactory factory) : IClassFixture<ApiFactory>
 {
-    private HttpClient NewOwner() => factory.CreateClientFor(subject: Guid.NewGuid().ToString());
+    private HttpClient NewOwner() => factory.CreateClientForNewUser();
 
     private static object Scenario(string name, params object[] events) => new
     {

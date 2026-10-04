@@ -3,8 +3,9 @@
 #   docker compose up --build      then open http://localhost:4000 (API on http://localhost:5080)
 #   docker compose down            stop (add -v to also wipe the database)
 #
-# Sign-in uses the project's Google OAuth client (its id is public). Only allow-listed Google
-# accounts get in: put yours in backend/.env.local (git-ignored):
+# Sign-in uses Firebase Authentication in the firecalc-510316 project: set FIREBASE_API_KEY
+# (public) in your shell first. Sign-up is closed locally, so put your email in backend/.env.local
+# (git-ignored):
 #   Auth__AllowedEmails__0=you@gmail.com
 services:
   db:
@@ -29,7 +30,7 @@ services:
         required: false
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      Auth__GoogleClientId: &google-client-id 42634988358-smce93h2vqaiho07k1brjftaa704n33q.apps.googleusercontent.com
+      Auth__FirebaseProjectId: &firebase-project firecalc-510316
       ConnectionStrings__Default: Host=db;Port=5432;Database=firecalc;Username=postgres;Password=postgres
       Cors__AllowedOrigins__0: http://localhost:4000
       Cors__AllowedOrigins__1: http://localhost:4200
@@ -43,7 +44,9 @@ services:
     build: ./frontend
     environment:
       API_URL: http://api:8080
-      GOOGLE_CLIENT_ID: *google-client-id
+      FIREBASE_PROJECT_ID: *firebase-project
+      # The web API key from Identity Platform's "Application setup details"; put it in your shell or .env.
+      FIREBASE_API_KEY: ${FIREBASE_API_KEY:-}
     ports:
       - "4000:4000"
     depends_on:

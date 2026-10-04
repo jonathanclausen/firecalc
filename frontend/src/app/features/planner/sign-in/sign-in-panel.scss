@@ -1,0 +1,111 @@
+:host {
+  display: contents;
+}
+
+// Same look as the shell's gate card, which can't style into this component.
+h1 {
+  margin: 8px 0 0;
+  font-size: 1.375rem;
+  letter-spacing: -0.01em;
+}
+
+h1 + p {
+  margin: 0 0 4px;
+  color: var(--text-secondary);
+}
+
+.sign-in {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: 12px;
+  text-align: left;
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.provider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--surface-hover);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid var(--border);
+  }
+}
+
+.forgot {
+  align-self: flex-end;
+  margin-top: -4px;
+  font-size: 0.8125rem;
+}
+
+.switch {
+  margin: 6px 0 0;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.notice {
+  width: 100%;
+  margin: 8px 0 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: var(--accent-soft);
+  font-size: 0.875rem;
+  text-align: left;
+}
+
+.alert {
+  width: 100%;
+  margin: 8px 0 0;
+  text-align: left;
+}

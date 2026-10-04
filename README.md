@@ -17,7 +17,7 @@ Production runs on Google Cloud Run with a Neon Postgres database, deployed from
 docker compose up --build    # http://localhost:4000 (API on http://localhost:5080)
 ```
 
-Sign-in uses Google. Only allow-listed Google accounts get in: put yours in `backend/.env.local` (git-ignored) as `Auth__AllowedEmails__0=you@gmail.com`.
+Sign-in uses Firebase Authentication (Google, Facebook, or email and password). Set `FIREBASE_API_KEY` in your shell first. Locally sign-up is closed, so put your email in `backend/.env.local` (git-ignored) as `Auth__AllowedEmails__0=you@gmail.com`.
 
 ## Frontend
 
@@ -26,7 +26,7 @@ Requires Node 24 (see `.nvmrc`).
 ```bash
 cd frontend
 npm install
-GOOGLE_CLIENT_ID=<client id> npm start   # http://localhost:4200, API expected on :5080
+FIREBASE_API_KEY=<key> FIREBASE_PROJECT_ID=firecalc-510316 npm start   # http://localhost:4200, API on :5080
 npm test           # unit tests (Vitest)
 npm run build
 npm run serve:ssr  # serve the production build with server-side rendering on :4000
@@ -40,7 +40,7 @@ The app uses Angular SSR (`@angular/ssr` with an Express server in `src/server.t
 
 ### My finances
 
-The `/planner` pages render in the browser only, because they depend on the Google sign-in kept there. The browser signs in with Google Identity Services and sends the Google ID token to `/api`. The Node server forwards `/api` to the .NET API (`API_URL`, default `http://localhost:5080`), so the browser needs no CORS and the API address stays a server setting. It also serves `/app-config.json` with the Google client id from `GOOGLE_CLIENT_ID`. Balances are shown in the user's own currency (DKK), whatever the header's currency selector says, because the planner doesn't convert currencies.
+The `/planner` pages render in the browser only, because they depend on the sign-in kept there. The browser signs in with Firebase Authentication (Google, Facebook, or email and password) and sends the Firebase ID token to `/api`. The Node server forwards `/api` to the .NET API (`API_URL`, default `http://localhost:5080`), so the browser needs no CORS and the API address stays a server setting. It also serves `/app-config.json` with Firebase's public web config from `FIREBASE_API_KEY` and `FIREBASE_PROJECT_ID` (`FIREBASE_AUTH_DOMAIN` defaults to `<project>.firebaseapp.com`). To try sign-in without a real project, run the Firebase Auth emulator (`npx firebase-tools emulators:start --only auth --project demo-firecalc`) and set `FIREBASE_AUTH_EMULATOR_URL=http://localhost:9099`; the API won't accept the emulator's unsigned tokens, so this only exercises the sign-in screens. Balances are shown in the user's own currency (DKK), whatever the header's currency selector says, because the planner doesn't convert currencies.
 
 ### Where things live
 

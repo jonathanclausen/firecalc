@@ -17,7 +17,7 @@ public enum AccountType
 public class User
 {
     public Guid Id { get; set; } = Guid.CreateVersion7();
-    public required string GoogleSubject { get; set; }
+    public required string AuthSubject { get; set; }
     public required string Email { get; set; }
     public string? Name { get; set; }
     public string Currency { get; set; } = "DKK";

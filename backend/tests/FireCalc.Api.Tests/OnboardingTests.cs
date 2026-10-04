@@ -6,7 +6,7 @@ namespace FireCalc.Api.Tests;
 
 public class OnboardingTests(ApiFactory factory) : IClassFixture<ApiFactory>
 {
-    private HttpClient NewOwner() => factory.CreateClientFor(subject: Guid.NewGuid().ToString());
+    private HttpClient NewOwner() => factory.CreateClientForNewUser();
 
     [Fact]
     public async Task A_new_user_starts_the_guide_and_can_finish_it_and_hide_the_checklist()

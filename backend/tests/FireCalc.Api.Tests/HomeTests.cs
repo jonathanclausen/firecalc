@@ -8,7 +8,7 @@ namespace FireCalc.Api.Tests;
 
 public class HomeTests(ApiFactory factory) : IClassFixture<ApiFactory>
 {
-    private HttpClient NewOwner() => factory.CreateClientFor(subject: Guid.NewGuid().ToString());
+    private HttpClient NewOwner() => factory.CreateClientForNewUser();
 
     [Fact]
     public void An_annuity_loan_pays_the_same_each_month_and_is_paid_off_at_the_end()

@@ -141,13 +141,75 @@ const da = {
 
     signIn: {
       title: 'Log ind for at se din økonomi',
-      text: 'Dine konti, saldi og dit mål gemmes på din egen konto. Log ind med Google for at fortsætte.',
-      deniedTitle: 'Den konto har ikke adgang',
+      text: 'Dine konti, saldi og dit mål gemmes på din egen konto.',
+      signUpTitle: 'Opret din konto',
+      signUpText: 'Gratis. Dine tal gemmes kun på din egen konto.',
+      resetTitle: 'Nulstil adgangskode',
+      resetText: 'Skriv din email, så sender vi et link, hvor du vælger en ny adgangskode.',
+      google: 'Fortsæt med Google',
+      facebook: 'Fortsæt med Facebook',
+      or: 'eller',
+      email: 'Email',
+      password: 'Adgangskode',
+      newPassword: 'Vælg en adgangskode (mindst 6 tegn)',
+      submitSignIn: 'Log ind',
+      submitSignUp: 'Opret konto',
+      submitReset: 'Send link',
+      forgot: 'Glemt adgangskode?',
+      noAccount: 'Ny her?',
+      toSignUp: 'Opret en konto',
+      haveAccount: 'Har du allerede en konto?',
+      toSignIn: 'Log ind',
+      back: 'Tilbage til log ind',
+      resetSent: (email: string) =>
+        `Hvis der findes en konto med ${email}, har vi sendt et link til at nulstille adgangskoden. Tjek også spam.`,
+      linkPending: (email: string, provider: string) =>
+        `Der findes allerede en konto med ${email}. Log ind på den måde, du plejer, så kobler vi ${provider} på, og du kan bruge begge fremover.`,
+      verifyTitle: 'Bekræft din email',
+      verifyText: (email: string) =>
+        `Vi har sendt et link til ${email}. Klik på det, og kom så tilbage hertil. Tjek også spam.`,
+      verifyDone: 'Jeg har bekræftet',
+      verifyResend: 'Send igen',
+      verifyResent: 'Sendt igen.',
+      verifyNotYet: 'Emailen er ikke bekræftet endnu. Klik på linket i mailen først.',
+      deniedTitle: 'FireCalc er ikke åben endnu',
       deniedText:
-        'FireCalc er låst til bestemte Google-konti. Log ind med en konto, der har adgang.',
-      unconfiguredTitle: 'Google-login er ikke sat op',
+        'Lige nu kan kun inviterede bruge FireCalc. Log ind med en konto, der har adgang.',
+      unconfiguredTitle: 'Login er ikke sat op',
       unconfiguredText:
-        'Frontend-serveren mangler et Google OAuth client id. Sæt GOOGLE_CLIENT_ID og genstart den.',
+        'Frontend-serveren mangler Firebase-opsætningen. Sæt FIREBASE_API_KEY og FIREBASE_PROJECT_ID og genstart den.',
+      errors: {
+        wrongPassword: 'Forkert email eller adgangskode.',
+        invalidEmail: 'Det ligner ikke en gyldig email.',
+        emailInUse:
+          'Der findes allerede en konto med den email. Log ind i stedet, eller nulstil adgangskoden.',
+        weakPassword: 'Adgangskoden er for svag. Brug mindst 6 tegn.',
+        tooMany: 'For mange forsøg. Vent lidt og prøv igen.',
+        popupBlocked: 'Browseren blokerede login-vinduet. Tillad pop op-vinduer og prøv igen.',
+        linkedElsewhere: 'Det login hører allerede til en anden FireCalc-konto.',
+        recentLogin: 'Log ud og ind igen, og prøv så igen.',
+        generic: 'Noget gik galt. Prøv igen.',
+      },
+    },
+
+    accountPage: {
+      title: 'Din konto',
+      lede: 'Hvordan du logger ind, og muligheden for at slette alt.',
+      logins: 'Login',
+      loginsHint: 'Alle de her logger ind på den samme konto.',
+      providers: {
+        'google.com': 'Google',
+        'facebook.com': 'Facebook',
+        password: 'Email og adgangskode',
+      } as Record<string, string>,
+      linked: 'Tilknyttet',
+      link: 'Tilknyt',
+      deleteTitle: 'Slet min konto',
+      deleteText:
+        'Sletter dine konti, saldi, handler og dit mål for altid. Det kan ikke fortrydes.',
+      deleteButton: 'Slet min konto',
+      confirmDelete: 'Vil du slette din konto og alle dine data? Det kan ikke fortrydes.',
+      confirmDeleteAgain: 'Er du helt sikker? Alt bliver slettet nu.',
     },
 
     help: {
@@ -920,13 +982,75 @@ const en: Translations = {
 
     signIn: {
       title: 'Sign in to see your finances',
-      text: 'Your accounts, balances and goal are stored on your own account. Sign in with Google to continue.',
-      deniedTitle: "That account doesn't have access",
+      text: 'Your accounts, balances and goal are stored on your own account.',
+      signUpTitle: 'Create your account',
+      signUpText: 'Free. Your numbers are stored on your own account only.',
+      resetTitle: 'Reset password',
+      resetText: "Enter your email and we'll send a link where you choose a new password.",
+      google: 'Continue with Google',
+      facebook: 'Continue with Facebook',
+      or: 'or',
+      email: 'Email',
+      password: 'Password',
+      newPassword: 'Choose a password (at least 6 characters)',
+      submitSignIn: 'Sign in',
+      submitSignUp: 'Create account',
+      submitReset: 'Send link',
+      forgot: 'Forgot password?',
+      noAccount: 'New here?',
+      toSignUp: 'Create an account',
+      haveAccount: 'Already have an account?',
+      toSignIn: 'Sign in',
+      back: 'Back to sign in',
+      resetSent: (email: string) =>
+        `If there is an account for ${email}, we've sent a link to reset the password. Check spam too.`,
+      linkPending: (email: string, provider: string) =>
+        `There's already an account for ${email}. Sign in the way you usually do and we'll add ${provider}, so you can use both from now on.`,
+      verifyTitle: 'Confirm your email',
+      verifyText: (email: string) =>
+        `We've sent a link to ${email}. Click it, then come back here. Check spam too.`,
+      verifyDone: "I've confirmed it",
+      verifyResend: 'Send again',
+      verifyResent: 'Sent again.',
+      verifyNotYet: "The email isn't confirmed yet. Click the link in the email first.",
+      deniedTitle: "FireCalc isn't open yet",
       deniedText:
-        'FireCalc is locked to specific Google accounts. Sign in with one that has access.',
-      unconfiguredTitle: 'Google sign-in is not set up',
+        'Only invited people can use FireCalc right now. Sign in with an account that has access.',
+      unconfiguredTitle: 'Sign-in is not set up',
       unconfiguredText:
-        'The frontend server has no Google OAuth client id. Set GOOGLE_CLIENT_ID and restart it.',
+        'The frontend server has no Firebase settings. Set FIREBASE_API_KEY and FIREBASE_PROJECT_ID and restart it.',
+      errors: {
+        wrongPassword: 'Wrong email or password.',
+        invalidEmail: "That doesn't look like a valid email.",
+        emailInUse:
+          'There is already an account with that email. Sign in instead, or reset the password.',
+        weakPassword: 'The password is too weak. Use at least 6 characters.',
+        tooMany: 'Too many attempts. Wait a moment and try again.',
+        popupBlocked: 'The browser blocked the sign-in window. Allow pop-ups and try again.',
+        linkedElsewhere: 'That login already belongs to another FireCalc account.',
+        recentLogin: 'Sign out and in again, then try once more.',
+        generic: 'Something went wrong. Please try again.',
+      },
+    },
+
+    accountPage: {
+      title: 'Your account',
+      lede: 'How you sign in, and the option to delete everything.',
+      logins: 'Sign-in',
+      loginsHint: 'All of these sign in to the same account.',
+      providers: {
+        'google.com': 'Google',
+        'facebook.com': 'Facebook',
+        password: 'Email and password',
+      } as Record<string, string>,
+      linked: 'Linked',
+      link: 'Link',
+      deleteTitle: 'Delete my account',
+      deleteText:
+        'Deletes your accounts, balances, trades and goal for good. This cannot be undone.',
+      deleteButton: 'Delete my account',
+      confirmDelete: 'Delete your account and all your data? This cannot be undone.',
+      confirmDeleteAgain: 'Are you completely sure? Everything is deleted now.',
     },
 
     help: {

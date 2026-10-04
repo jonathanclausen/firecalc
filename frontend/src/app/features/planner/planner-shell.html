@@ -76,13 +76,20 @@
         <div class="sidebar__footer">
           <app-lang-switch />
           <div class="user" [attr.aria-label]="t.account">
-            <span class="avatar" aria-hidden="true">{{ initial() }}</span>
-            <span class="user__text">
-              @if (auth.user()?.name; as name) {
-                <strong>{{ name }}</strong>
-              }
-              <span [title]="auth.user()?.email ?? ''">{{ auth.user()?.email }}</span>
-            </span>
+            <a
+              class="user__link"
+              routerLink="/planner/account"
+              routerLinkActive="active"
+              [title]="t.account"
+            >
+              <span class="avatar" aria-hidden="true">{{ initial() }}</span>
+              <span class="user__text">
+                @if (auth.user()?.name; as name) {
+                  <strong>{{ name }}</strong>
+                }
+                <span [title]="auth.user()?.email ?? ''">{{ auth.user()?.email }}</span>
+              </span>
+            </a>
             <button
               type="button"
               class="icon-button"
@@ -103,6 +110,14 @@
         </a>
         <div class="appbar__actions">
           <app-lang-switch />
+          <a
+            class="icon-button avatar-button"
+            routerLink="/planner/account"
+            [title]="t.account"
+            [attr.aria-label]="t.account"
+          >
+            <span class="avatar" aria-hidden="true">{{ initial() }}</span>
+          </a>
           <a
             class="icon-button"
             routerLink="/compound-interest"
@@ -171,18 +186,40 @@
         @case ('denied') {
           <h1>{{ t.signIn.deniedTitle }}</h1>
           <p>{{ t.signIn.deniedText }}</p>
+          <button type="button" class="btn btn--secondary" (click)="auth.signOut()">
+            {{ t.signOut }}
+          </button>
         }
         @case ('unconfigured') {
           <h1>{{ t.signIn.unconfiguredTitle }}</h1>
           <p>{{ t.signIn.unconfiguredText }}</p>
         }
-        @default {
-          <h1>{{ t.signIn.title }}</h1>
-          <p>{{ t.signIn.text }}</p>
+        @case ('verifyEmail') {
+          <h1>{{ t.signIn.verifyTitle }}</h1>
+          <p>{{ t.signIn.verifyText(auth.pendingEmail() ?? '') }}</p>
+          @if (verifyMessage(); as message) {
+            <p class="muted" role="status">{{ message }}</p>
+          }
+          <div class="gate__actions">
+            <button
+              type="button"
+              class="btn btn--primary"
+              [disabled]="busy()"
+              (click)="checkVerified()"
+            >
+              {{ t.signIn.verifyDone }}
+            </button>
+            <button type="button" class="btn btn--secondary" [disabled]="busy()" (click)="resend()">
+              {{ t.signIn.verifyResend }}
+            </button>
+          </div>
+          <button type="button" class="link-button" (click)="auth.signOut()">
+            {{ t.signOut }}
+          </button>
         }
-      }
-      @if (auth.state() !== 'unconfigured') {
-        <div class="gate__button" #googleButton></div>
+        @default {
+          <app-sign-in-panel />
+        }
       }
     </section>
   }
