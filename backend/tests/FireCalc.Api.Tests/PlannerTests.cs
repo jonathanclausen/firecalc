@@ -248,7 +248,7 @@ public class PlannerTests(ApiFactory factory) : IClassFixture<ApiFactory>
         await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = today.AddMonths(-13), type = "deposit", amount = 500000m });
         await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = today.AddMonths(-9), type = "deposit", amount = 60000m });
         // Sold for a house down payment.
-        await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = today.AddMonths(-3), type = "withdrawal", amount = 400000m });
+        await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = today.AddMonths(-3), type = "withdrawal", amount = -400000m });
         var savings = await CreateAccount(client, "Opsparing", "savings");
         await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddYears(-1), balance = 300000m });
         await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddMonths(-3), balance = 20000m });
@@ -257,5 +257,19 @@ public class PlannerTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var pace = (await client.GetFromJsonAsync<JsonElement>("/api/dashboard")).GetProperty("pace");
         Assert.InRange(pace.GetProperty("investedPerMonth").GetDecimal(), 4990m, 5010m);
         Assert.InRange(pace.GetProperty("savedPerMonth").GetDecimal(), 2990m, 3010m);
+
+        // The deposits behind it, newest first; the sale and the drop are listed but don't count.
+        var entries = pace.GetProperty("entries").EnumerateArray()
+            .Select(e => (Date: DateOnly.Parse(e.GetProperty("date").GetString()!), Kind: e.GetProperty("kind").GetString(),
+                Account: e.GetProperty("account").GetString(), Amount: e.GetProperty("amount").GetDecimal()))
+            .ToList();
+        Assert.Equal(
+            [
+                (today, "savings", "Opsparing", 36000m),
+                (today.AddMonths(-3), "investment", "Depot", -400000m),
+                (today.AddMonths(-3), "savings", "Opsparing", -280000m),
+                (today.AddMonths(-9), "investment", "Depot", 60000m),
+            ],
+            entries.OrderByDescending(e => e.Date).ThenBy(e => e.Kind));
     }
 }

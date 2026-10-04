@@ -21,10 +21,19 @@ public static class DashboardEndpoints
 
     /// <summary>
     /// How much was put aside per month lately, from up to the last 12 months: money put into the investment
-    /// accounts and the growth of savings and cash balances. Months where money went out (a sale or a drop
-    /// in balance) count as zero rather than negative. Each part is null until it has a month of history.
+    /// accounts and the growth of savings and cash balances. Only <see cref="Entries"/> with money going in
+    /// count, so a sale or a drop in balance counts as zero rather than negative. Each part is null until it
+    /// has a month of history.
     /// </summary>
-    public record SavingPace(DateOnly Since, decimal? InvestedPerMonth, decimal? SavedPerMonth);
+    public record SavingPace(DateOnly Since, decimal? InvestedPerMonth, decimal? SavedPerMonth, List<PaceEntry> Entries);
+
+    /// <summary>
+    /// Money in or out behind the pace: a day's net deposits into the investment accounts (shares moved in
+    /// count at their value), or the change from one entered savings balance to the next.
+    /// </summary>
+    public record PaceEntry(DateOnly Date, PaceKind Kind, string Account, decimal Amount);
+
+    public enum PaceKind { Investment, Savings }
 
     public record DashboardDto(
         string Currency,
@@ -111,30 +120,42 @@ public static class DashboardEndpoints
                         a.Type == AccountType.Property ? balances.GetValueOrDefault(a.Id)?[^1].Loan ?? 0 : null))
                 .ToList();
 
+            // Which accounts the money behind each day's change in net deposits went in or out of.
+            var paceFrom = today.AddYears(-1).AddDays(-1);
+            var moves = await db.Transactions.AsNoTracking()
+                .Where(x => x.Date >= paceFrom && (x.Type == TransactionType.Deposit || x.Type == TransactionType.Withdrawal
+                    || x.Type == TransactionType.SecurityIn || x.Type == TransactionType.SecurityOut))
+                .Join(db.Accounts.Where(a => a.UserId == user.Id), x => x.AccountId, a => a.Id, (x, a) => new { x.Date, a.Name })
+                .ToListAsync(ct);
+            var movedOn = moves.GroupBy(m => m.Date).ToDictionary(g => g.Key, g => string.Join(", ", g.Select(m => m.Name).Distinct()));
+
             return new DashboardDto(user.Currency, latest, change, since, series, values, Progress(goal, latest), Pace());
 
             // Per month over the last year, or over the shorter time there is data for.
             SavingPace Pace()
             {
                 var yearAgo = today.AddYears(-1);
+                var entries = new List<PaceEntry>();
                 static decimal? PerMonth(decimal change, DateOnly from, DateOnly to)
                 {
                     var months = (to.DayNumber - from.DayNumber) / (365.2425m / 12);
                     return months >= 1 ? Math.Round(change / months, 2) : null;
                 }
-                // Only the rises count, so a one-off sale or withdrawal (say for a house) doesn't turn the
-                // pace negative; ordinary saving is what the projection carries forward.
-                static decimal Ups(IEnumerable<decimal> values) =>
-                    values.Zip(values.Skip(1), (a, b) => Math.Max(0, b - a)).Sum();
+                // Only money going in counts, so a one-off sale or withdrawal (say for a house) doesn't turn
+                // the pace negative; ordinary saving is what the projection carries forward.
+                static decimal In(IEnumerable<PaceEntry> list) => list.Where(e => e.Amount > 0).Sum(e => e.Amount);
 
                 decimal? invested = null;
                 if (daily.Count > 0)
                 {
                     var start = daily.LastOrDefault(d => d.Date <= yearAgo) ?? daily[0];
-                    var monthEnds = daily.Where(d => d.Date > start.Date)
-                        .GroupBy(d => (d.Date.Year, d.Date.Month))
-                        .Select(g => g.Last().PutIn);
-                    invested = PerMonth(Ups(monthEnds.Prepend(start.PutIn)), start.Date, today);
+                    var mine = daily.SkipWhile(d => d.Date < start.Date).Zip(daily.SkipWhile(d => d.Date <= start.Date))
+                        .Where(p => Math.Round(p.Second.PutIn - p.First.PutIn, 2) != 0)
+                        .Select(p => new PaceEntry(p.Second.Date, PaceKind.Investment, movedOn.GetValueOrDefault(p.Second.Date, ""),
+                            Math.Round(p.Second.PutIn - p.First.PutIn, 2)))
+                        .ToList();
+                    entries.AddRange(mine);
+                    invested = PerMonth(In(mine), start.Date, today);
                 }
 
                 // Each savings account from its balance a year ago, or from its first balance if it is newer,
@@ -144,11 +165,18 @@ public static class DashboardEndpoints
                 {
                     if (!balances.TryGetValue(a.Id, out var list)) continue;
                     var start = list.LastOrDefault(b => b.Date <= yearAgo) ?? list[0];
-                    var since = list.Where(b => b.Date >= start.Date).Select(b => b.Balance);
-                    if (PerMonth(Ups(since), start.Date, today) is { } perMonth)
+                    var since = list.Where(b => b.Date >= start.Date).ToList();
+                    var mine = since.Zip(since.Skip(1))
+                        .Where(p => p.Second.Balance != p.First.Balance)
+                        .Select(p => new PaceEntry(p.Second.Date, PaceKind.Savings, a.Name, p.Second.Balance - p.First.Balance))
+                        .ToList();
+                    if (PerMonth(In(mine), start.Date, today) is { } perMonth)
+                    {
+                        entries.AddRange(mine);
                         saved = (saved ?? 0) + perMonth;
+                    }
                 }
-                return new SavingPace(yearAgo, invested, saved);
+                return new SavingPace(yearAgo, invested, saved, entries.OrderByDescending(e => e.Date).ToList());
             }
         });
     }

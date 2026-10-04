@@ -65,6 +65,18 @@ export class CurrentCourse {
       saved: own.saved ?? pace?.saved ?? 0,
     };
   });
+  /** The deposits behind the pace, split into investments and savings, shown on request. */
+  protected readonly showEntries = signal(false);
+  protected readonly entryGroups = computed(() => {
+    const entries = this.dashboard().pace?.entries ?? [];
+    return (['investment', 'savings'] as const)
+      .map((kind) => {
+        const list = entries.filter((e) => e.kind === kind);
+        const counted = list.filter((e) => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
+        return { kind, entries: list, counted };
+      })
+      .filter((g) => g.entries.length > 0);
+  });
   protected readonly edited = computed(() => Object.keys(this.amounts()).length > 0);
 
   /** Month by month for 10 years; ages don't matter here, so the projection starts at age 0. */

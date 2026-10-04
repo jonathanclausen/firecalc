@@ -96,7 +96,21 @@ export interface Dashboard {
    * Put aside per month over the last year (or the shorter time there is data for): money put into
    * investment accounts, and growth of savings and cash. Null parts have under a month of history.
    */
-  pace?: { since: string; investedPerMonth: number | null; savedPerMonth: number | null } | null;
+  pace?: {
+    since: string;
+    investedPerMonth: number | null;
+    savedPerMonth: number | null;
+    /** The money in and out behind it, newest first; only amounts going in count. */
+    entries?: PaceEntry[];
+  } | null;
+}
+
+/** A day's net deposits into the investments, or the change between two entered savings balances. */
+export interface PaceEntry {
+  date: string;
+  kind: 'investment' | 'savings';
+  account: string;
+  amount: number;
 }
 
 export type TransactionType =

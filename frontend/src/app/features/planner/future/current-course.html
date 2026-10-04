@@ -7,6 +7,57 @@
   </div>
   @if (pace(); as p) {
     <p class="muted basis">{{ c.basis(money(p.invested), money(p.saved)) }}</p>
+    @if (entryGroups().length) {
+      <button
+        type="button"
+        class="link-button toggle"
+        [attr.aria-expanded]="showEntries()"
+        (click)="showEntries.set(!showEntries())"
+      >
+        {{ showEntries() ? c.hideEntries : c.showEntries }}
+      </button>
+    }
+    @if (showEntries()) {
+      <div class="entries">
+        @for (g of entryGroups(); track g.kind) {
+          <div class="entry-group">
+            <h3>{{ c.entryKinds[g.kind] }}</h3>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>{{ c.entryDate }}</th>
+                    <th>{{ c.entryAccount }}</th>
+                    <th class="num">{{ c.entryAmount }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (e of g.entries; track $index) {
+                    <tr [class.skipped]="e.amount <= 0">
+                      <td class="nowrap">{{ i18n.date(e.date) }}</td>
+                      <td>
+                        {{ e.account }}
+                        @if (e.amount <= 0) {
+                          <small>{{ c.notCounted }}</small>
+                        }
+                      </td>
+                      <td class="num">{{ e.amount | money: false : cur }}</td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="2">{{ c.countedTotal }}</td>
+                    <td class="num">{{ g.counted | money: false : cur }}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        }
+        <p class="muted note">{{ c.entriesNote }}</p>
+      </div>
+    }
   } @else {
     <p class="muted basis">{{ c.basisNone }}</p>
   }

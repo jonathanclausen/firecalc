@@ -83,6 +83,37 @@ h3 {
   }
 }
 
+.toggle {
+  align-self: flex-start;
+  margin-top: -8px;
+}
+
+.entries {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.entry-group h3 {
+  margin: 0 0 4px;
+}
+
+.data-table {
+  .skipped {
+    color: var(--text-muted);
+  }
+
+  small {
+    display: block;
+    font-size: 0.75rem;
+  }
+
+  tfoot td {
+    font-weight: 600;
+    border-top: 1px solid var(--border);
+  }
+}
+
 .reset {
   align-self: flex-start;
 }
