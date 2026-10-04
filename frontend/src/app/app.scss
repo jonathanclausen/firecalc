@@ -98,23 +98,35 @@
 }
 
 @media (max-width: 560px) {
+  // Brand and settings share the first row; the select shrinks rather than wrapping below the brand.
   .topbar__inner {
-    gap: 12px;
-  }
-  .topbar__inner {
-    flex-wrap: wrap;
-    row-gap: 8px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 12px;
   }
   .nav {
-    order: 3;
-    flex-basis: 100%;
+    grid-column: 1 / -1;
+    grid-row: 2;
     overflow-x: auto;
   }
   .settings {
-    margin-left: auto;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+  .currency {
+    flex: 0 1 120px;
+    min-width: 76px;
   }
   .currency select {
-    max-width: 120px;
+    width: 100%;
+  }
+}
+
+// Too narrow for all three on one row: the settings move to their own row under the brand.
+@media (max-width: 359px) {
+  .settings {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
   }
 }
 
