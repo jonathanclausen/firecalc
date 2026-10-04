@@ -1,0 +1,112 @@
+@let t = i18n.t().planner;
+@let c = t.futurePage.course;
+@let cur = currency();
+<section class="card course">
+  <div class="card__header">
+    <h2>{{ c.title }}</h2>
+  </div>
+  @if (pace(); as p) {
+    <p class="muted basis">{{ c.basis(money(p.invested), money(p.saved)) }}</p>
+    @if (entryGroups().length) {
+      <button
+        type="button"
+        class="link-button toggle"
+        [attr.aria-expanded]="showEntries()"
+        (click)="showEntries.set(!showEntries())"
+      >
+        {{ showEntries() ? c.hideEntries : c.showEntries }}
+      </button>
+    }
+    @if (showEntries()) {
+      <div class="entries">
+        @for (g of entryGroups(); track g.kind) {
+          <div class="entry-group">
+            <h3>{{ c.entryKinds[g.kind] }}</h3>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>{{ c.entryDate }}</th>
+                    <th>{{ c.entryAccount }}</th>
+                    <th class="num">{{ c.entryAmount }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (e of g.entries; track $index) {
+                    <tr [class.skipped]="e.amount <= 0">
+                      <td class="nowrap">{{ i18n.date(e.date) }}</td>
+                      <td>
+                        {{ e.account }}
+                        @if (e.amount <= 0) {
+                          <small>{{ c.notCounted }}</small>
+                        }
+                      </td>
+                      <td class="num">{{ e.amount | money: false : cur }}</td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="2">{{ c.countedTotal }}</td>
+                    <td class="num">{{ g.counted | money: false : cur }}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        }
+        <p class="muted note">{{ c.entriesNote }}</p>
+      </div>
+    }
+  } @else {
+    <p class="muted basis">{{ c.basisNone }}</p>
+  }
+
+  <div class="cards">
+    @for (k of cards(); track k.years) {
+      <div class="kpi">
+        <span class="kpi__label">{{ c.inYears(k.years) }}</span>
+        <strong>{{ k.value | money: false : cur }}</strong>
+        <small [class.up]="k.change > 0" [class.down]="k.change < 0">{{
+          c.fromToday(signed(k.change))
+        }}</small>
+      </div>
+    }
+  </div>
+
+  <h3>{{ c.chartTitle }}</h3>
+  <app-net-worth-chart [series]="series()" [currency]="cur" [futureFrom]="today" />
+
+  <div class="rates">
+    @for (field of amountFields; track field.key) {
+      <label class="form-field">
+        <span>{{ c[field.label] }}</span>
+        <input
+          type="text"
+          inputmode="decimal"
+          appDecimal
+          [value]="amountText(field.key)"
+          (change)="setAmount(field.key, $any($event.target).value)"
+        />
+      </label>
+    }
+    @for (field of rateFields; track field.key) {
+      <label class="form-field">
+        <span>{{ c[field.label] }}</span>
+        <input
+          type="text"
+          inputmode="decimal"
+          appDecimal
+          [value]="rateText(field.key)"
+          (change)="setRate(field.key, $any($event.target).value)"
+        />
+      </label>
+    }
+  </div>
+  @if (edited()) {
+    <button type="button" class="link-button reset" (click)="resetAmounts()">
+      {{ c.resetAmounts }}
+    </button>
+  }
+  <p class="muted note">{{ c.note }}</p>
+</section>

@@ -137,25 +137,33 @@ public class PlannerTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(2700000m, dash.GetProperty("goal").GetProperty("remaining").GetDecimal());
     }
 
+    private static async Task<string> CreateHome(HttpClient client, DateOnly date, decimal value, params (string Name, decimal Owed)[] loans)
+    {
+        var res = await client.PostAsJsonAsync("/api/homes", new { name = "Huset" });
+        Assert.Equal(HttpStatusCode.Created, res.StatusCode);
+        var id = (await res.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+        await client.PutAsJsonAsync($"/api/homes/{id}/values", new { date, value });
+        foreach (var (name, owed) in loans)
+        {
+            // No terms: what is owed stays at the statement.
+            var loan = await client.PostAsJsonAsync($"/api/homes/{id}/loans", new { name });
+            var loanId = (await loan.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+            await client.PutAsJsonAsync($"/api/homes/{id}/loans/{loanId}/balances", new { date, balance = owed });
+        }
+        return id;
+    }
+
     [Fact]
     public async Task A_home_counts_with_its_equity_and_can_be_left_out()
     {
         var client = NewOwner();
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var savings = await CreateAccount(client, "Opsparing", "savings");
-        var home = await CreateAccount(client, "Bolig", "property");
         await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddMonths(-2), balance = 100000m });
-        await client.PutAsJsonAsync($"/api/accounts/{home}/balances", new { date = today.AddMonths(-2), balance = 4000000m, loan = 3200000m });
-        var saved = await client.PutAsJsonAsync($"/api/accounts/{home}/balances", new { date = today.AddDays(-5), balance = 4100000m, loan = 3150000m });
-        Assert.Equal(3150000m, (await saved.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("loan").GetDecimal());
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync($"/api/accounts/{home}/balances", new { date = today, balance = 1m, loan = -1m })).StatusCode);
-        // A loan sent for an account that isn't a home is ignored.
-        var plain = await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddMonths(-1), balance = 100000m, loan = 50000m });
-        Assert.Equal(JsonValueKind.Null, (await plain.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("loan").ValueKind);
-
-        var listed = (await client.GetFromJsonAsync<JsonElement>("/api/accounts")).EnumerateArray().Single(a => a.GetProperty("type").GetString() == "property");
-        Assert.Equal(4100000m, listed.GetProperty("balance").GetDecimal());
-        Assert.Equal(3150000m, listed.GetProperty("loan").GetDecimal());
+        var home = await CreateHome(client, today.AddMonths(-2), 4000000m, ("Realkreditlån", 3200000m));
+        await client.PutAsJsonAsync($"/api/homes/{home}/values", new { date = today.AddDays(-5), value = 4100000m });
+        var loan = (await client.GetFromJsonAsync<JsonElement>("/api/homes"))[0].GetProperty("loans")[0].GetProperty("id").GetString();
+        await client.PutAsJsonAsync($"/api/homes/{home}/loans/{loan}/balances", new { date = today.AddDays(-5), balance = 3150000m });
 
         await client.PutAsJsonAsync("/api/goal", new { targetAmount = 2000000m });
 
@@ -163,7 +171,12 @@ public class PlannerTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(1050000m, dash.GetProperty("latest").GetProperty("total").GetDecimal());
         Assert.Equal(950000m, dash.GetProperty("latest").GetProperty("byType").GetProperty("property").GetDecimal());
         Assert.Equal(800000m, dash.GetProperty("series")[0].GetProperty("byType").GetProperty("property").GetDecimal());
-        Assert.Equal(950000m, dash.GetProperty("accounts")[1].GetProperty("value").GetDecimal());
+        var account = dash.GetProperty("accounts")[1];
+        Assert.Equal("property", account.GetProperty("type").GetString());
+        Assert.Equal(950000m, account.GetProperty("value").GetDecimal());
+        Assert.Equal(4100000m, account.GetProperty("homeValue").GetDecimal());
+        Assert.Equal(3150000m, account.GetProperty("homeLoan").GetDecimal());
+        Assert.Equal(3150000m, account.GetProperty("loans")[0].GetProperty("owed").GetDecimal());
         Assert.Equal(52.5m, dash.GetProperty("goal").GetProperty("progressPct").GetDecimal());
 
         var without = await client.GetFromJsonAsync<JsonElement>("/api/dashboard?includeHome=false");
@@ -171,41 +184,33 @@ public class PlannerTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.False(without.GetProperty("latest").GetProperty("byType").TryGetProperty("property", out _));
         Assert.Single(without.GetProperty("accounts").EnumerateArray());
         Assert.Equal(5.0m, without.GetProperty("goal").GetProperty("progressPct").GetDecimal());
+
+        // A sold home stops counting.
+        await client.PutAsJsonAsync($"/api/homes/{home}", new { name = "Huset", archived = true });
+        Assert.Equal(100000m, (await client.GetFromJsonAsync<JsonElement>("/api/dashboard")).GetProperty("latest").GetProperty("total").GetDecimal());
     }
 
     [Fact]
-    public async Task A_loan_counts_against_net_worth_and_a_home_loan_follows_the_home()
+    public async Task Homes_are_not_accounts_and_other_loans_count_against_net_worth()
     {
         var client = NewOwner();
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var savings = await CreateAccount(client, "Opsparing", "savings");
-        var home = await CreateAccount(client, "Bolig", "property");
-        var bankLoan = await client.PostAsJsonAsync("/api/accounts", new { name = "Banklån", type = "loan", partOfHome = true });
-        var created = await bankLoan.Content.ReadFromJsonAsync<JsonElement>();
-        var bank = created.GetProperty("id").GetString()!;
-        Assert.True(created.GetProperty("partOfHome").GetBoolean());
-        // Only a loan can belong to the home.
-        var other = await client.PostAsJsonAsync("/api/accounts", new { name = "Bil", type = "savings", partOfHome = true });
-        Assert.False((await other.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("partOfHome").GetBoolean());
-        var car = await CreateAccount(client, "Billån", "loan");
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/accounts", new { name = "Bolig", type = "property" })).StatusCode);
 
+        var savings = await CreateAccount(client, "Opsparing", "savings");
+        var car = await CreateAccount(client, "Billån", "loan");
         await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddMonths(-1), balance = 300000m });
-        await client.PutAsJsonAsync($"/api/accounts/{home}/balances", new { date = today.AddMonths(-1), balance = 4000000m, loan = 3200000m });
-        await client.PutAsJsonAsync($"/api/accounts/{bank}/balances", new { date = today.AddMonths(-1), balance = 400000m });
         await client.PutAsJsonAsync($"/api/accounts/{car}/balances", new { date = today.AddMonths(-1), balance = 50000m });
+        await CreateHome(client, today.AddMonths(-1), 4000000m, ("Realkreditlån", 3200000m), ("Banklån", 400000m));
 
         var dash = await client.GetFromJsonAsync<JsonElement>("/api/dashboard");
         Assert.Equal(650000m, dash.GetProperty("latest").GetProperty("total").GetDecimal());
-        Assert.Equal(-450000m, dash.GetProperty("latest").GetProperty("byType").GetProperty("loan").GetDecimal());
+        Assert.Equal(400000m, dash.GetProperty("latest").GetProperty("byType").GetProperty("property").GetDecimal());
+        Assert.Equal(-50000m, dash.GetProperty("latest").GetProperty("byType").GetProperty("loan").GetDecimal());
 
-        // Without the home, its loan goes too; the car loan still counts.
+        // Without the home its loans go too; the car loan still counts.
         var without = await client.GetFromJsonAsync<JsonElement>("/api/dashboard?includeHome=false");
         Assert.Equal(250000m, without.GetProperty("latest").GetProperty("total").GetDecimal());
-        Assert.Equal(-50000m, without.GetProperty("latest").GetProperty("byType").GetProperty("loan").GetDecimal());
-
-        var put = await client.PutAsJsonAsync($"/api/accounts/{bank}", new { name = "Banklån", type = "loan", archived = false, partOfHome = false });
-        Assert.False((await put.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("partOfHome").GetBoolean());
-        Assert.Equal(-150000m, (await client.GetFromJsonAsync<JsonElement>("/api/dashboard?includeHome=false")).GetProperty("latest").GetProperty("total").GetDecimal());
     }
 
     [Fact]
@@ -213,5 +218,61 @@ public class PlannerTests(ApiFactory factory) : IClassFixture<ApiFactory>
     {
         var res = await NewOwner().PutAsJsonAsync("/api/goal", new { targetAmount = 0m });
         Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task Dashboard_reports_how_much_was_put_aside_per_month_over_the_last_year()
+    {
+        var client = NewOwner();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var savings = await CreateAccount(client, "Opsparing", "savings");
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddYears(-2), balance = 10000m });
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddYears(-1), balance = 100000m });
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today, balance = 160000m });
+        // Entered for the first time a month ago: only its growth since then counts.
+        var cash = await CreateAccount(client, "Konto", "cash");
+        await client.PutAsJsonAsync($"/api/accounts/{cash}/balances", new { date = today.AddDays(-61), balance = 50000m });
+        await client.PutAsJsonAsync($"/api/accounts/{cash}/balances", new { date = today, balance = 52000m });
+        var depot = await CreateAccount(client, "Depot", "investment");
+        await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = today.AddMonths(-13), type = "deposit", amount = 50000m });
+        await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = today.AddMonths(-6), type = "deposit", amount = 60000m });
+
+        var pace = (await client.GetFromJsonAsync<JsonElement>("/api/dashboard")).GetProperty("pace");
+        Assert.InRange(pace.GetProperty("investedPerMonth").GetDecimal(), 4990m, 5010m);
+        Assert.InRange(pace.GetProperty("savedPerMonth").GetDecimal(), 5000m + 990m, 5000m + 1010m);
+    }
+
+    [Fact]
+    public async Task A_one_off_withdrawal_does_not_make_the_saving_pace_negative()
+    {
+        var client = NewOwner();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var depot = await CreateAccount(client, "Depot", "investment");
+        await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = today.AddMonths(-13), type = "deposit", amount = 500000m });
+        await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = today.AddMonths(-9), type = "deposit", amount = 60000m });
+        // Sold for a house down payment.
+        await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = today.AddMonths(-3), type = "withdrawal", amount = -400000m });
+        var savings = await CreateAccount(client, "Opsparing", "savings");
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddYears(-1), balance = 300000m });
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddMonths(-3), balance = 20000m });
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today, balance = 56000m });
+
+        var pace = (await client.GetFromJsonAsync<JsonElement>("/api/dashboard")).GetProperty("pace");
+        Assert.InRange(pace.GetProperty("investedPerMonth").GetDecimal(), 4990m, 5010m);
+        Assert.InRange(pace.GetProperty("savedPerMonth").GetDecimal(), 2990m, 3010m);
+
+        // The deposits behind it, newest first; the sale and the drop are listed but don't count.
+        var entries = pace.GetProperty("entries").EnumerateArray()
+            .Select(e => (Date: DateOnly.Parse(e.GetProperty("date").GetString()!), Kind: e.GetProperty("kind").GetString(),
+                Account: e.GetProperty("account").GetString(), Amount: e.GetProperty("amount").GetDecimal()))
+            .ToList();
+        Assert.Equal(
+            [
+                (today, "savings", "Opsparing", 36000m),
+                (today.AddMonths(-3), "investment", "Depot", -400000m),
+                (today.AddMonths(-3), "savings", "Opsparing", -280000m),
+                (today.AddMonths(-9), "investment", "Depot", 60000m),
+            ],
+            entries.OrderByDescending(e => e.Date).ThenBy(e => e.Kind));
     }
 }

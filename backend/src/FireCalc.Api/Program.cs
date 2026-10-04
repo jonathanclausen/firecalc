@@ -58,9 +58,11 @@ app.MapGet("/healthz", () => Results.Ok("ok"));
 var api = app.MapGroup("/api").RequireAuthorization(AuthSetup.OwnerPolicy);
 api.MapMeEndpoints();
 api.MapAccountEndpoints();
+api.MapHomeEndpoints();
 api.MapGoalEndpoints();
 api.MapDashboardEndpoints();
 api.MapPortfolioEndpoints();
+api.MapScenarioEndpoints();
 
 app.Run();
 

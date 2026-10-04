@@ -1,0 +1,172 @@
+@let t = i18n.t().planner;
+@let s = t.scenarioPage;
+@let f = t.futurePage;
+<section class="intro">
+  <div>
+    <p class="eyebrow">{{ f.title }}</p>
+    <h1>{{ isNew() ? s.newTitle : s.editTitle }}</h1>
+    <p class="lede">{{ s.lede }}</p>
+  </div>
+</section>
+
+@if (scenarios.error()) {
+  <p class="alert" role="alert">{{ t.error }}</p>
+} @else if (!scenarios.hasValue()) {
+  <p class="muted">{{ t.loading }}</p>
+} @else if (notFound()) {
+  <p class="alert" role="alert">{{ s.notFound }}</p>
+  <a class="btn btn--secondary" routerLink="/planner/future">{{ t.cancel }}</a>
+} @else {
+  @let cur = currency();
+  <div class="layout">
+    <form class="card scenario-form" (submit)="save($event)">
+      @if (error(); as message) {
+        <p class="alert" role="alert">{{ message }}</p>
+      }
+      <label class="form-field">
+        <span>{{ s.name }}</span>
+        <input
+          type="text"
+          required
+          maxlength="100"
+          [placeholder]="s.namePlaceholder"
+          [value]="name()"
+          (input)="name.set($any($event.target).value)"
+        />
+      </label>
+
+      <h2>{{ s.assumptions }}</h2>
+      <div class="grid">
+        @for (field of numberFields(); track field.key) {
+          <label class="form-field">
+            <span>{{ field.label }}</span>
+            <input
+              type="text"
+              inputmode="decimal"
+              appDecimal
+              required
+              [value]="fields[field.key]()"
+              (input)="fields[field.key].set($any($event.target).value)"
+            />
+            @if (field.hint) {
+              <small>{{ field.hint }}</small>
+            }
+          </label>
+        }
+      </div>
+
+      <h2>{{ s.events }}</h2>
+      <p class="muted">{{ s.eventsHint }}</p>
+      @for (e of events(); track $index; let i = $index) {
+        <fieldset class="event">
+          <label class="form-field">
+            <span>{{ s.kind }}</span>
+            <select (change)="updateEvent(i, { kind: $any($event.target).value })">
+              @for (k of kinds; track k) {
+                <option [value]="k" [selected]="k === e.kind">{{ s.kinds[k] }}</option>
+              }
+            </select>
+          </label>
+          <label class="form-field">
+            <span>{{ e.kind === 'lumpSum' ? s.atAge : s.fromAge }}</span>
+            <input
+              type="text"
+              inputmode="decimal"
+              appDecimal
+              required
+              [value]="e.age"
+              (input)="updateEvent(i, { age: $any($event.target).value })"
+            />
+          </label>
+          @if (e.kind === 'break') {
+            <label class="form-field">
+              <span>{{ s.years }}</span>
+              <input
+                type="text"
+                inputmode="decimal"
+                appDecimal
+                required
+                [value]="e.years"
+                (input)="updateEvent(i, { years: $any($event.target).value })"
+              />
+            </label>
+          } @else {
+            <label class="form-field">
+              <span>{{ e.kind === 'savings' ? s.newMonthly : s.amount }} ({{ cur }})</span>
+              <input
+                type="text"
+                inputmode="decimal"
+                appDecimal
+                required
+                [value]="e.amount"
+                (input)="updateEvent(i, { amount: $any($event.target).value })"
+              />
+            </label>
+          }
+          <button type="button" class="link-button link-button--danger" (click)="removeEvent(i)">
+            {{ s.removeEvent }}
+          </button>
+        </fieldset>
+      } @empty {
+        <p class="muted">{{ s.noEvents }}</p>
+      }
+      <button type="button" class="btn btn--secondary add-event" (click)="addEvent()">
+        + {{ s.addEvent }}
+      </button>
+
+      <div class="buttons">
+        <button type="submit" class="btn btn--primary" [disabled]="saving()">{{ s.save }}</button>
+        <a class="btn btn--secondary" routerLink="/planner/future">{{ t.cancel }}</a>
+        @if (!isNew()) {
+          <button
+            type="button"
+            class="link-button link-button--danger"
+            [disabled]="saving()"
+            (click)="remove()"
+          >
+            {{ s.remove }}
+          </button>
+        }
+      </div>
+    </form>
+
+    <section class="card preview">
+      <h2>{{ s.preview }}</h2>
+      @if (!birthDate()) {
+        <p class="muted">{{ f.noBirth }}</p>
+        <a class="link-button" routerLink="/planner/future">{{ f.birthTitle }}</a>
+      } @else if (preview(); as p) {
+        <div class="kpis">
+          <div class="kpi">
+            <span>{{ f.in10 }}</span>
+            <strong>{{ p.in10 | money: false : cur }}</strong>
+          </div>
+          <div class="kpi">
+            <span>{{ f.atFire(ageText(p.fireAge)) }}</span>
+            <strong>{{ p.atFire | money: false : cur }}</strong>
+          </div>
+          <div class="kpi">
+            <span>{{ f.firstWithdrawal }}</span>
+            <strong>{{ p.firstWithdrawal | money: false : cur }}</strong>
+          </div>
+          <div class="kpi">
+            <span>{{ f.lasts }}</span>
+            <strong [class.danger]="p.depletedAge !== null">{{
+              p.depletedAge === null ? f.lastsAlways : f.lastsUntil(ageText(p.depletedAge))
+            }}</strong>
+          </div>
+        </div>
+        <app-line-chart
+          [dates]="p.dates"
+          [series]="p.series"
+          [format]="formatMoney"
+          [xLabel]="xLabel"
+          [zeroLine]="true"
+          [ariaLabel]="f.chartAria"
+        />
+      } @else {
+        <p class="muted">{{ t.loading }}</p>
+      }
+    </section>
+  </div>
+}

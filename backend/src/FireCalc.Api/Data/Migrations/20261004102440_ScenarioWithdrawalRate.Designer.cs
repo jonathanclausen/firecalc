@@ -3,6 +3,7 @@ using System;
 using FireCalc.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FireCalc.Api.Data.Migrations
 {
     [DbContext(typeof(FireCalcDbContext))]
-    partial class FireCalcDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261004102440_ScenarioWithdrawalRate")]
+    partial class ScenarioWithdrawalRate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -39,6 +42,9 @@ namespace FireCalc.Api.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<bool>("PartOfHome")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -63,6 +69,10 @@ namespace FireCalc.Api.Data.Migrations
                         .HasColumnType("date");
 
                     b.Property<decimal>("Balance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("Loan")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
@@ -126,50 +136,6 @@ namespace FireCalc.Api.Data.Migrations
                     b.ToTable("Goals");
                 });
 
-            modelBuilder.Entity("FireCalc.Api.Data.Home", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("Archived")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Homes");
-                });
-
-            modelBuilder.Entity("FireCalc.Api.Data.HomeValuation", b =>
-                {
-                    b.Property<Guid>("HomeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateOnly>("Date")
-                        .HasColumnType("date");
-
-                    b.Property<decimal>("Value")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.HasKey("HomeId", "Date");
-
-                    b.ToTable("HomeValuations");
-                });
-
             modelBuilder.Entity("FireCalc.Api.Data.Instrument", b =>
                 {
                     b.Property<Guid>("Id")
@@ -219,64 +185,6 @@ namespace FireCalc.Api.Data.Migrations
                     b.HasKey("InstrumentId", "Date");
 
                     b.ToTable("InstrumentPrices");
-                });
-
-            modelBuilder.Entity("FireCalc.Api.Data.Mortgage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("Archived")
-                        .HasColumnType("boolean");
-
-                    b.Property<decimal?>("ContributionPct")
-                        .HasPrecision(6, 3)
-                        .HasColumnType("numeric(6,3)");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateOnly?>("EndDate")
-                        .HasColumnType("date");
-
-                    b.Property<Guid>("HomeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateOnly?>("InterestOnlyUntil")
-                        .HasColumnType("date");
-
-                    b.Property<decimal?>("InterestPct")
-                        .HasPrecision(6, 3)
-                        .HasColumnType("numeric(6,3)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("HomeId");
-
-                    b.ToTable("Mortgages");
-                });
-
-            modelBuilder.Entity("FireCalc.Api.Data.MortgageBalance", b =>
-                {
-                    b.Property<Guid>("MortgageId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateOnly>("Date")
-                        .HasColumnType("date");
-
-                    b.Property<decimal>("Balance")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.HasKey("MortgageId", "Date");
-
-                    b.ToTable("MortgageBalances");
                 });
 
             modelBuilder.Entity("FireCalc.Api.Data.PortfolioTransaction", b =>
@@ -514,47 +422,11 @@ namespace FireCalc.Api.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("FireCalc.Api.Data.Home", b =>
-                {
-                    b.HasOne("FireCalc.Api.Data.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("FireCalc.Api.Data.HomeValuation", b =>
-                {
-                    b.HasOne("FireCalc.Api.Data.Home", null)
-                        .WithMany()
-                        .HasForeignKey("HomeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("FireCalc.Api.Data.InstrumentPrice", b =>
                 {
                     b.HasOne("FireCalc.Api.Data.Instrument", null)
                         .WithMany()
                         .HasForeignKey("InstrumentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("FireCalc.Api.Data.Mortgage", b =>
-                {
-                    b.HasOne("FireCalc.Api.Data.Home", null)
-                        .WithMany()
-                        .HasForeignKey("HomeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("FireCalc.Api.Data.MortgageBalance", b =>
-                {
-                    b.HasOne("FireCalc.Api.Data.Mortgage", null)
-                        .WithMany()
-                        .HasForeignKey("MortgageId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

@@ -18,6 +18,10 @@ export const plannerRoutes: Routes = [
         loadComponent: () => import('./accounts/accounts-page').then((m) => m.AccountsPage),
       },
       {
+        path: 'home',
+        loadComponent: () => import('./home/home-page').then((m) => m.HomePage),
+      },
+      {
         path: 'portfolio',
         loadComponent: () => import('./portfolio/portfolio-page').then((m) => m.PortfolioPage),
       },
@@ -29,6 +33,14 @@ export const plannerRoutes: Routes = [
         path: 'portfolio/:accountId',
         loadComponent: () =>
           import('./portfolio/transactions-page').then((m) => m.TransactionsPage),
+      },
+      {
+        path: 'future',
+        loadComponent: () => import('./future/future-page').then((m) => m.FuturePage),
+      },
+      {
+        path: 'future/:id',
+        loadComponent: () => import('./future/scenario-page').then((m) => m.ScenarioPage),
       },
       {
         path: 'goal',
