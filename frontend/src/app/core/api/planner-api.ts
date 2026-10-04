@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import type { ScenarioAssumptions } from '../finance/projection';
 
 /** Shapes returned by the .NET API under /api. Dates are ISO yyyy-mm-dd strings. */
 
@@ -19,6 +20,8 @@ export interface Me {
   email: string;
   name: string | null;
   currency: string;
+  /** Places scenario events and the FIRE age on a timeline. */
+  birthDate: string | null;
 }
 
 export interface Account {
@@ -63,7 +66,18 @@ export interface AccountValue {
   value: number;
   tracked: boolean;
   balanceDate: string | null;
+  /** For a home: its value and the loan on it, the two parts of its equity. */
+  homeValue?: number | null;
+  homeLoan?: number | null;
 }
+
+/** A saved "what if" for the future; the projection is calculated in the browser. */
+export interface Scenario extends ScenarioAssumptions {
+  id: string;
+  name: string;
+}
+
+export type SaveScenario = Omit<Scenario, 'id'>;
 
 export interface Dashboard {
   currency: string;
@@ -282,6 +296,22 @@ export class PlannerApi {
 
   deleteGoal() {
     return firstValueFrom(this.http.delete<void>('/api/goal'));
+  }
+
+  saveProfile(body: { birthDate: string | null }) {
+    return firstValueFrom(this.http.put<Me>('/api/me/profile', body));
+  }
+
+  createScenario(body: SaveScenario) {
+    return firstValueFrom(this.http.post<Scenario>('/api/scenarios', body));
+  }
+
+  updateScenario(id: string, body: SaveScenario) {
+    return firstValueFrom(this.http.put<Scenario>(`/api/scenarios/${id}`, body));
+  }
+
+  deleteScenario(id: string) {
+    return firstValueFrom(this.http.delete<void>(`/api/scenarios/${id}`));
   }
 
   createTransaction(accountId: string, body: SaveTransaction) {

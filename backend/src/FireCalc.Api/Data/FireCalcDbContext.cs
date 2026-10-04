@@ -10,6 +10,7 @@ public class FireCalcDbContext(DbContextOptions<FireCalcDbContext> options) : Db
     public DbSet<Snapshot> Snapshots => Set<Snapshot>();
     public DbSet<SnapshotEntry> SnapshotEntries => Set<SnapshotEntry>();
     public DbSet<Goal> Goals => Set<Goal>();
+    public DbSet<Scenario> Scenarios => Set<Scenario>();
     public DbSet<Instrument> Instruments => Set<Instrument>();
     public DbSet<InstrumentPrice> InstrumentPrices => Set<InstrumentPrice>();
     public DbSet<FxRate> FxRates => Set<FxRate>();
@@ -65,6 +66,21 @@ public class FireCalcDbContext(DbContextOptions<FireCalcDbContext> options) : Db
             e.Property(g => g.Name).HasMaxLength(100);
             e.Property(g => g.TargetAmount).HasPrecision(18, 2);
             e.Property(g => g.ExpectedAnnualReturnPct).HasPrecision(5, 2);
+        });
+
+        b.Entity<Scenario>(e =>
+        {
+            e.HasOne<User>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(s => s.UserId);
+            e.Property(s => s.Name).HasMaxLength(100);
+            e.Property(s => s.MonthlySavings).HasPrecision(18, 2);
+            e.Property(s => s.YearlySpending).HasPrecision(18, 2);
+            e.Property(s => s.InvestmentReturnPct).HasPrecision(5, 2);
+            e.Property(s => s.SavingsReturnPct).HasPrecision(5, 2);
+            e.Property(s => s.HomeGrowthPct).HasPrecision(5, 2);
+            e.Property(s => s.InflationPct).HasPrecision(5, 2);
+            e.Property(s => s.FireAge).HasPrecision(5, 2);
+            e.Property(s => s.Events).HasColumnType("jsonb");
         });
 
         b.Entity<Instrument>(e =>

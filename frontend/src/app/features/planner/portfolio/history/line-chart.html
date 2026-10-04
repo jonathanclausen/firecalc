@@ -1,5 +1,5 @@
 <div class="chart">
-  @if (series().length > 1) {
+  @if (legend() && series().length > 1) {
     <ul class="legend" [attr.aria-label]="i18n.t().chart.legend">
       @for (s of series(); track s.key) {
         <li>
@@ -39,7 +39,7 @@
 
       @for (i of xTicks(); track i) {
         <text class="axis-label" text-anchor="middle" [attr.x]="xAt(i)" [attr.y]="height - 8">
-          {{ i18n.date(dates()[i], 'short') }}
+          {{ label(i, true) }}
         </text>
       }
 
@@ -87,7 +87,7 @@
         [style.top.px]="pad.top"
         role="status"
       >
-        <div class="tooltip__title">{{ i18n.date(dates()[i]) }}</div>
+        <div class="tooltip__title">{{ label(i, false) }}</div>
         @for (s of series(); track s.key) {
           <div class="tooltip__row">
             <span

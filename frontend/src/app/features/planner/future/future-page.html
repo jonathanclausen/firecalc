@@ -1,0 +1,179 @@
+@let t = i18n.t().planner;
+@let f = t.futurePage;
+<section class="intro">
+  <div>
+    <p class="eyebrow">{{ t.eyebrow }}</p>
+    <h1>{{ f.title }}</h1>
+    <p class="lede">{{ f.lede }}</p>
+  </div>
+  <div class="intro__actions">
+    @if (birthDate() && !editingBirth()) {
+      <span class="born">
+        {{ f.bornOn(i18n.date(birthDate()!)) }}
+        <button type="button" class="link-button" (click)="editBirth()">{{ f.changeBirth }}</button>
+      </span>
+    }
+    @if (birthDate()) {
+      <a class="btn btn--primary" routerLink="/planner/future/new">{{ f.newScenario }}</a>
+    }
+  </div>
+</section>
+
+@if (error(); as message) {
+  <p class="alert" role="alert">{{ message }}</p>
+}
+
+@if (!birthDate() || editingBirth()) {
+  <form class="card birth" (submit)="saveBirth($event)">
+    <h2>{{ f.birthTitle }}</h2>
+    <p class="muted">{{ f.birthText }}</p>
+    <div class="birth__row">
+      <label class="form-field">
+        <span>{{ f.birthDate }}</span>
+        <input
+          type="date"
+          required
+          [value]="birthInput()"
+          (input)="birthInput.set($any($event.target).value)"
+        />
+      </label>
+      <button type="submit" class="btn btn--primary" [disabled]="savingBirth() || !birthInput()">
+        {{ f.birthSave }}
+      </button>
+      @if (birthDate()) {
+        <button type="button" class="btn btn--secondary" (click)="editingBirth.set(false)">
+          {{ t.cancel }}
+        </button>
+      }
+    </div>
+  </form>
+}
+
+@if (birthDate()) {
+  @if (failed()) {
+    <p class="alert" role="alert">{{ t.error }}</p>
+  } @else if (loading()) {
+    <p class="muted">{{ t.loading }}</p>
+  } @else if (rows().length === 0) {
+    <section class="card empty">
+      <h2>{{ f.emptyTitle }}</h2>
+      <p>{{ f.emptyText }}</p>
+      <a class="btn btn--primary" routerLink="/planner/future/new">{{ f.newScenario }}</a>
+    </section>
+  } @else {
+    @let cur = currency();
+    <div class="controls">
+      @if (hasHome()) {
+        <label class="switch">
+          <input
+            type="checkbox"
+            role="switch"
+            [checked]="includeHome()"
+            (change)="setIncludeHome($any($event.target).checked)"
+          />
+          <span class="switch__track" aria-hidden="true"></span>
+          {{ f.includeHome }}
+        </label>
+      }
+      <label class="switch">
+        <input
+          type="checkbox"
+          role="switch"
+          [checked]="todaysMoney()"
+          (change)="setTodaysMoney($any($event.target).checked)"
+        />
+        <span class="switch__track" aria-hidden="true"></span>
+        {{ f.todaysMoney }}
+      </label>
+    </div>
+
+    <section class="card">
+      <div class="card__header">
+        <h2>{{ f.chartTitle }}</h2>
+      </div>
+      <div class="chips" role="group" [attr.aria-label]="f.show">
+        @for (r of rows(); track r.scenario.id) {
+          <button
+            type="button"
+            class="chip"
+            [class.chip--off]="!r.shown"
+            [attr.aria-pressed]="r.shown"
+            (click)="toggle(r.scenario.id)"
+          >
+            <i class="chip__dot chip__dot--{{ r.key }}"></i>{{ r.scenario.name }}
+          </button>
+        }
+      </div>
+      @if (series().length) {
+        <app-line-chart
+          [dates]="dates()"
+          [series]="series()"
+          [format]="formatMoney"
+          [xLabel]="xLabel"
+          [legend]="false"
+          [zeroLine]="true"
+          [ariaLabel]="f.chartAria"
+        />
+      }
+      <p class="muted note">{{ f.note }}</p>
+    </section>
+
+    <section class="card">
+      <div class="card__header">
+        <h2>{{ f.tableTitle }}</h2>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ f.scenario }}</th>
+              <th class="num">{{ f.in5 }}</th>
+              <th class="num">{{ f.in10 }}</th>
+              <th class="num">{{ f.atFireHeader }}</th>
+              <th class="num">{{ f.at90 }}</th>
+              <th>{{ f.lasts }}</th>
+              @if (goalTarget() !== null) {
+                <th>{{ f.goal }}</th>
+              }
+              <th>
+                <span class="visually-hidden">{{ t.edit }}</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of rows(); track r.scenario.id) {
+              <tr>
+                <td>
+                  <a class="scenario-name" [routerLink]="['/planner/future', r.scenario.id]">
+                    <i class="chip__dot chip__dot--{{ r.key }}"></i>{{ r.scenario.name }}
+                  </a>
+                  <small class="muted">{{ f.atFire(ageText(r.scenario.fireAge)) }}</small>
+                </td>
+                <td class="num">{{ r.in5 | money: false : cur }}</td>
+                <td class="num">{{ r.in10 | money: false : cur }}</td>
+                <td class="num">{{ r.atFire | money: false : cur }}</td>
+                <td class="num">{{ r.at90 | money: false : cur }}</td>
+                <td [class.danger]="r.depletedAge !== null">
+                  {{
+                    r.depletedAge === null ? f.lastsAlways : f.lastsUntil(ageText(r.depletedAge))
+                  }}
+                </td>
+                @if (goalTarget() !== null) {
+                  <td>{{ r.goalAge === null ? '–' : ageText(r.goalAge) }}</td>
+                }
+                <td class="actions">
+                  <a
+                    class="link-button"
+                    routerLink="/planner/future/new"
+                    [queryParams]="{ from: r.scenario.id }"
+                    >{{ f.copy }}</a
+                  >
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+}

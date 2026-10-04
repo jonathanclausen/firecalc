@@ -38,6 +38,17 @@ export class LineChart {
   readonly ariaLabel = input.required<string>();
   /** Draw a stronger line at zero (for returns that can go negative). */
   readonly zeroLine = input(false);
+  /** Show the legend above the plot (when there is more than one line). */
+  readonly legend = input(true);
+  /** Labels a point on the x-axis (short) and in the tooltip; defaults to its date. */
+  readonly xLabel = input<((index: number, short: boolean) => string) | null>(null);
+
+  protected label(index: number, short: boolean) {
+    const custom = this.xLabel();
+    return custom
+      ? custom(index, short)
+      : this.i18n.date(this.dates()[index], short ? 'short' : 'long');
+  }
 
   protected readonly i18n = inject(I18n);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);

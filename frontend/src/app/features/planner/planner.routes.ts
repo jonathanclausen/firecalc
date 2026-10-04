@@ -31,6 +31,14 @@ export const plannerRoutes: Routes = [
           import('./portfolio/transactions-page').then((m) => m.TransactionsPage),
       },
       {
+        path: 'future',
+        loadComponent: () => import('./future/future-page').then((m) => m.FuturePage),
+      },
+      {
+        path: 'future/:id',
+        loadComponent: () => import('./future/scenario-page').then((m) => m.ScenarioPage),
+      },
+      {
         path: 'goal',
         loadComponent: () => import('./goal/goal-page').then((m) => m.GoalPage),
       },

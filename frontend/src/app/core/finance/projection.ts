@@ -1,0 +1,189 @@
+/**
+ * Projects net worth month by month from today, for a scenario of assumptions and life events placed
+ * by age. Plain TypeScript like the other engines. Dates are ISO yyyy-mm-dd strings.
+ */
+
+export type ScenarioEventKind = 'break' | 'savings' | 'lumpSum';
+
+export interface ScenarioEvent {
+  kind: ScenarioEventKind;
+  /** Age the event starts at, e.g. 33 for "from your 33rd birthday". */
+  age: number;
+  /** A break's length in years. */
+  years?: number | null;
+  /** New monthly savings (savings) or a one-off amount, negative for money out (lumpSum). */
+  amount?: number | null;
+}
+
+export interface ScenarioAssumptions {
+  monthlySavings: number;
+  investmentReturnPct: number;
+  /** Return on savings and cash accounts. */
+  savingsReturnPct: number;
+  homeGrowthPct: number;
+  inflationPct: number;
+  /** Saving stops at this age and yearly spending is taken out instead. */
+  fireAge: number;
+  /** Yearly spending in today's money, used after FIRE and during a break. */
+  yearlySpending: number;
+  events: ScenarioEvent[];
+}
+
+/** Today's values, split the way the projection grows them. Loans are amounts owed (positive). */
+export interface StartingPoint {
+  investments: number;
+  savings: number;
+  homeValue: number;
+  homeLoan: number;
+  otherLoans: number;
+}
+
+export interface ProjectionPoint {
+  date: string;
+  age: number;
+  investments: number;
+  savings: number;
+  homeEquity: number;
+  loans: number;
+  netWorth: number;
+  /** Investments and savings: the money that can be spent. */
+  liquid: number;
+}
+
+export interface Projection {
+  points: ProjectionPoint[];
+  /** First age the liquid money ran out while spending, or null if it lasts. */
+  depletedAge: number | null;
+}
+
+/** Monthly rate equivalent to a yearly return in percent. */
+function monthlyRate(annualPct: number) {
+  return Math.pow(1 + annualPct / 100, 1 / 12) - 1;
+}
+
+/** Age in years (with a fraction) on a date. */
+export function ageOn(birthDate: string, date: string): number {
+  const b = new Date(birthDate + 'T00:00:00Z');
+  const d = new Date(date + 'T00:00:00Z');
+  let years = d.getUTCFullYear() - b.getUTCFullYear();
+  const birthday = Date.UTC(d.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate());
+  if (d.getTime() < birthday) years--;
+  const last = Date.UTC(b.getUTCFullYear() + years, b.getUTCMonth(), b.getUTCDate());
+  const next = Date.UTC(b.getUTCFullYear() + years + 1, b.getUTCMonth(), b.getUTCDate());
+  return years + (d.getTime() - last) / (next - last);
+}
+
+function addMonths(iso: string, months: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1 + months, 1));
+  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+  date.setUTCDate(Math.min(d, lastDay));
+  return date.toISOString().slice(0, 10);
+}
+
+const round = (v: number) => Math.round(v * 100) / 100;
+
+/**
+ * Runs the scenario from `today` until `endAge`. Each month the balances grow, then either the month's
+ * savings go into investments or, after the FIRE age and during a break, the month's spending (raised
+ * with inflation) comes out of savings first and then investments. Loans stay as they are.
+ */
+export function project(
+  start: StartingPoint,
+  s: ScenarioAssumptions,
+  birthDate: string,
+  today: string,
+  endAge = 90,
+): Projection {
+  const startAge = ageOn(birthDate, today);
+  const months = Math.max(0, Math.ceil((endAge - startAge) * 12));
+  const ri = monthlyRate(s.investmentReturnPct);
+  const rs = monthlyRate(s.savingsReturnPct);
+  const rh = monthlyRate(s.homeGrowthPct);
+  const inflation = 1 + s.inflationPct / 100;
+  const loans = start.homeLoan + start.otherLoans;
+  const savingsChanges = s.events.filter((e) => e.kind === 'savings').sort((a, b) => a.age - b.age);
+
+  let investments = start.investments;
+  let savings = start.savings;
+  let home = start.homeValue;
+  let depletedAge: number | null = null;
+  const points: ProjectionPoint[] = [];
+
+  const push = (m: number, age: number) =>
+    points.push({
+      date: addMonths(today, m),
+      age,
+      investments: round(investments),
+      savings: round(savings),
+      homeEquity: round(home - start.homeLoan),
+      loans: round(-start.otherLoans),
+      netWorth: round(investments + savings + home - loans),
+      liquid: round(investments + savings),
+    });
+
+  push(0, startAge);
+  for (let m = 1; m <= months; m++) {
+    const prevAge = startAge + (m - 1) / 12;
+    const age = startAge + m / 12;
+    investments *= 1 + ri;
+    savings *= 1 + rs;
+    home *= 1 + rh;
+
+    const onBreak = s.events.some(
+      (e) => e.kind === 'break' && age > e.age && age <= e.age + (e.years ?? 0),
+    );
+    let flow: number;
+    if (age > s.fireAge || onBreak) {
+      flow = -(s.yearlySpending / 12) * Math.pow(inflation, m / 12);
+    } else {
+      const change = savingsChanges.filter((e) => e.age < age).pop();
+      flow = change ? (change.amount ?? 0) : s.monthlySavings;
+    }
+    for (const e of s.events)
+      if (e.kind === 'lumpSum' && e.age > prevAge && e.age <= age) flow += e.amount ?? 0;
+
+    if (flow >= 0) investments += flow;
+    else {
+      let need = -flow;
+      const fromSavings = Math.min(Math.max(savings, 0), need);
+      savings -= fromSavings;
+      need -= fromSavings;
+      const fromInvestments = Math.min(Math.max(investments, 0), need);
+      investments -= fromInvestments;
+      need -= fromInvestments;
+      if (need > 0.005 && depletedAge === null) depletedAge = age;
+    }
+    push(m, age);
+  }
+  return { points, depletedAge };
+}
+
+/** The same projection in today's money: each value divided by inflation since today. */
+export function inTodaysMoney(points: ProjectionPoint[], inflationPct: number): ProjectionPoint[] {
+  const inflation = 1 + inflationPct / 100;
+  return points.map((p, m) => {
+    const f = Math.pow(inflation, m / 12);
+    return {
+      ...p,
+      investments: round(p.investments / f),
+      savings: round(p.savings / f),
+      homeEquity: round(p.homeEquity / f),
+      loans: round(p.loans / f),
+      netWorth: round(p.netWorth / f),
+      liquid: round(p.liquid / f),
+    };
+  });
+}
+
+/** The point closest to an age, or null when the age is outside the projection. */
+export function pointAtAge(points: ProjectionPoint[], age: number): ProjectionPoint | null {
+  if (!points.length || age < points[0].age - 1e-9 || age > points[points.length - 1].age + 1 / 24)
+    return null;
+  return points.reduce((best, p) => (Math.abs(p.age - age) < Math.abs(best.age - age) ? p : best));
+}
+
+/** First age net worth reaches the target, or null if it never does. */
+export function ageReaching(points: ProjectionPoint[], target: number): number | null {
+  return points.find((p) => p.netWorth >= target)?.age ?? null;
+}

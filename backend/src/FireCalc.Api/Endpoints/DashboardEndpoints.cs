@@ -14,9 +14,10 @@ public static class DashboardEndpoints
     /// <summary>
     /// An account's part of today's net worth. Tracked accounts are valued live from their transactions;
     /// the others count with the balance entered on <see cref="BalanceDate"/>. A home counts with its equity
-    /// (value less loan) and a loan with what is owed, as a negative value.
+    /// (value less loan) and a loan with what is owed, as a negative value. For a home, HomeValue and HomeLoan
+    /// are the two parts of its equity, so a projection can grow the value on its own.
     /// </summary>
-    public record AccountValue(Guid Id, string Name, AccountType Type, decimal Value, bool Tracked, DateOnly? BalanceDate);
+    public record AccountValue(Guid Id, string Name, AccountType Type, decimal Value, bool Tracked, DateOnly? BalanceDate, decimal? HomeValue = null, decimal? HomeLoan = null);
 
     public record DashboardDto(
         string Currency,
@@ -96,7 +97,9 @@ public static class DashboardEndpoints
                 .Where(a => !a.Archived)
                 .Select(a => live.TryGetValue(a.Id, out var value)
                     ? new AccountValue(a.Id, a.Name, a.Type, value, true, null)
-                    : new AccountValue(a.Id, a.Name, a.Type, BalanceOn(a, today) ?? 0, false, balances.GetValueOrDefault(a.Id)?[^1].Date))
+                    : new AccountValue(a.Id, a.Name, a.Type, BalanceOn(a, today) ?? 0, false, balances.GetValueOrDefault(a.Id)?[^1].Date,
+                        a.Type == AccountType.Property ? balances.GetValueOrDefault(a.Id)?[^1].Balance : null,
+                        a.Type == AccountType.Property ? balances.GetValueOrDefault(a.Id)?[^1].Loan ?? 0 : null))
                 .ToList();
 
             return new DashboardDto(user.Currency, latest, change, since, series, values, Progress(goal, latest));

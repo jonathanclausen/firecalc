@@ -18,6 +18,8 @@ public class User
     public required string Email { get; set; }
     public string? Name { get; set; }
     public string Currency { get; set; } = "DKK";
+    /// <summary>Used to place scenario events and the FIRE age on a timeline.</summary>
+    public DateOnly? BirthDate { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
@@ -78,6 +80,42 @@ public class Goal
     public DateOnly? TargetDate { get; set; }
     public decimal? ExpectedAnnualReturnPct { get; set; }
 }
+
+/// <summary>
+/// A saved "what if" for the future: assumptions plus life events placed by age. The projection itself is
+/// calculated in the browser from today's net worth.
+/// </summary>
+public class Scenario
+{
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public Guid UserId { get; set; }
+    public required string Name { get; set; }
+    public decimal MonthlySavings { get; set; }
+    public decimal InvestmentReturnPct { get; set; }
+    /// <summary>Return on savings and cash accounts.</summary>
+    public decimal SavingsReturnPct { get; set; }
+    public decimal HomeGrowthPct { get; set; }
+    public decimal InflationPct { get; set; }
+    /// <summary>Age when saving stops and <see cref="YearlySpending"/> is taken out instead.</summary>
+    public decimal FireAge { get; set; }
+    /// <summary>Yearly spending in today's money, used after FIRE and during a break.</summary>
+    public decimal YearlySpending { get; set; }
+    /// <summary>The events as JSON (a list of <see cref="ScenarioEvent"/>).</summary>
+    public string Events { get; set; } = "[]";
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public enum ScenarioEventKind
+{
+    /// <summary>Time off: no saving, and spending is taken out, from <see cref="ScenarioEvent.Age"/> for <see cref="ScenarioEvent.Years"/>.</summary>
+    Break,
+    /// <summary>Monthly savings change to <see cref="ScenarioEvent.Amount"/> from the age on.</summary>
+    Savings,
+    /// <summary>A one-off amount in or out (negative) at the age.</summary>
+    LumpSum,
+}
+
+public record ScenarioEvent(ScenarioEventKind Kind, decimal Age, decimal? Years, decimal? Amount);
 
 public enum TransactionType
 {

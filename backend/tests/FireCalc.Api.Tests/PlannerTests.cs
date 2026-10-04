@@ -164,6 +164,8 @@ public class PlannerTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(950000m, dash.GetProperty("latest").GetProperty("byType").GetProperty("property").GetDecimal());
         Assert.Equal(800000m, dash.GetProperty("series")[0].GetProperty("byType").GetProperty("property").GetDecimal());
         Assert.Equal(950000m, dash.GetProperty("accounts")[1].GetProperty("value").GetDecimal());
+        Assert.Equal(4100000m, dash.GetProperty("accounts")[1].GetProperty("homeValue").GetDecimal());
+        Assert.Equal(3150000m, dash.GetProperty("accounts")[1].GetProperty("homeLoan").GetDecimal());
         Assert.Equal(52.5m, dash.GetProperty("goal").GetProperty("progressPct").GetDecimal());
 
         var without = await client.GetFromJsonAsync<JsonElement>("/api/dashboard?includeHome=false");

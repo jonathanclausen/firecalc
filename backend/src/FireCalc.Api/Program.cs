@@ -61,6 +61,7 @@ api.MapAccountEndpoints();
 api.MapGoalEndpoints();
 api.MapDashboardEndpoints();
 api.MapPortfolioEndpoints();
+api.MapScenarioEndpoints();
 
 app.Run();
 

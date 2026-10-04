@@ -13,7 +13,7 @@ import { CurrencySettings } from '../../../core/settings/currency';
 import { MoneyPipe } from '../../../shared/money.pipe';
 import { NetWorthChart } from './net-worth-chart';
 
-const INCLUDE_HOME_KEY = 'firecalc.includeHome';
+export const INCLUDE_HOME_KEY = 'firecalc.includeHome';
 
 @Component({
   selector: 'app-dashboard-page',
