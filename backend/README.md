@@ -15,6 +15,7 @@ gets in. Users are created on their first request, keyed by Google's `sub`.
 | `ConnectionStrings:Default` | `ConnectionStrings__Default` | Npgsql connection string |
 | `Auth:GoogleClientId` | `Auth__GoogleClientId` | OAuth client id from the GCP project |
 | `Auth:AllowedEmails` | `Auth__AllowedEmails__0` | One variable per allowed Google account |
+| `Auth:AdminEmails` | `Auth__AdminEmails__0` | Accounts that see the admin page (`/planner/admin`); everyone else gets 404 |
 | `Cors:AllowedOrigins` | `Cors__AllowedOrigins__0` | The frontend's origin |
 | `Auth:Authority` | `Auth__Authority` | Token issuer, default Google; override only to test against a local issuer |
 | `Database:MigrateOnStartup` | `Database__MigrateOnStartup` | Default `true`; applies EF migrations on boot |
@@ -66,6 +67,7 @@ The Google client id is set in `docker-compose.yml`. To get in, put your Google 
 
 ```
 Auth__AllowedEmails__0=you@gmail.com
+Auth__AdminEmails__0=you@gmail.com
 ```
 
 For quick backend iteration, run only the database in Docker and the API with hot reload:

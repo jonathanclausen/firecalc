@@ -36,7 +36,7 @@ Expected to stay at 0 kr for personal use: Cloud Run's free tier (2 million requ
 
    It enables the needed APIs and creates the image registry, the service accounts with only the roles they need, the two database secrets (it asks for each connection string without echoing it and converts it), placeholder preview services and the GitHub sign-in. It can be re-run safely. At the end it prints the values for the next steps.
 
-3. **GitHub.** In the repository's *Settings > Secrets and variables > Actions*, add the variables `GCP_PROJECT_ID` and `GCP_WIF_PROVIDER` (and `GCP_REGION` if you picked another region), and the secret `ALLOWED_EMAILS` with your Google address. Under *Issues > Labels*, add a label named `preview`. The deploy workflow skips itself until `GCP_PROJECT_ID` is set.
+3. **GitHub.** In the repository's *Settings > Secrets and variables > Actions*, add the variables `GCP_PROJECT_ID` and `GCP_WIF_PROVIDER` (and `GCP_REGION` if you picked another region), and the secret `ALLOWED_EMAILS` with your Google address (and optionally `ADMIN_EMAILS` for who sees the admin page; without it the allowed addresses are admins). Under *Issues > Labels*, add a label named `preview`. The deploy workflow skips itself until `GCP_PROJECT_ID` is set.
 
 4. **Deploy.** Run *Actions > Deploy > Run workflow* on `main` (later pushes to `main` deploy on their own). The run summary shows the address, `https://firecalc-web-<project number>.europe-west1.run.app`.
 

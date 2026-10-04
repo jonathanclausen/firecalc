@@ -1,4 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import {
   Component,
   computed,
@@ -44,6 +45,8 @@ export class PlannerShell {
   private readonly router = inject(Router);
   private readonly api = inject(PlannerApi);
   protected readonly removingDemo = signal(false);
+  /** Shows the "Admin" menu item. The API answers 404 to everyone else. */
+  protected readonly isAdmin = signal(false);
 
   constructor() {
     this.i18n.pageTitle.set((t) => t.planner.pageTitle);
@@ -58,6 +61,17 @@ export class PlannerShell {
       if (!el) return;
       el.replaceChildren();
       void this.auth.renderButton(el, locale);
+    });
+
+    const http = inject(HttpClient);
+    let adminChecked = false;
+    effect(() => {
+      if (!this.auth.user() || adminChecked) return;
+      adminChecked = true;
+      http.get('/api/admin/access').subscribe({
+        next: () => this.isAdmin.set(true),
+        error: () => this.isAdmin.set(false),
+      });
     });
 
     // A new user starts in the welcome guide, once per visit; they can leave it at any time.

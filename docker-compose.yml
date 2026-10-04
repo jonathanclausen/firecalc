@@ -6,6 +6,7 @@
 # Sign-in uses the project's Google OAuth client (its id is public). Only allow-listed Google
 # accounts get in: put yours in backend/.env.local (git-ignored):
 #   Auth__AllowedEmails__0=you@gmail.com
+#   Auth__AdminEmails__0=you@gmail.com      (optional: shows the admin page)
 services:
   db:
     image: postgres:17-alpine

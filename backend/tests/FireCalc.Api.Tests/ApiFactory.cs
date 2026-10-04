@@ -23,6 +23,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string ClientId = "test-client.apps.googleusercontent.com";
     public const string OwnerEmail = "owner@example.com";
+    /// <summary>Allowed in like the owner, but not an admin.</summary>
+    public const string MemberEmail = "member@example.com";
 
     private static readonly SymmetricSecurityKey SigningKey = new(Encoding.UTF8.GetBytes(new string('k', 64)));
 
@@ -44,6 +46,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("ConnectionStrings:Default", _connectionString);
         builder.UseSetting("Auth:GoogleClientId", ClientId);
         builder.UseSetting("Auth:AllowedEmails:0", OwnerEmail);
+        builder.UseSetting("Auth:AllowedEmails:1", MemberEmail);
+        builder.UseSetting("Auth:AdminEmails:0", OwnerEmail);
 
         builder.ConfigureTestServices(services =>
         {
