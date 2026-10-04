@@ -10,7 +10,7 @@ export function startingPoint(dashboard: Dashboard): StartingPoint {
     investments: 0,
     savings: 0,
     homeValue: 0,
-    homeLoan: 0,
+    homeLoans: [],
     otherLoans: 0,
   };
   for (const a of dashboard.accounts) {
@@ -24,7 +24,13 @@ export function startingPoint(dashboard: Dashboard): StartingPoint {
         break;
       case 'property':
         start.homeValue += a.homeValue ?? a.value;
-        start.homeLoan += a.homeLoan ?? 0;
+        for (const loan of a.loans ?? [])
+          start.homeLoans.push({
+            owed: loan.owed,
+            interestPct: loan.interestPct,
+            endDate: loan.endDate,
+            interestOnlyUntil: loan.interestOnlyUntil,
+          });
         break;
       case 'loan':
         start.otherLoans += -a.value;

@@ -18,6 +18,10 @@ export const plannerRoutes: Routes = [
         loadComponent: () => import('./accounts/accounts-page').then((m) => m.AccountsPage),
       },
       {
+        path: 'home',
+        loadComponent: () => import('./home/home-page').then((m) => m.HomePage),
+      },
+      {
         path: 'portfolio',
         loadComponent: () => import('./portfolio/portfolio-page').then((m) => m.PortfolioPage),
       },

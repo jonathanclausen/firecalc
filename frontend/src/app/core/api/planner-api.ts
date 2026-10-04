@@ -16,6 +16,9 @@ export const ACCOUNT_TYPES: readonly AccountType[] = [
   'loan',
 ];
 
+/** The kinds an account can have; homes are kept under Bolig instead. */
+export const ACCOUNT_KINDS: readonly AccountType[] = ACCOUNT_TYPES.filter((t) => t !== 'property');
+
 export interface Me {
   email: string;
   name: string | null;
@@ -31,19 +34,55 @@ export interface Account {
   archived: boolean;
   /** Valued from its transactions; balances can't be entered by hand. */
   tracked: boolean;
-  /** Latest balance entered by hand, and its date. For a home: its value. */
+  /** Latest balance entered by hand, and its date. For a loan: what is owed. */
   balance: number | null;
   balanceDate: string | null;
-  /** What is owed on a home (restgæld); null for other accounts. */
-  loan: number | null;
-  /** A loan taken for the home: left out together with the home's equity. */
-  partOfHome: boolean;
 }
 
 export interface AccountBalance {
   date: string;
   balance: number;
-  loan?: number | null;
+}
+
+/** A home under Bolig: its latest value, what its loans owe today, and the difference. */
+export interface Home {
+  id: string;
+  name: string;
+  archived: boolean;
+  value: number | null;
+  valueDate: string | null;
+  owed: number;
+  equity: number;
+  loans: Mortgage[];
+}
+
+/** A loan's terms; with a rate and an end date it is paid down as an annuity. */
+export interface MortgageTerms {
+  interestPct: number | null;
+  /** Bidragssats per year, a cost on what is owed. */
+  contributionPct: number | null;
+  endDate: string | null;
+  /** Only interest is paid until this date (afdragsfrihed). */
+  interestOnlyUntil: string | null;
+}
+
+export interface Mortgage extends MortgageTerms {
+  id: string;
+  name: string;
+  archived: boolean;
+  /** Worked out for today from the latest statement and the terms. */
+  owed: number | null;
+  statement: number | null;
+  statementDate: string | null;
+  /** This month's payment. */
+  payment: { interest: number; contribution: number; repayment: number } | null;
+}
+
+export type SaveMortgage = MortgageTerms & { name: string; archived: boolean };
+
+export interface HomeValuation {
+  date: string;
+  value: number;
 }
 
 export interface Goal {
@@ -66,9 +105,11 @@ export interface AccountValue {
   value: number;
   tracked: boolean;
   balanceDate: string | null;
-  /** For a home: its value and the loan on it, the two parts of its equity. */
+  /** For a home: its value and what its loans owe, the two parts of its equity. */
   homeValue?: number | null;
   homeLoan?: number | null;
+  /** For a home: each loan with what is owed today and its terms, so a projection can pay it down. */
+  loans?: (MortgageTerms & { name: string; owed: number })[] | null;
 }
 
 /** A saved "what if" for the future; the projection is calculated in the browser. */
@@ -284,14 +325,11 @@ export interface ImportResult {
 export class PlannerApi {
   private readonly http = inject(HttpClient);
 
-  createAccount(body: { name: string; type: AccountType; partOfHome?: boolean }) {
+  createAccount(body: { name: string; type: AccountType }) {
     return firstValueFrom(this.http.post<Account>('/api/accounts', body));
   }
 
-  updateAccount(
-    id: string,
-    body: { name: string; type: AccountType; archived: boolean; partOfHome?: boolean },
-  ) {
+  updateAccount(id: string, body: { name: string; type: AccountType; archived: boolean }) {
     return firstValueFrom(this.http.put<Account>(`/api/accounts/${id}`, body));
   }
 
@@ -307,6 +345,50 @@ export class PlannerApi {
 
   deleteBalance(accountId: string, date: string) {
     return firstValueFrom(this.http.delete<void>(`/api/accounts/${accountId}/balances/${date}`));
+  }
+
+  createHome(name: string) {
+    return firstValueFrom(this.http.post<Home>('/api/homes', { name }));
+  }
+
+  updateHome(id: string, body: { name: string; archived: boolean }) {
+    return firstValueFrom(this.http.put<void>(`/api/homes/${id}`, body));
+  }
+
+  deleteHome(id: string) {
+    return firstValueFrom(this.http.delete<void>(`/api/homes/${id}`));
+  }
+
+  saveHomeValue(homeId: string, body: HomeValuation) {
+    return firstValueFrom(this.http.put<HomeValuation>(`/api/homes/${homeId}/values`, body));
+  }
+
+  deleteHomeValue(homeId: string, date: string) {
+    return firstValueFrom(this.http.delete<void>(`/api/homes/${homeId}/values/${date}`));
+  }
+
+  createMortgage(homeId: string, body: SaveMortgage) {
+    return firstValueFrom(this.http.post<{ id: string }>(`/api/homes/${homeId}/loans`, body));
+  }
+
+  updateMortgage(homeId: string, id: string, body: SaveMortgage) {
+    return firstValueFrom(this.http.put<void>(`/api/homes/${homeId}/loans/${id}`, body));
+  }
+
+  deleteMortgage(homeId: string, id: string) {
+    return firstValueFrom(this.http.delete<void>(`/api/homes/${homeId}/loans/${id}`));
+  }
+
+  saveMortgageBalance(homeId: string, id: string, body: AccountBalance) {
+    return firstValueFrom(
+      this.http.put<AccountBalance>(`/api/homes/${homeId}/loans/${id}/balances`, body),
+    );
+  }
+
+  deleteMortgageBalance(homeId: string, id: string, date: string) {
+    return firstValueFrom(
+      this.http.delete<void>(`/api/homes/${homeId}/loans/${id}/balances/${date}`),
+    );
   }
 
   saveGoal(body: Goal) {

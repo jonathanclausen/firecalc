@@ -1,7 +1,7 @@
 import { httpResource } from '@angular/common/http';
 import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ACCOUNT_TYPES, Account, Dashboard, today } from '../../../core/api/planner-api';
+import { ACCOUNT_TYPES, Account, Dashboard, Home, today } from '../../../core/api/planner-api';
 import {
   averageMonthlyChange,
   monthsBetween,
@@ -38,12 +38,9 @@ export class DashboardPage {
   });
   protected readonly accounts = httpResource<Account[]>(() => '/api/accounts');
 
-  /** The switch only shows once there is a home, or a loan for one, to leave out. */
-  protected readonly hasHome = computed(() =>
-    (this.accounts.value() ?? []).some(
-      (a) => (a.type === 'property' || a.partOfHome) && !a.archived,
-    ),
-  );
+  /** The switch only shows once there is a home to leave out. */
+  private readonly homes = httpResource<Home[]>(() => '/api/homes');
+  protected readonly hasHome = computed(() => (this.homes.value() ?? []).length > 0);
 
   protected readonly loading = computed(() => !this.view() || !this.accounts.hasValue());
   protected readonly failed = computed(() => !!(this.dashboard.error() || this.accounts.error()));

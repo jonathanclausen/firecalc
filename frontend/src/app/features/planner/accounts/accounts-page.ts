@@ -2,7 +2,7 @@ import { HttpErrorResponse, httpResource } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
-  ACCOUNT_TYPES,
+  ACCOUNT_KINDS,
   Account,
   AccountBalance,
   AccountType,
@@ -25,7 +25,7 @@ export class AccountsPage {
   protected readonly i18n = inject(I18n);
   private readonly api = inject(PlannerApi);
 
-  protected readonly types = ACCOUNT_TYPES;
+  protected readonly types = ACCOUNT_KINDS;
   protected readonly accounts = httpResource<Account[]>(() => '/api/accounts?includeArchived=true');
   protected readonly showArchived = signal(false);
   protected readonly visible = computed(() =>
@@ -37,13 +37,11 @@ export class AccountsPage {
 
   protected readonly newName = signal('');
   protected readonly newType = signal<AccountType>('investment');
-  protected readonly newPartOfHome = signal(false);
   /** The account being renamed, with its draft values. */
   protected readonly editing = signal<{
     id: string;
     name: string;
     type: AccountType;
-    partOfHome: boolean;
   } | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -57,8 +55,6 @@ export class AccountsPage {
   protected readonly balanceDraft = signal<{
     id: string;
     balance: string;
-    /** What is owed, for a home. */
-    loan: string;
     date: string;
   } | null>(null);
   /** The account whose balance history is open. */
@@ -74,20 +70,14 @@ export class AccountsPage {
     this.balanceDraft.set({
       id: a.id,
       balance: a.balance === null ? '' : formatDecimal(a.balance, lang),
-      loan: a.loan === null ? '' : formatDecimal(a.loan, lang),
       date: this.today,
     });
   }
 
   /** Changes one field of the open balance form. */
-  protected setDraft(field: 'balance' | 'loan' | 'date', value: string) {
+  protected setDraft(field: 'balance' | 'date', value: string) {
     const draft = this.balanceDraft();
     if (draft) this.balanceDraft.set({ ...draft, [field]: value });
-  }
-
-  /** A home's equity: its value less what is owed. */
-  protected equity(b: { balance: number | null; loan?: number | null }) {
-    return (b.balance ?? 0) - (b.loan ?? 0);
   }
 
   protected async saveBalance(a: Account, event: Event) {
@@ -95,11 +85,8 @@ export class AccountsPage {
     const draft = this.balanceDraft();
     const balance = parseDecimal(draft?.balance, this.i18n.lang());
     if (!draft || balance === null || balance < 0 || !draft.date) return;
-    // A home without a loan typed in owes nothing.
-    const loan = a.type === 'property' ? (parseDecimal(draft.loan, this.i18n.lang()) ?? 0) : null;
-    if (loan !== null && loan < 0) return;
     await this.run(async () => {
-      await this.api.saveBalance(a.id, { date: draft.date, balance, loan });
+      await this.api.saveBalance(a.id, { date: draft.date, balance });
       this.balanceDraft.set(null);
       if (this.historyFor() === a.id) this.history.reload();
     });
@@ -123,24 +110,18 @@ export class AccountsPage {
     const name = this.newName().trim();
     if (!name) return;
     await this.run(async () => {
-      const type = this.newType();
-      await this.api.createAccount({
-        name,
-        type,
-        partOfHome: type === 'loan' && this.newPartOfHome(),
-      });
+      await this.api.createAccount({ name, type: this.newType() });
       this.newName.set('');
-      this.newPartOfHome.set(false);
     });
   }
 
   protected startEdit(a: Account) {
     this.balanceDraft.set(null);
-    this.editing.set({ id: a.id, name: a.name, type: a.type, partOfHome: a.partOfHome });
+    this.editing.set({ id: a.id, name: a.name, type: a.type });
   }
 
   /** Changes one field of the open edit form. */
-  protected setEdit(change: Partial<{ name: string; type: AccountType; partOfHome: boolean }>) {
+  protected setEdit(change: Partial<{ name: string; type: AccountType }>) {
     const draft = this.editing();
     if (draft) this.editing.set({ ...draft, ...change });
   }
@@ -154,21 +135,13 @@ export class AccountsPage {
         name: draft.name.trim(),
         type: draft.type,
         archived: a.archived,
-        partOfHome: draft.type === 'loan' && draft.partOfHome,
       });
       this.editing.set(null);
     });
   }
 
   protected setArchived(a: Account, archived: boolean) {
-    return this.run(() =>
-      this.api.updateAccount(a.id, {
-        name: a.name,
-        type: a.type,
-        archived,
-        partOfHome: a.partOfHome,
-      }),
-    );
+    return this.run(() => this.api.updateAccount(a.id, { name: a.name, type: a.type, archived }));
   }
 
   protected async remove(a: Account) {
