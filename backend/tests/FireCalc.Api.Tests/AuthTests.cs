@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace FireCalc.Api.Tests;
 
@@ -43,8 +44,8 @@ public class AuthTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Owner_is_created_on_first_request()
     {
-        var me = await factory.CreateClientFor().GetFromJsonAsync<Dictionary<string, string>>("/api/me");
-        Assert.Equal(ApiFactory.OwnerEmail, me!["email"]);
-        Assert.Equal("DKK", me["currency"]);
+        var me = await factory.CreateClientFor().GetFromJsonAsync<JsonElement>("/api/me");
+        Assert.Equal(ApiFactory.OwnerEmail, me.GetProperty("email").GetString());
+        Assert.Equal("DKK", me.GetProperty("currency").GetString());
     }
 }

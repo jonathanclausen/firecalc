@@ -1,22 +1,28 @@
 using System.Security.Claims;
 using FireCalc.Api.Auth;
 using FireCalc.Api.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace FireCalc.Api.Endpoints;
 
 public static class MeEndpoints
 {
-    public record MeDto(string Email, string? Name, string Currency, DateOnly? BirthDate);
+    public record MeDto(string Email, string? Name, string Currency, DateOnly? BirthDate, bool Onboarded, bool ChecklistHidden, bool HasDemo);
     public record SaveProfileRequest(DateOnly? BirthDate);
+    /// <summary>Only the fields sent are changed.</summary>
+    public record SaveOnboardingRequest(bool? Onboarded, bool? ChecklistHidden);
 
-    private static MeDto ToDto(User user) => new(user.Email, user.Name, user.Currency, user.BirthDate);
+    internal static async Task<MeDto> ToDtoAsync(FireCalcDbContext db, User user, CancellationToken ct) => new(
+        user.Email, user.Name, user.Currency, user.BirthDate,
+        user.OnboardedAt is not null, user.ChecklistHiddenAt is not null,
+        await db.Accounts.AnyAsync(a => a.UserId == user.Id && a.IsDemo, ct));
 
     public static void MapMeEndpoints(this RouteGroupBuilder api)
     {
         api.MapGet("/me", async (ClaimsPrincipal principal, FireCalcDbContext db, CancellationToken ct) =>
         {
             var user = await db.GetOrCreateUserAsync(principal, ct);
-            return ToDto(user);
+            return await ToDtoAsync(db, user, ct);
         });
 
         api.MapPut("/me/profile", async (SaveProfileRequest req, ClaimsPrincipal principal, FireCalcDbContext db, CancellationToken ct) =>
@@ -29,7 +35,17 @@ public static class MeEndpoints
             var user = await db.GetOrCreateUserAsync(principal, ct);
             user.BirthDate = req.BirthDate;
             await db.SaveChangesAsync(ct);
-            return Results.Ok(ToDto(user));
+            return Results.Ok(await ToDtoAsync(db, user, ct));
+        });
+
+        api.MapPut("/me/onboarding", async (SaveOnboardingRequest req, ClaimsPrincipal principal, FireCalcDbContext db, CancellationToken ct) =>
+        {
+            var user = await db.GetOrCreateUserAsync(principal, ct);
+            var now = DateTimeOffset.UtcNow;
+            if (req.Onboarded is { } onboarded) user.OnboardedAt = onboarded ? user.OnboardedAt ?? now : null;
+            if (req.ChecklistHidden is { } hidden) user.ChecklistHiddenAt = hidden ? user.ChecklistHiddenAt ?? now : null;
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(await ToDtoAsync(db, user, ct));
         });
     }
 }

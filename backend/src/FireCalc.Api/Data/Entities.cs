@@ -20,6 +20,10 @@ public class User
     public string Currency { get; set; } = "DKK";
     /// <summary>Used to place scenario events and the FIRE age on a timeline.</summary>
     public DateOnly? BirthDate { get; set; }
+    /// <summary>When the welcome guide was finished or skipped; until then it opens on sign-in.</summary>
+    public DateTimeOffset? OnboardedAt { get; set; }
+    /// <summary>When the "getting started" checklist on the overview was hidden.</summary>
+    public DateTimeOffset? ChecklistHiddenAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
@@ -32,6 +36,8 @@ public class Account
     /// <summary>A <see cref="AccountType.Loan"/> taken for the home, so it is left out with the home's equity.</summary>
     public bool PartOfHome { get; set; }
     public bool Archived { get; set; }
+    /// <summary>Example data from "Prøv med eksempeldata"; removed together in one go.</summary>
+    public bool IsDemo { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
@@ -79,6 +85,8 @@ public class Goal
     public decimal TargetAmount { get; set; }
     public DateOnly? TargetDate { get; set; }
     public decimal? ExpectedAnnualReturnPct { get; set; }
+    /// <summary>Set by the example data; saving the goal makes it the user's own.</summary>
+    public bool IsDemo { get; set; }
 }
 
 /// <summary>
@@ -104,6 +112,8 @@ public class Scenario
     public decimal WithdrawalPct { get; set; } = 4;
     /// <summary>The events as JSON (a list of <see cref="ScenarioEvent"/>).</summary>
     public string Events { get; set; } = "[]";
+    /// <summary>Example data from "Prøv med eksempeldata".</summary>
+    public bool IsDemo { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
