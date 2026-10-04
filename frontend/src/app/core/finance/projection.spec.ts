@@ -12,7 +12,7 @@ const start: StartingPoint = {
   investments: 500_000,
   savings: 100_000,
   homeValue: 4_000_000,
-  homeLoan: 3_000_000,
+  homeLoans: [{ owed: 3_000_000, interestPct: null, endDate: null, interestOnlyUntil: null }],
   otherLoans: 200_000,
 };
 
@@ -133,5 +133,22 @@ describe('projection', () => {
     const { points } = project(start, s, BIRTH, TODAY, 32);
     expect(points[12].savings).toBe(100_000 + 12 * 2_000);
     expect(points[12].investments).toBe(500_000 + 12 * 10_000);
+  });
+
+  it('pays the home loan down by its terms and says when it is paid off', () => {
+    const s = { ...flat, monthlySavings: 0 };
+    const loan = {
+      owed: 1_200_000,
+      interestPct: 4,
+      endDate: '2036-01-01',
+      interestOnlyUntil: null,
+    };
+    const { points, loansPaidAge } = project({ ...start, homeLoans: [loan] }, s, BIRTH, TODAY, 40);
+    expect(points[1].homeOwed).toBeLessThan(1_200_000);
+    expect(points[1].homeEquity).toBeCloseTo(4_000_000 - points[1].homeOwed, 2);
+    expect(points[60].homeOwed).toBeGreaterThan(0);
+    expect(points[120].homeOwed).toBe(0);
+    expect(loansPaidAge).toBeCloseTo(40, 5);
+    expect(points[120].netWorth).toBe(600_000 + 4_000_000 - 200_000);
   });
 });

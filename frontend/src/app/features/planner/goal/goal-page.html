@@ -6,6 +6,7 @@
     <h1>{{ g.title }}</h1>
     <p class="lede">{{ g.lede }}</p>
   </div>
+  <a class="btn btn--secondary" routerLink="/planner">{{ g.backToOverview }}</a>
 </section>
 
 @if (goal.error()) {

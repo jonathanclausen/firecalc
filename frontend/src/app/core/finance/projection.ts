@@ -1,3 +1,5 @@
+import { LoanTerms, loanPayment } from './mortgage';
+
 /**
  * Projects net worth month by month from today, for a scenario of assumptions and life events placed
  * by age. Plain TypeScript like the other engines. Dates are ISO yyyy-mm-dd strings.
@@ -34,12 +36,18 @@ export interface ScenarioAssumptions {
   events: ScenarioEvent[];
 }
 
+/** A loan on the home: what is owed today and the terms it is paid down by (flat without them). */
+export interface HomeLoan extends LoanTerms {
+  owed: number;
+}
+
 /** Today's values, split the way the projection grows them. Loans are amounts owed (positive). */
 export interface StartingPoint {
   investments: number;
   savings: number;
   homeValue: number;
-  homeLoan: number;
+  homeLoans: HomeLoan[];
+  /** Other loans, which stay as they are. */
   otherLoans: number;
 }
 
@@ -49,6 +57,9 @@ export interface ProjectionPoint {
   investments: number;
   savings: number;
   homeEquity: number;
+  /** What the home's loans owe (positive). */
+  homeOwed: number;
+  /** Other loans, negative. */
   loans: number;
   netWorth: number;
   /** Investments and savings: the money that can be spent. */
@@ -61,6 +72,8 @@ export interface Projection {
   points: ProjectionPoint[];
   /** First age the liquid money ran out while spending, or null if it lasts. */
   depletedAge: number | null;
+  /** Age the home's loans are all paid off, or null if they aren't within the projection (or there are none). */
+  loansPaidAge: number | null;
 }
 
 /** Monthly rate equivalent to a yearly return in percent. */
@@ -93,7 +106,8 @@ const round = (v: number) => Math.round(v * 100) / 100;
 /**
  * Runs the scenario from `today` until `endAge`. Each month the balances grow, then either the month's
  * savings go into investments or, after the FIRE age and during a break, the month's spending (raised
- * with inflation) comes out of savings first and then investments. Loans stay as they are.
+ * with inflation) comes out of savings first and then investments. The home's loans are paid down by their
+ * terms (the payments come out of income, which the monthly savings are already net of); other loans stay.
  */
 export function project(
   start: StartingPoint,
@@ -108,12 +122,14 @@ export function project(
   const rs = monthlyRate(s.savingsReturnPct);
   const rh = monthlyRate(s.homeGrowthPct);
   const inflation = 1 + s.inflationPct / 100;
-  const loans = start.homeLoan + start.otherLoans;
   const savingsChanges = s.events.filter((e) => e.kind === 'savings').sort((a, b) => a.age - b.age);
 
   let investments = start.investments;
   let savings = start.savings;
   let home = start.homeValue;
+  const owed = start.homeLoans.map((l) => l.owed);
+  const homeOwed = () => owed.reduce((sum, o) => sum + o, 0);
+  let loansPaidAge: number | null = null;
   let depletedAge: number | null = null;
   /** The yearly amount the withdrawal rate gives, set at FIRE and again each year after. */
   let yearlyWithdrawal = 0;
@@ -127,9 +143,10 @@ export function project(
       age,
       investments: round(investments),
       savings: round(savings),
-      homeEquity: round(home - start.homeLoan),
+      homeEquity: round(home - homeOwed()),
+      homeOwed: round(homeOwed()),
       loans: round(-start.otherLoans),
-      netWorth: round(investments + savings + home - loans),
+      netWorth: round(investments + savings + home - homeOwed() - start.otherLoans),
       liquid: round(investments + savings),
       withdrawal: round(withdrawing),
     });
@@ -141,6 +158,11 @@ export function project(
     investments *= 1 + ri;
     savings *= 1 + rs;
     home *= 1 + rh;
+    const monthStart = addMonths(today, m - 1);
+    start.homeLoans.forEach((loan, i) => {
+      owed[i] = Math.max(0, owed[i] - loanPayment(owed[i], loan, monthStart).repayment);
+    });
+    if (loansPaidAge === null && start.homeLoans.length && homeOwed() < 0.005) loansPaidAge = age;
 
     const onBreak = s.events.some(
       (e) => e.kind === 'break' && age > e.age && age <= e.age + (e.years ?? 0),
@@ -178,7 +200,7 @@ export function project(
     }
     push(m, age);
   }
-  return { points, depletedAge };
+  return { points, depletedAge, loansPaidAge };
 }
 
 /** The same projection in today's money: each value divided by inflation since today. */
@@ -191,6 +213,7 @@ export function inTodaysMoney(points: ProjectionPoint[], inflationPct: number): 
       investments: round(p.investments / f),
       savings: round(p.savings / f),
       homeEquity: round(p.homeEquity / f),
+      homeOwed: round(p.homeOwed / f),
       loans: round(p.loans / f),
       netWorth: round(p.netWorth / f),
       liquid: round(p.liquid / f),

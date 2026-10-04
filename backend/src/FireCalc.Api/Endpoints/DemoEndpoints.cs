@@ -20,10 +20,10 @@ public static class DemoEndpoints
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
-    private record Names(string Prefix, string Depot, string Savings, string Cash, string Home, string CarLoan, string Scenario);
+    private record Names(string Prefix, string Depot, string Savings, string Cash, string Home, string Mortgage, string CarLoan, string Scenario);
 
-    private static readonly Names Danish = new("Eksempel", "Aktiedepot", "Opsparingskonto", "Lønkonto", "Lejlighed", "Billån", "Som nu");
-    private static readonly Names English = new("Example", "Share account", "Savings account", "Current account", "Flat", "Car loan", "As now");
+    private static readonly Names Danish = new("Eksempel", "Aktiedepot", "Opsparingskonto", "Lønkonto", "Lejlighed", "Realkreditlån", "Billån", "Som nu");
+    private static readonly Names English = new("Example", "Share account", "Savings account", "Current account", "Flat", "Mortgage", "Car loan", "As now");
 
     public static void MapDemoEndpoints(this RouteGroupBuilder api)
     {
@@ -41,23 +41,17 @@ public static class DemoEndpoints
                 .Append(today)
                 .ToList();
 
-            Account Add(string name, AccountType type, bool partOfHome = false)
+            Account Add(string name, AccountType type)
             {
-                var a = new Account { UserId = user.Id, Name = $"{n.Prefix} · {name}", Type = type, PartOfHome = partOfHome, IsDemo = true };
+                var a = new Account { UserId = user.Id, Name = $"{n.Prefix} · {name}", Type = type, IsDemo = true };
                 db.Accounts.Add(a);
                 return a;
             }
 
-            void Balances(Account a, Func<int, decimal> balance, Func<int, decimal?>? loan = null)
+            void Balances(Account a, Func<int, decimal> balance)
             {
                 for (var i = 0; i < dates.Count; i++)
-                    db.Balances.Add(new AccountBalance
-                    {
-                        AccountId = a.Id,
-                        Date = dates[i],
-                        Balance = Math.Round(balance(i), 0),
-                        Loan = loan?.Invoke(i) is { } l ? Math.Round(l, 0) : null,
-                    });
+                    db.Balances.Add(new AccountBalance { AccountId = a.Id, Date = dates[i], Balance = Math.Round(balance(i), 0) });
             }
 
             // A depot growing about 7 % a year with 6.000 kr. added each month, with a dip in the middle.
@@ -71,7 +65,24 @@ public static class DemoEndpoints
             Balances(Add(n.Depot, AccountType.Investment), i => depotValues[i]);
             Balances(Add(n.Savings, AccountType.Savings), i => 60_000m + 1_500m * i);
             Balances(Add(n.Cash, AccountType.Cash), i => 22_000m + (i % 3) * 4_000m);
-            Balances(Add(n.Home, AccountType.Property), i => 2_600_000m + 4_300m * i, i => 2_050_000m - 3_800m * i);
+
+            // A flat bought two years ago with a 30-year realkreditlån, valued once a year.
+            var home = new Home { UserId = user.Id, Name = $"{n.Prefix} · {n.Home}", IsDemo = true };
+            db.Homes.Add(home);
+            for (var i = 0; i < dates.Count; i += 12)
+                db.HomeValuations.Add(new HomeValuation { HomeId = home.Id, Date = dates[i], Value = 2_600_000m + 52_000m * (i / 12) });
+            var mortgage = new Mortgage
+            {
+                HomeId = home.Id,
+                Name = n.Mortgage,
+                InterestPct = 4m,
+                ContributionPct = 0.75m,
+                EndDate = dates[0].AddYears(30),
+            };
+            db.Mortgages.Add(mortgage);
+            // Statements each quarter, as realkredit sends them.
+            for (var i = 0; i < dates.Count - 1; i += 3)
+                db.MortgageBalances.Add(new MortgageBalance { MortgageId = mortgage.Id, Date = dates[i], Balance = 2_050_000m - 3_800m * i });
             Balances(Add(n.CarLoan, AccountType.Loan), i => Math.Max(0, 120_000m - 2_500m * i));
 
             if (!await db.Goals.AnyAsync(g => g.UserId == user.Id, ct))
@@ -102,6 +113,7 @@ public static class DemoEndpoints
             var user = await db.GetOrCreateUserAsync(principal, ct);
             // Balances and transactions go with their accounts (cascade).
             await db.Accounts.Where(a => a.UserId == user.Id && a.IsDemo).ExecuteDeleteAsync(ct);
+            await db.Homes.Where(h => h.UserId == user.Id && h.IsDemo).ExecuteDeleteAsync(ct);
             await db.Goals.Where(g => g.UserId == user.Id && g.IsDemo).ExecuteDeleteAsync(ct);
             await db.Scenarios.Where(s => s.UserId == user.Id && s.IsDemo).ExecuteDeleteAsync(ct);
             return Results.Ok(await MeEndpoints.ToDtoAsync(db, user, ct));

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FireCalc.Api.Auth;
 using FireCalc.Api.Data;
+using FireCalc.Api.Homes;
 using FireCalc.Api.Portfolio;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,11 +14,15 @@ public static class DashboardEndpoints
 
     /// <summary>
     /// An account's part of today's net worth. Tracked accounts are valued live from their transactions;
-    /// the others count with the balance entered on <see cref="BalanceDate"/>. A home counts with its equity
-    /// (value less loan) and a loan with what is owed, as a negative value. For a home, HomeValue and HomeLoan
-    /// are the two parts of its equity, so a projection can grow the value on its own.
+    /// the others count with the balance entered on <see cref="BalanceDate"/>. A home (type property) counts with
+    /// its equity; <see cref="HomeValue"/> and <see cref="Loans"/> are its two parts, so a projection can grow the
+    /// value and pay the loans down on their own.
     /// </summary>
-    public record AccountValue(Guid Id, string Name, AccountType Type, decimal Value, bool Tracked, DateOnly? BalanceDate, decimal? HomeValue = null, decimal? HomeLoan = null);
+    public record AccountValue(Guid Id, string Name, AccountType Type, decimal Value, bool Tracked, DateOnly? BalanceDate,
+        decimal? HomeValue = null, decimal? HomeLoan = null, List<LoanTerms>? Loans = null);
+
+    /// <summary>A loan on a home: what is owed today and the terms it is paid down by.</summary>
+    public record LoanTerms(string Name, decimal Owed, decimal? InterestPct, decimal? ContributionPct, DateOnly? EndDate, DateOnly? InterestOnlyUntil);
 
     /// <summary>
     /// How much was put aside per month lately, from up to the last 12 months: money put into the investment
@@ -54,13 +59,25 @@ public static class DashboardEndpoints
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             var goal = await db.Goals.AsNoTracking().SingleOrDefaultAsync(g => g.UserId == user.Id, ct);
             var accounts = await db.Accounts.AsNoTracking()
-                .Where(a => a.UserId == user.Id && (includeHome != false || (a.Type != AccountType.Property && !a.PartOfHome)))
+                .Where(a => a.UserId == user.Id && a.Type != AccountType.Property)
                 .OrderBy(a => a.CreatedAt)
                 .ToListAsync(ct);
             var accountIds = accounts.Select(a => a.Id).ToList();
             var balances = (await db.Balances.AsNoTracking().Where(b => accountIds.Contains(b.AccountId)).ToListAsync(ct))
                 .GroupBy(b => b.AccountId)
                 .ToDictionary(g => g.Key, g => g.OrderBy(b => b.Date).ToList());
+            // Homes count with their value less their loans; archived homes and loans don't count.
+            var homes = includeHome == false ? [] : await db.Homes.AsNoTracking()
+                .Where(h => h.UserId == user.Id && !h.Archived)
+                .OrderBy(h => h.CreatedAt)
+                .ToListAsync(ct);
+            var homeData = await HomeData.LoadAsync(db, homes.Select(h => h.Id).ToList(), ct);
+            List<Mortgage> LoansOf(Home h) => homeData.Loans.GetValueOrDefault(h.Id, []).Where(m => !m.Archived).ToList();
+            decimal Owed(Mortgage m, DateOnly day) =>
+                MortgageMath.OwedOn(homeData.Statements.GetValueOrDefault(m.Id, []), MortgageMath.Terms.Of(m), day) ?? 0;
+            decimal? ValueOn(Home h, DateOnly day) => homeData.Values.GetValueOrDefault(h.Id)?.LastOrDefault(v => v.Date <= day)?.Value;
+            decimal? EquityOn(Home h, DateOnly day) =>
+                ValueOn(h, day) is { } value ? value - LoansOf(h).Sum(m => Owed(m, day)) : null;
 
             // Accounts with transactions are valued from them: daily for the history, live for today.
             var daily = await history.DailyAsync(user.Id, user.Currency, today, ct);
@@ -74,12 +91,7 @@ public static class DashboardEndpoints
                 if (!balances.TryGetValue(account.Id, out var list)) return null;
                 if (account.Archived && day > list[^1].Date) return null;
                 var balance = list.LastOrDefault(b => b.Date <= day);
-                return balance is null ? null : account.Type switch
-                {
-                    AccountType.Property => balance.Balance - (balance.Loan ?? 0),
-                    AccountType.Loan => -balance.Balance,
-                    _ => balance.Balance,
-                };
+                return balance is null ? null : account.Type == AccountType.Loan ? -balance.Balance : balance.Balance;
             }
 
             SeriesPoint PointOn(DateOnly day)
@@ -93,16 +105,21 @@ public static class DashboardEndpoints
                     Add(AccountType.Investment, invested);
                 foreach (var a in manual)
                     if (BalanceOn(a, day) is { } balance) Add(a.Type, balance);
+                foreach (var h in homes)
+                    if (EquityOn(h, day) is { } equity) Add(AccountType.Property, equity);
                 return new SeriesPoint(day, byType.Values.Sum(), byType);
             }
 
-            var starts = balances.Values.Select(l => l[0].Date).Concat(days.Keys.Take(1)).ToList();
+            var homeDates = homeData.Values.Values.SelectMany(l => l.Select(v => v.Date))
+                .Concat(homeData.Statements.Values.SelectMany(l => l.Select(b => b.Date)))
+                .ToList();
+            var starts = balances.Values.Select(l => l[0].Date).Concat(days.Keys.Take(1)).Concat(homeData.Values.Values.Select(l => l[0].Date)).ToList();
             if (starts.Count == 0)
                 return new DashboardDto(user.Currency, null, null, null, [], [], Progress(goal, null));
             var first = starts.Min();
 
             // A point at every balance entered and at each month end, so the investments show between them.
-            var dates = new SortedSet<DateOnly>(balances.Values.SelectMany(l => l.Select(b => b.Date)).Where(d => d < today)) { first, today };
+            var dates = new SortedSet<DateOnly>(balances.Values.SelectMany(l => l.Select(b => b.Date)).Concat(homeDates).Where(d => d >= first && d < today)) { first, today };
             for (var monthEnd = new DateOnly(first.Year, first.Month, 1).AddMonths(1).AddDays(-1); monthEnd < today; monthEnd = monthEnd.AddDays(1).AddMonths(1).AddDays(-1))
                 if (monthEnd >= first) dates.Add(monthEnd);
             var series = dates.Select(PointOn).ToList();
@@ -115,9 +132,14 @@ public static class DashboardEndpoints
                 .Where(a => !a.Archived)
                 .Select(a => live.TryGetValue(a.Id, out var value)
                     ? new AccountValue(a.Id, a.Name, a.Type, value, true, null)
-                    : new AccountValue(a.Id, a.Name, a.Type, BalanceOn(a, today) ?? 0, false, balances.GetValueOrDefault(a.Id)?[^1].Date,
-                        a.Type == AccountType.Property ? balances.GetValueOrDefault(a.Id)?[^1].Balance : null,
-                        a.Type == AccountType.Property ? balances.GetValueOrDefault(a.Id)?[^1].Loan ?? 0 : null))
+                    : new AccountValue(a.Id, a.Name, a.Type, BalanceOn(a, today) ?? 0, false, balances.GetValueOrDefault(a.Id)?[^1].Date))
+                .Concat(homes.Where(h => homeData.Values.ContainsKey(h.Id)).Select(h =>
+                {
+                    var loans = LoansOf(h).Select(m => new LoanTerms(m.Name, Owed(m, today), m.InterestPct, m.ContributionPct, m.EndDate, m.InterestOnlyUntil)).ToList();
+                    var value = ValueOn(h, today) ?? 0;
+                    var owed = loans.Sum(l => l.Owed);
+                    return new AccountValue(h.Id, h.Name, AccountType.Property, value - owed, false, homeData.Values[h.Id][^1].Date, value, owed, loans);
+                }))
                 .ToList();
 
             // Which accounts the money behind each day's change in net deposits went in or out of.

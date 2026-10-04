@@ -17,7 +17,7 @@ import { I18n } from '../../core/i18n/i18n';
 import { BrandMark } from '../../shared/brand-mark';
 import { LangSwitch } from '../../shared/lang-switch';
 
-type NavLabel = 'overview' | 'portfolio' | 'accounts' | 'future' | 'goal';
+type NavLabel = 'overview' | 'portfolio' | 'accounts' | 'home' | 'future';
 
 /** Frame for the "My finances" pages: sign-in gate, then an app shell (sidebar, or app bar and tab bar on phones). */
 @Component({
@@ -34,8 +34,8 @@ export class PlannerShell {
     { path: '/planner', label: 'overview', icon: 'overview', exact: true },
     { path: '/planner/portfolio', label: 'portfolio', icon: 'portfolio', exact: false },
     { path: '/planner/accounts', label: 'accounts', icon: 'accounts', exact: false },
+    { path: '/planner/home', label: 'home', icon: 'home', exact: false },
     { path: '/planner/future', label: 'future', icon: 'future', exact: false },
-    { path: '/planner/goal', label: 'goal', icon: 'goal', exact: false },
   ];
   protected readonly initial = computed(() =>
     (this.auth.user()?.name || this.auth.user()?.email || '?').charAt(0).toUpperCase(),

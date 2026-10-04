@@ -188,24 +188,39 @@ export class WelcomePage {
     }
     await this.run(async () => {
       for (const d of chosen) {
-        const account = await this.api.createAccount({
-          name: d.name.trim() || this.i18n.t().planner.onboarding.accounts.options[d.type].name,
-          type: d.type,
-        });
+        const name =
+          d.name.trim() || this.i18n.t().planner.onboarding.accounts.options[d.type].name;
+        const value = this.number(d.value);
+        if (d.type === 'property') await this.addHome(name, value, this.number(d.loan));
+        else {
+          const account = await this.api.createAccount({ name, type: d.type });
+          if (value !== null && value >= 0)
+            await this.api.saveBalance(account.id, { date: today(), balance: value });
+        }
         // Created, so a retry after an error doesn't add it twice.
         this.updateDraft(d.type, { chosen: false });
         this.existingAccounts.update((n) => n + 1);
-        const value = this.number(d.value);
-        const loan = d.type === 'property' ? this.number(d.loan) : null;
-        if (value !== null && value >= 0)
-          await this.api.saveBalance(account.id, {
-            date: today(),
-            balance: value,
-            loan: loan !== null && loan >= 0 ? loan : null,
-          });
       }
       this.go('goal');
     });
+  }
+
+  /** A home goes under Bolig, with what is owed on it as one loan; its terms can be added there. */
+  private async addHome(name: string, value: number | null, owed: number | null) {
+    const home = await this.api.createHome(name);
+    if (value !== null && value >= 0)
+      await this.api.saveHomeValue(home.id, { date: today(), value });
+    if (owed !== null && owed > 0) {
+      const loan = await this.api.createMortgage(home.id, {
+        name: this.i18n.t().planner.onboarding.accounts.mortgageName,
+        archived: false,
+        interestPct: null,
+        contributionPct: null,
+        endDate: null,
+        interestOnlyUntil: null,
+      });
+      await this.api.saveMortgageBalance(home.id, loan.id, { date: today(), balance: owed });
+    }
   }
 
   protected async saveGoal(event: Event) {

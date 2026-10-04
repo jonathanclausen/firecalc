@@ -41,7 +41,9 @@ public class OnboardingTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsync("/api/demo", null)).StatusCode);
 
         var accounts = await client.GetFromJsonAsync<JsonElement>("/api/accounts");
-        Assert.Equal(6, accounts.GetArrayLength());
+        Assert.Equal(5, accounts.GetArrayLength());
+        var home = Assert.Single((await client.GetFromJsonAsync<JsonElement>("/api/homes")).EnumerateArray());
+        Assert.True(home.GetProperty("equity").GetDecimal() > 0);
         var dashboard = await client.GetFromJsonAsync<JsonElement>("/api/dashboard");
         Assert.True(dashboard.GetProperty("series").GetArrayLength() >= 24);
         Assert.Equal(7_500_000m, dashboard.GetProperty("goal").GetProperty("goal").GetProperty("targetAmount").GetDecimal());
@@ -52,6 +54,7 @@ public class OnboardingTests(ApiFactory factory) : IClassFixture<ApiFactory>
         accounts = await client.GetFromJsonAsync<JsonElement>("/api/accounts");
         Assert.Equal("Min opsparing", Assert.Single(accounts.EnumerateArray()).GetProperty("name").GetString());
         Assert.Equal(0, (await client.GetFromJsonAsync<JsonElement>("/api/scenarios")).GetArrayLength());
+        Assert.Equal(0, (await client.GetFromJsonAsync<JsonElement>("/api/homes")).GetArrayLength());
         Assert.Equal(HttpStatusCode.NoContent, (await client.GetAsync("/api/goal")).StatusCode);
     }
 

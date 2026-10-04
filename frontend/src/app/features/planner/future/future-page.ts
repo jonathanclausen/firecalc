@@ -1,7 +1,7 @@
 import { httpResource } from '@angular/common/http';
 import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Account, Dashboard, PlannerApi, Scenario, today } from '../../../core/api/planner-api';
+import { Dashboard, Home, PlannerApi, Scenario, today } from '../../../core/api/planner-api';
 import { Auth } from '../../../core/auth/auth';
 import {
   ProjectionPoint,
@@ -63,13 +63,9 @@ export class FuturePage {
   /** The "keep going as now" projection needs something to start from. */
   protected readonly course = computed(() => (this.view()?.latest ? this.view()! : null));
   protected readonly scenarios = httpResource<Scenario[]>(() => '/api/scenarios');
-  private readonly accounts = httpResource<Account[]>(() => '/api/accounts');
 
-  protected readonly hasHome = computed(() =>
-    (this.accounts.value() ?? []).some(
-      (a) => (a.type === 'property' || a.partOfHome) && !a.archived,
-    ),
-  );
+  private readonly homes = httpResource<Home[]>(() => '/api/homes');
+  protected readonly hasHome = computed(() => (this.homes.value() ?? []).length > 0);
 
   protected readonly birthDate = computed(() => this.auth.user()?.birthDate ?? null);
   protected readonly editingBirth = signal(false);

@@ -97,25 +97,14 @@
   gap: 10px;
   width: 100%;
 
-  // A loan has the "belongs to the home" box too.
-  &:has(.toggle) {
-    grid-template-columns: minmax(0, 1fr) 160px auto auto auto;
-  }
-
   @media (max-width: 560px) {
-    &,
-    &:has(.toggle) {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    }
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
-.add__home {
-  margin-top: 12px;
-
-  small {
-    color: var(--text-muted);
-  }
+.add__hint {
+  margin: 12px 0 0;
+  font-size: 0.8125rem;
 }
 
 .balance {
@@ -141,30 +130,9 @@
   gap: 10px;
   width: 100%;
 
-  // A home has a loan field too.
-  &:has(.balance-form__hint) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 170px auto auto;
-  }
-
   @media (max-width: 560px) {
-    &,
-    &:has(.balance-form__hint) {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    }
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
-}
-
-.balance-form__hint {
-  grid-column: 1 / -1;
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--text-muted);
-}
-
-.balance__split {
-  display: block;
-  font-size: 0.75rem;
-  color: var(--text-muted);
 }
 
 .history {
