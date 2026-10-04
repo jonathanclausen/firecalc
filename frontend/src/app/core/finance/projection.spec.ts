@@ -23,6 +23,7 @@ const flat: ScenarioAssumptions = {
   homeGrowthPct: 0,
   inflationPct: 0,
   fireAge: 60,
+  withdrawalPct: 4,
   yearlySpending: 120_000,
   events: [],
 };
@@ -50,10 +51,26 @@ describe('projection', () => {
     const { points } = project(start, { ...flat, fireAge: 35 }, BIRTH, TODAY, 40);
     const at35 = pointAtAge(points, 35)!;
     expect(at35.investments).toBeCloseTo(500_000 + 60 * 10_000, 0);
-    // After FIRE, 10.000 a month comes out: savings first, then investments.
+    expect(at35.withdrawal).toBe(0);
+  });
+
+  it('takes out the withdrawal rate each year after FIRE', () => {
+    const { points } = project(start, { ...flat, fireAge: 35 }, BIRTH, TODAY, 40);
+    const at35 = pointAtAge(points, 35)!;
+    // 4 % of 1.200.000 a year, taken monthly: savings first, then investments.
     const at36 = pointAtAge(points, 36)!;
-    expect(at36.savings).toBe(0);
-    expect(at36.liquid).toBeCloseTo(at35.liquid - 120_000, 0);
+    expect(at36.withdrawal).toBeCloseTo(48_000, 0);
+    expect(at36.savings).toBeCloseTo(100_000 - 48_000, 0);
+    expect(at36.liquid).toBeCloseTo(at35.liquid * 0.96, 0);
+    // The next year's amount is 4 % of what is left.
+    expect(pointAtAge(points, 37)!.withdrawal).toBeCloseTo(at35.liquid * 0.96 * 0.04, 0);
+  });
+
+  it('keeps growing after FIRE when the return beats the withdrawal rate', () => {
+    const s = { ...flat, fireAge: 30, investmentReturnPct: 7, savingsReturnPct: 7 };
+    const { points, depletedAge } = project(start, s, BIRTH, TODAY, 40);
+    expect(pointAtAge(points, 40)!.liquid).toBeGreaterThan(points[0].liquid);
+    expect(depletedAge).toBeNull();
   });
 
   it('compounds returns monthly at the yearly rate', () => {
@@ -87,7 +104,11 @@ describe('projection', () => {
   });
 
   it('reports when the money runs out', () => {
-    const s = { ...flat, fireAge: 30, yearlySpending: 600_000 };
+    const s: ScenarioAssumptions = {
+      ...flat,
+      yearlySpending: 600_000,
+      events: [{ kind: 'break', age: 30, years: 5 }],
+    };
     const { depletedAge } = project(start, s, BIRTH, TODAY, 40);
     // 600.000 covers exactly 12 months of 50.000; the 13th month is short.
     expect(depletedAge).toBeCloseTo(31 + 1 / 12, 5);

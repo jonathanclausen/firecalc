@@ -18,6 +18,7 @@ public class ScenarioTests(ApiFactory factory) : IClassFixture<ApiFactory>
         inflationPct = 2m,
         fireAge = 50m,
         yearlySpending = 300000m,
+        withdrawalPct = 4m,
         events,
     };
 
@@ -46,6 +47,7 @@ public class ScenarioTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
         list = await client.GetFromJsonAsync<JsonElement>("/api/scenarios");
         Assert.Equal("Senere FIRE", list[0].GetProperty("name").GetString());
+        Assert.Equal(4m, list[0].GetProperty("withdrawalPct").GetDecimal());
         Assert.Equal(0, list[0].GetProperty("events").GetArrayLength());
 
         // Other users can't touch it.

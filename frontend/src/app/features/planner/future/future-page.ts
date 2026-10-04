@@ -29,6 +29,7 @@ interface Row {
   in5: number | null;
   in10: number | null;
   atFire: number | null;
+  firstWithdrawal: number | null;
   at90: number | null;
   depletedAge: number | null;
   goalAge: number | null;
@@ -104,6 +105,7 @@ export class FuturePage {
         in5: at(first.age + 5),
         in10: at(first.age + 10),
         atFire: at(scenario.fireAge),
+        firstWithdrawal: points.find((p) => p.age > scenario.fireAge)?.withdrawal ?? null,
         at90: at(END_AGE),
         depletedAge: projection.depletedAge,
         goalAge: target === null ? null : ageReaching(points, target),

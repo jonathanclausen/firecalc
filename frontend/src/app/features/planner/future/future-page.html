@@ -130,6 +130,7 @@
               <th class="num">{{ f.in5 }}</th>
               <th class="num">{{ f.in10 }}</th>
               <th class="num">{{ f.atFireHeader }}</th>
+              <th class="num">{{ f.firstWithdrawal }}</th>
               <th class="num">{{ f.at90 }}</th>
               <th>{{ f.lasts }}</th>
               @if (goalTarget() !== null) {
@@ -147,11 +148,15 @@
                   <a class="scenario-name" [routerLink]="['/planner/future', r.scenario.id]">
                     <i class="chip__dot chip__dot--{{ r.key }}"></i>{{ r.scenario.name }}
                   </a>
-                  <small class="muted">{{ f.atFire(ageText(r.scenario.fireAge)) }}</small>
+                  <small class="muted"
+                    >{{ f.atFire(ageText(r.scenario.fireAge)) }} ·
+                    {{ i18n.percent(r.scenario.withdrawalPct) }}</small
+                  >
                 </td>
                 <td class="num">{{ r.in5 | money: false : cur }}</td>
                 <td class="num">{{ r.in10 | money: false : cur }}</td>
                 <td class="num">{{ r.atFire | money: false : cur }}</td>
+                <td class="num">{{ r.firstWithdrawal | money: false : cur }}</td>
                 <td class="num">{{ r.at90 | money: false : cur }}</td>
                 <td [class.danger]="r.depletedAge !== null">
                   {{

@@ -37,6 +37,7 @@ interface EventDraft {
 type NumberField =
   | 'monthlySavings'
   | 'fireAge'
+  | 'withdrawalPct'
   | 'yearlySpending'
   | 'investmentReturnPct'
   | 'savingsReturnPct'
@@ -46,6 +47,7 @@ type NumberField =
 const DEFAULTS: Record<NumberField, number> = {
   monthlySavings: 5000,
   fireAge: 50,
+  withdrawalPct: 4,
   yearlySpending: 300_000,
   investmentReturnPct: 7,
   savingsReturnPct: 1,
@@ -93,6 +95,7 @@ export class ScenarioPage {
   protected readonly fields: Record<NumberField, ReturnType<typeof signal<string>>> = {
     monthlySavings: signal(''),
     fireAge: signal(''),
+    withdrawalPct: signal(''),
     yearlySpending: signal(''),
     investmentReturnPct: signal(''),
     savingsReturnPct: signal(''),
@@ -105,6 +108,7 @@ export class ScenarioPage {
     const fields: { key: NumberField; label: string; hint?: string }[] = [
       { key: 'monthlySavings', label: s.monthlySavings + cur, hint: s.monthlySavingsHint },
       { key: 'fireAge', label: s.fireAge, hint: s.fireAgeHint },
+      { key: 'withdrawalPct', label: s.withdrawalPct, hint: s.withdrawalPctHint },
       { key: 'yearlySpending', label: s.yearlySpending + cur, hint: s.yearlySpendingHint },
       { key: 'investmentReturnPct', label: s.investmentReturn },
       { key: 'savingsReturnPct', label: s.savingsReturn },
@@ -203,6 +207,7 @@ export class ScenarioPage {
       ] as LineSeries[],
       in10: at(first.age + 10),
       atFire: at(parsed.fireAge),
+      firstWithdrawal: projection.points.find((p) => p.age > parsed.fireAge)?.withdrawal ?? null,
       fireAge: parsed.fireAge,
       depletedAge: projection.depletedAge,
     };

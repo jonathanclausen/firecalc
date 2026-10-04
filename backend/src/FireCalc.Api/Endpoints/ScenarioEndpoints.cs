@@ -19,6 +19,7 @@ public static class ScenarioEndpoints
         decimal InflationPct,
         decimal FireAge,
         decimal YearlySpending,
+        decimal WithdrawalPct,
         List<ScenarioEvent> Events);
 
     public record SaveScenarioRequest(
@@ -30,6 +31,7 @@ public static class ScenarioEndpoints
         decimal InflationPct,
         decimal FireAge,
         decimal YearlySpending,
+        decimal? WithdrawalPct,
         List<ScenarioEvent>? Events);
 
     private const int MaxEvents = 30;
@@ -96,6 +98,7 @@ public static class ScenarioEndpoints
             .Check(req.MonthlySavings is >= 0 and < 100_000_000, "monthlySavings", "Monthly savings must be zero or more.")
             .Check(req.YearlySpending is >= 0 and < 1_000_000_000, "yearlySpending", "Yearly spending must be zero or more.")
             .Check(Pct(req.InvestmentReturnPct) && Pct(req.SavingsReturnPct) && Pct(req.HomeGrowthPct) && Pct(req.InflationPct), "rates", "Rates must be between -50 and 50 %.")
+            .Check(req.WithdrawalPct is null or >= 0 and <= 50, "withdrawalPct", "Withdrawal rate must be between 0 and 50 %.")
             .Check(req.FireAge is >= 0 and <= 120, "fireAge", "FIRE age must be between 0 and 120.")
             .Check(events.Count <= MaxEvents, "events", $"At most {MaxEvents} events.")
             .Check(events.All(e => e.Age is >= 0 and <= 120), "events", "Each event needs an age between 0 and 120.")
@@ -114,6 +117,7 @@ public static class ScenarioEndpoints
         s.InflationPct = req.InflationPct;
         s.FireAge = req.FireAge;
         s.YearlySpending = req.YearlySpending;
+        s.WithdrawalPct = req.WithdrawalPct ?? 4;
         // Keep only what each kind uses, ordered by age.
         var events = (req.Events ?? [])
             .Select(e => e with
@@ -128,6 +132,6 @@ public static class ScenarioEndpoints
 
     private static ScenarioDto ToDto(Scenario s) => new(
         s.Id, s.Name, s.MonthlySavings, s.InvestmentReturnPct, s.SavingsReturnPct, s.HomeGrowthPct,
-        s.InflationPct, s.FireAge, s.YearlySpending,
+        s.InflationPct, s.FireAge, s.YearlySpending, s.WithdrawalPct,
         JsonSerializer.Deserialize<List<ScenarioEvent>>(s.Events, Json) ?? []);
 }

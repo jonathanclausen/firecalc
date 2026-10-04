@@ -146,6 +146,10 @@
             <strong>{{ p.atFire | money: false : cur }}</strong>
           </div>
           <div class="kpi">
+            <span>{{ f.firstWithdrawal }}</span>
+            <strong>{{ p.firstWithdrawal | money: false : cur }}</strong>
+          </div>
+          <div class="kpi">
             <span>{{ f.lasts }}</span>
             <strong [class.danger]="p.depletedAge !== null">{{
               p.depletedAge === null ? f.lastsAlways : f.lastsUntil(ageText(p.depletedAge))

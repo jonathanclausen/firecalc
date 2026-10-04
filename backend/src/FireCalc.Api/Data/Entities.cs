@@ -96,10 +96,12 @@ public class Scenario
     public decimal SavingsReturnPct { get; set; }
     public decimal HomeGrowthPct { get; set; }
     public decimal InflationPct { get; set; }
-    /// <summary>Age when saving stops and <see cref="YearlySpending"/> is taken out instead.</summary>
+    /// <summary>Age when saving stops and <see cref="WithdrawalPct"/> is taken out instead.</summary>
     public decimal FireAge { get; set; }
-    /// <summary>Yearly spending in today's money, used after FIRE and during a break.</summary>
+    /// <summary>Yearly spending in today's money during a break.</summary>
     public decimal YearlySpending { get; set; }
+    /// <summary>After FIRE, this percentage of investments and savings is taken out each year.</summary>
+    public decimal WithdrawalPct { get; set; } = 4;
     /// <summary>The events as JSON (a list of <see cref="ScenarioEvent"/>).</summary>
     public string Events { get; set; } = "[]";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

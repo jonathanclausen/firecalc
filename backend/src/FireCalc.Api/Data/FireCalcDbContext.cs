@@ -80,6 +80,7 @@ public class FireCalcDbContext(DbContextOptions<FireCalcDbContext> options) : Db
             e.Property(s => s.HomeGrowthPct).HasPrecision(5, 2);
             e.Property(s => s.InflationPct).HasPrecision(5, 2);
             e.Property(s => s.FireAge).HasPrecision(5, 2);
+            e.Property(s => s.WithdrawalPct).HasPrecision(5, 2).HasDefaultValue(4m);
             e.Property(s => s.Events).HasColumnType("jsonb");
         });
 

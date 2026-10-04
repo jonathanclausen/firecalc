@@ -22,9 +22,11 @@ export interface ScenarioAssumptions {
   savingsReturnPct: number;
   homeGrowthPct: number;
   inflationPct: number;
-  /** Saving stops at this age and yearly spending is taken out instead. */
+  /** Saving stops at this age and the withdrawal rate is taken out instead. */
   fireAge: number;
-  /** Yearly spending in today's money, used after FIRE and during a break. */
+  /** Percent of investments and savings taken out each year after FIRE, e.g. 4. */
+  withdrawalPct: number;
+  /** Yearly spending in today's money during a break. */
   yearlySpending: number;
   events: ScenarioEvent[];
 }
@@ -48,6 +50,8 @@ export interface ProjectionPoint {
   netWorth: number;
   /** Investments and savings: the money that can be spent. */
   liquid: number;
+  /** What is being taken out per year at this point (after FIRE or during a break), else 0. */
+  withdrawal: number;
 }
 
 export interface Projection {
@@ -108,6 +112,10 @@ export function project(
   let savings = start.savings;
   let home = start.homeValue;
   let depletedAge: number | null = null;
+  /** The yearly amount the withdrawal rate gives, set at FIRE and again each year after. */
+  let yearlyWithdrawal = 0;
+  let firstFireMonth: number | null = null;
+  let withdrawing = 0;
   const points: ProjectionPoint[] = [];
 
   const push = (m: number, age: number) =>
@@ -120,6 +128,7 @@ export function project(
       loans: round(-start.otherLoans),
       netWorth: round(investments + savings + home - loans),
       liquid: round(investments + savings),
+      withdrawal: round(withdrawing),
     });
 
   push(0, startAge);
@@ -134,9 +143,18 @@ export function project(
       (e) => e.kind === 'break' && age > e.age && age <= e.age + (e.years ?? 0),
     );
     let flow: number;
-    if (age > s.fireAge || onBreak) {
-      flow = -(s.yearlySpending / 12) * Math.pow(inflation, m / 12);
+    if (age > s.fireAge) {
+      // The 4 % rule style: a share of what's left, worked out once a year.
+      firstFireMonth ??= m;
+      if ((m - firstFireMonth) % 12 === 0)
+        yearlyWithdrawal = (Math.max(investments + savings, 0) * s.withdrawalPct) / 100;
+      withdrawing = yearlyWithdrawal;
+      flow = -yearlyWithdrawal / 12;
+    } else if (onBreak) {
+      withdrawing = s.yearlySpending * Math.pow(inflation, m / 12);
+      flow = -withdrawing / 12;
     } else {
+      withdrawing = 0;
       const change = savingsChanges.filter((e) => e.age < age).pop();
       flow = change ? (change.amount ?? 0) : s.monthlySavings;
     }
@@ -172,6 +190,7 @@ export function inTodaysMoney(points: ProjectionPoint[], inflationPct: number): 
       loans: round(p.loans / f),
       netWorth: round(p.netWorth / f),
       liquid: round(p.liquid / f),
+      withdrawal: round(p.withdrawal / f),
     };
   });
 }
