@@ -34,9 +34,6 @@ namespace FireCalc.Api.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<bool>("IsDemo")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -112,9 +109,6 @@ namespace FireCalc.Api.Data.Migrations
                     b.Property<decimal?>("ExpectedAnnualReturnPct")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)");
-
-                    b.Property<bool>("IsDemo")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -283,9 +277,6 @@ namespace FireCalc.Api.Data.Migrations
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)");
 
-                    b.Property<bool>("IsDemo")
-                        .HasColumnType("boolean");
-
                     b.Property<decimal>("MonthlySavings")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -371,9 +362,6 @@ namespace FireCalc.Api.Data.Migrations
                     b.Property<DateOnly?>("BirthDate")
                         .HasColumnType("date");
 
-                    b.Property<DateTimeOffset?>("ChecklistHiddenAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -395,9 +383,6 @@ namespace FireCalc.Api.Data.Migrations
                     b.Property<string>("Name")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
-
-                    b.Property<DateTimeOffset?>("OnboardedAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
