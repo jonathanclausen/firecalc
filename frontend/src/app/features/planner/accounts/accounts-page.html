@@ -35,16 +35,9 @@
         {{ a.addButton }}
       </button>
     </div>
-    @if (newType() === 'loan') {
-      <label class="toggle add__home">
-        <input
-          type="checkbox"
-          [checked]="newPartOfHome()"
-          (change)="newPartOfHome.set($any($event.target).checked)"
-        />
-        {{ a.partOfHome }} <small>{{ a.partOfHomeHint }}</small>
-      </label>
-    }
+    <p class="muted add__hint">
+      {{ a.homeElsewhere }} <a routerLink="/planner/home">{{ a.goToHome }}</a>
+    </p>
   </form>
 
   <section class="card">
@@ -72,6 +65,25 @@
       <p class="muted">{{ t.loading }}</p>
     } @else if (visible().length === 0) {
       <p class="muted">{{ a.empty }}</p>
+      @if (accounts.value()!.length === 0) {
+        <div class="guide">
+          <h3>{{ a.guideTitle }}</h3>
+          <p class="muted">{{ a.guideText }}</p>
+          <ul>
+            @for (type of types; track type) {
+              <li>
+                <i class="type-dot type-dot--{{ type }}"></i>
+                <span
+                  ><strong>{{ t.types[type] }}</strong> {{ a.guide[type] }}</span
+                >
+              </li>
+            }
+          </ul>
+          <a class="btn btn--secondary" routerLink="/planner/welcome">{{
+            t.dashboard.startGuide
+          }}</a>
+        </div>
+      }
     } @else {
       <ul class="list">
         @for (acc of visible(); track acc.id) {
@@ -98,16 +110,6 @@
                     }
                   </select>
                 </label>
-                @if (editing()!.type === 'loan') {
-                  <label class="toggle">
-                    <input
-                      type="checkbox"
-                      [checked]="editing()!.partOfHome"
-                      (change)="setEdit({ partOfHome: $any($event.target).checked })"
-                    />
-                    {{ a.partOfHome }}
-                  </label>
-                }
                 <button type="submit" class="btn btn--primary" [disabled]="busy()">
                   {{ t.save }}
                 </button>
@@ -120,9 +122,7 @@
                 <i class="type-dot type-dot--{{ acc.type }}"></i>
                 <span>
                   {{ acc.name }}
-                  <small
-                    >{{ t.types[acc.type] }}{{ acc.partOfHome ? ' · ' + a.partOfHome : '' }}</small
-                  >
+                  <small>{{ t.types[acc.type] }}</small>
                 </span>
                 @if (acc.archived) {
                   <em class="badge">{{ a.archivedBadge }}</em>
@@ -153,38 +153,38 @@
 
             @if (acc.tracked) {
               <div class="balance">
-                <span class="balance__text">{{ a.tracked }}</span>
+                <span class="balance__text"
+                  >{{ a.tracked }}
+                  <app-help-tip
+                    [title]="t.help.trackedTerm"
+                    [text]="t.help.tracked"
+                    [label]="t.help.label(t.help.trackedTerm)"
+                /></span>
                 <a class="link-button" routerLink="/planner/portfolio">{{ a.seePortfolio }}</a>
               </div>
             } @else if (!acc.archived || acc.balance !== null) {
-              @let home = acc.type === 'property';
               @let loan = acc.type === 'loan';
               <div class="balance">
                 <span class="balance__text">
                   @if (acc.balance !== null && acc.balanceDate) {
-                    @if (home) {
-                      {{ a.equity }}
-                      <strong>{{ equity(acc) | money: false : currency() }}</strong>
-                      {{ a.balanceFrom(i18n.date(acc.balanceDate)) }}
-                      <small class="balance__split">
-                        {{ a.homeValue }} {{ acc.balance | money: false : currency() }} ·
-                        {{ a.loan }} {{ acc.loan ?? 0 | money: false : currency() }}
-                      </small>
-                    } @else {
-                      @if (loan) {
-                        {{ a.owed }}
-                      }
-                      <strong>{{ acc.balance | money: false : currency() }}</strong>
-                      {{ a.balanceFrom(i18n.date(acc.balanceDate)) }}
+                    @if (loan) {
+                      {{ a.owed }}
+                      <app-help-tip
+                        [title]="t.help.owedTerm"
+                        [text]="t.help.owed"
+                        [label]="t.help.label(t.help.owedTerm)"
+                      />
                     }
+                    <strong>{{ acc.balance | money: false : currency() }}</strong>
+                    {{ a.balanceFrom(i18n.date(acc.balanceDate)) }}
                   } @else {
-                    {{ home ? a.homeNoBalance : loan ? a.loanNoBalance : a.noBalance }}
+                    {{ loan ? a.loanNoBalance : a.noBalance }}
                   }
                 </span>
                 <span class="actions">
                   @if (!acc.archived && balanceDraft()?.id !== acc.id) {
                     <button type="button" class="link-button" (click)="startBalance(acc)">
-                      {{ home ? a.updateHome : loan ? a.updateLoan : a.updateBalance }}
+                      {{ loan ? a.updateLoan : a.updateBalance }}
                     </button>
                   }
                   @if (acc.balance !== null) {
@@ -198,13 +198,9 @@
 
             @if (balanceDraft(); as draft) {
               @if (draft.id === acc.id) {
-                @let home = acc.type === 'property';
                 <form class="balance-form" (submit)="saveBalance(acc, $event)">
-                  @if (home) {
-                    <p class="balance-form__hint">{{ a.homeHint }}</p>
-                  }
                   <label class="form-field">
-                    <span>{{ home ? a.homeValue : acc.type === 'loan' ? a.owed : a.balance }}</span>
+                    <span>{{ acc.type === 'loan' ? a.owed : a.balance }}</span>
                     <input
                       type="text"
                       inputmode="decimal"
@@ -214,19 +210,6 @@
                       (input)="setDraft('balance', $any($event.target).value)"
                     />
                   </label>
-                  @if (home) {
-                    <label class="form-field">
-                      <span>{{ a.loan }}</span>
-                      <input
-                        type="text"
-                        inputmode="decimal"
-                        appDecimal
-                        placeholder="0"
-                        [value]="draft.loan"
-                        (input)="setDraft('loan', $any($event.target).value)"
-                      />
-                    </label>
-                  }
                   <label class="form-field">
                     <span>{{ a.date }}</span>
                     <input
@@ -256,19 +239,7 @@
                 @for (b of history.value() ?? []; track b.date) {
                   <li>
                     <span>{{ i18n.date(b.date) }}</span>
-                    @if (acc.type === 'property') {
-                      <span class="history__amount">
-                        {{ equity(b) | money: false : currency() }}
-                        <small
-                          >{{ b.balance | money: false : currency() }} −
-                          {{ b.loan ?? 0 | money: false : currency() }}</small
-                        >
-                      </span>
-                    } @else {
-                      <span class="history__amount">{{
-                        b.balance | money: false : currency()
-                      }}</span>
-                    }
+                    <span class="history__amount">{{ b.balance | money: false : currency() }}</span>
                     <button
                       type="button"
                       class="link-button link-button--danger"

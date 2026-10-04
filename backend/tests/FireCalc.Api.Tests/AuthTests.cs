@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace FireCalc.Api.Tests;
 
@@ -64,8 +65,8 @@ public class AuthTests(ApiFactory factory) : IClassFixture<ApiFactory>
     public async Task Deleting_the_account_removes_the_user_and_their_data()
     {
         var client = factory.CreateClientForNewUser();
-        var created = await client.PostAsJsonAsync("/api/accounts", new { name = "Opsparing", type = "savings" });
-        created.EnsureSuccessStatusCode();
+        // The example data fills accounts, balances, trades, a home and scenarios.
+        (await client.PostAsync("/api/demo", null)).EnsureSuccessStatusCode();
 
         Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync("/api/me")).StatusCode);
 
@@ -77,9 +78,9 @@ public class AuthTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Owner_is_created_on_first_request()
     {
-        var me = await factory.CreateClientFor().GetFromJsonAsync<Dictionary<string, string>>("/api/me");
-        Assert.Equal(ApiFactory.OwnerEmail, me!["email"]);
-        Assert.Equal("DKK", me["currency"]);
+        var me = await factory.CreateClientFor().GetFromJsonAsync<JsonElement>("/api/me");
+        Assert.Equal(ApiFactory.OwnerEmail, me.GetProperty("email").GetString());
+        Assert.Equal("DKK", me.GetProperty("currency").GetString());
     }
 }
 

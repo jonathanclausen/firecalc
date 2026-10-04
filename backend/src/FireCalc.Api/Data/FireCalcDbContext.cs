@@ -9,7 +9,12 @@ public class FireCalcDbContext(DbContextOptions<FireCalcDbContext> options) : Db
     public DbSet<AccountBalance> Balances => Set<AccountBalance>();
     public DbSet<Snapshot> Snapshots => Set<Snapshot>();
     public DbSet<SnapshotEntry> SnapshotEntries => Set<SnapshotEntry>();
+    public DbSet<Home> Homes => Set<Home>();
+    public DbSet<HomeValuation> HomeValuations => Set<HomeValuation>();
+    public DbSet<Mortgage> Mortgages => Set<Mortgage>();
+    public DbSet<MortgageBalance> MortgageBalances => Set<MortgageBalance>();
     public DbSet<Goal> Goals => Set<Goal>();
+    public DbSet<Scenario> Scenarios => Set<Scenario>();
     public DbSet<Instrument> Instruments => Set<Instrument>();
     public DbSet<InstrumentPrice> InstrumentPrices => Set<InstrumentPrice>();
     public DbSet<FxRate> FxRates => Set<FxRate>();
@@ -40,7 +45,36 @@ public class FireCalcDbContext(DbContextOptions<FireCalcDbContext> options) : Db
             e.HasKey(x => new { x.AccountId, x.Date });
             e.HasOne<Account>().WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Cascade);
             e.Property(x => x.Balance).HasPrecision(18, 2);
-            e.Property(x => x.Loan).HasPrecision(18, 2);
+        });
+
+        b.Entity<Home>(e =>
+        {
+            e.HasOne<User>().WithMany().HasForeignKey(h => h.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(h => h.UserId);
+            e.Property(h => h.Name).HasMaxLength(100);
+        });
+
+        b.Entity<HomeValuation>(e =>
+        {
+            e.HasKey(x => new { x.HomeId, x.Date });
+            e.HasOne<Home>().WithMany().HasForeignKey(x => x.HomeId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.Value).HasPrecision(18, 2);
+        });
+
+        b.Entity<Mortgage>(e =>
+        {
+            e.HasOne<Home>().WithMany().HasForeignKey(m => m.HomeId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(m => m.HomeId);
+            e.Property(m => m.Name).HasMaxLength(100);
+            e.Property(m => m.InterestPct).HasPrecision(6, 3);
+            e.Property(m => m.ContributionPct).HasPrecision(6, 3);
+        });
+
+        b.Entity<MortgageBalance>(e =>
+        {
+            e.HasKey(x => new { x.MortgageId, x.Date });
+            e.HasOne<Mortgage>().WithMany().HasForeignKey(x => x.MortgageId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.Balance).HasPrecision(18, 2);
         });
 
         b.Entity<Snapshot>(e =>
@@ -65,6 +99,22 @@ public class FireCalcDbContext(DbContextOptions<FireCalcDbContext> options) : Db
             e.Property(g => g.Name).HasMaxLength(100);
             e.Property(g => g.TargetAmount).HasPrecision(18, 2);
             e.Property(g => g.ExpectedAnnualReturnPct).HasPrecision(5, 2);
+        });
+
+        b.Entity<Scenario>(e =>
+        {
+            e.HasOne<User>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(s => s.UserId);
+            e.Property(s => s.Name).HasMaxLength(100);
+            e.Property(s => s.MonthlySavings).HasPrecision(18, 2);
+            e.Property(s => s.YearlySpending).HasPrecision(18, 2);
+            e.Property(s => s.InvestmentReturnPct).HasPrecision(5, 2);
+            e.Property(s => s.SavingsReturnPct).HasPrecision(5, 2);
+            e.Property(s => s.HomeGrowthPct).HasPrecision(5, 2);
+            e.Property(s => s.InflationPct).HasPrecision(5, 2);
+            e.Property(s => s.FireAge).HasPrecision(5, 2);
+            e.Property(s => s.WithdrawalPct).HasPrecision(5, 2).HasDefaultValue(4m);
+            e.Property(s => s.Events).HasColumnType("jsonb");
         });
 
         b.Entity<Instrument>(e =>

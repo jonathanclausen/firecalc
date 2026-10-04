@@ -1,0 +1,472 @@
+@let t = i18n.t().planner;
+@let h = t.homePage;
+@let cur = currency();
+<section class="intro">
+  <div>
+    <p class="eyebrow">{{ t.eyebrow }}</p>
+    <h1>{{ h.title }}</h1>
+    <p class="lede">{{ h.lede }}</p>
+  </div>
+  @if (hasArchived()) {
+    <label class="toggle">
+      <input
+        type="checkbox"
+        [checked]="showArchived()"
+        (change)="showArchived.set($any($event.target).checked)"
+      />
+      {{ h.showSold }}
+    </label>
+  }
+</section>
+
+<!-- One form serves a home's value and a loan's restgæld. -->
+<ng-template #amountForm let-label>
+  @if (amountDraft(); as d) {
+    <form class="row-form" (submit)="saveAmount($event)">
+      <label class="form-field">
+        <span>{{ label }}</span>
+        <input
+          type="text"
+          inputmode="decimal"
+          appDecimal
+          required
+          [value]="d.amount"
+          (input)="setAmount('amount', $any($event.target).value)"
+        />
+      </label>
+      <label class="form-field">
+        <span>{{ h.date }}</span>
+        <input
+          type="date"
+          required
+          [max]="today"
+          [value]="d.date"
+          (input)="setAmount('date', $any($event.target).value)"
+        />
+      </label>
+      <button type="submit" class="btn btn--primary" [disabled]="busy() || !d.amount">
+        {{ t.save }}
+      </button>
+      <button type="button" class="link-button" (click)="amountDraft.set(null)">
+        {{ t.cancel }}
+      </button>
+    </form>
+  }
+</ng-template>
+
+<ng-template #historyList>
+  <ul class="history">
+    @for (entry of history.value() ?? []; track entry.date) {
+      <li>
+        <span>{{ i18n.date(entry.date) }}</span>
+        <span class="num">{{ amountOf(entry) | money: false : cur }}</span>
+        <button
+          type="button"
+          class="link-button link-button--danger"
+          [disabled]="busy()"
+          (click)="removeEntry(entry)"
+        >
+          {{ t.delete }}
+        </button>
+      </li>
+    }
+  </ul>
+</ng-template>
+
+<ng-template #loanForm let-home="home" let-loan="loan">
+  @if (loanDraft(); as d) {
+    <form class="card loan-form" (submit)="saveLoan($event, loan)">
+      <h3>{{ loan ? h.editLoan : h.addLoan }}</h3>
+      <div class="loan-form__grid">
+        <label class="form-field loan-form__name">
+          <span>{{ h.loanName }}</span>
+          <input
+            type="text"
+            maxlength="100"
+            required
+            [placeholder]="h.loanNamePlaceholder"
+            [value]="d.name"
+            (input)="setLoan('name', $any($event.target).value)"
+          />
+        </label>
+        @if (!loan) {
+          <label class="form-field">
+            <span>{{ h.owed }}</span>
+            <input
+              type="text"
+              inputmode="decimal"
+              appDecimal
+              [value]="d.owed"
+              (input)="setLoan('owed', $any($event.target).value)"
+            />
+          </label>
+          <label class="form-field">
+            <span>{{ h.owedOn }}</span>
+            <input
+              type="date"
+              [max]="today"
+              [value]="d.date"
+              (input)="setLoan('date', $any($event.target).value)"
+            />
+          </label>
+        }
+        <label class="form-field">
+          <span>{{ h.interestPct }}</span>
+          <input
+            type="text"
+            inputmode="decimal"
+            appDecimal
+            [value]="d.interestPct"
+            (input)="setLoan('interestPct', $any($event.target).value)"
+          />
+        </label>
+        <label class="form-field">
+          <span>{{ h.contributionPct }}</span>
+          <input
+            type="text"
+            inputmode="decimal"
+            appDecimal
+            [value]="d.contributionPct"
+            (input)="setLoan('contributionPct', $any($event.target).value)"
+          />
+        </label>
+        <label class="form-field">
+          <span>{{ h.endDate }}</span>
+          <input
+            type="date"
+            [value]="d.endDate"
+            (input)="setLoan('endDate', $any($event.target).value)"
+          />
+        </label>
+        <label class="form-field">
+          <span>{{ h.interestOnlyUntil }}</span>
+          <input
+            type="date"
+            [value]="d.interestOnlyUntil"
+            (input)="setLoan('interestOnlyUntil', $any($event.target).value)"
+          />
+        </label>
+      </div>
+      <p class="muted hint">{{ h.termsHint }}</p>
+      <div class="form-actions">
+        <button type="submit" class="btn btn--primary" [disabled]="busy() || !d.name.trim()">
+          {{ t.save }}
+        </button>
+        <button type="button" class="link-button" (click)="loanDraft.set(null)">
+          {{ t.cancel }}
+        </button>
+      </div>
+    </form>
+  }
+</ng-template>
+
+@if (error(); as message) {
+  <p class="alert" role="alert">{{ message }}</p>
+}
+
+@if (homes.error()) {
+  <p class="alert" role="alert">{{ t.error }}</p>
+} @else if (!homes.hasValue()) {
+  <p class="muted">{{ t.loading }}</p>
+} @else {
+  <div class="stack">
+    @for (home of visible(); track home.id) {
+      <section class="card home" [class.archived]="home.archived">
+        <div class="card__header">
+          @if (renaming()?.id === home.id) {
+            <form class="rename" (submit)="saveRename(home, $event)">
+              <input
+                type="text"
+                maxlength="100"
+                required
+                [attr.aria-label]="h.name"
+                [value]="renaming()!.name"
+                (input)="renaming.set({ id: home.id, name: $any($event.target).value })"
+              />
+              <button type="submit" class="btn btn--primary" [disabled]="busy()">
+                {{ t.save }}
+              </button>
+              <button type="button" class="link-button" (click)="renaming.set(null)">
+                {{ t.cancel }}
+              </button>
+            </form>
+          } @else {
+            <h2>
+              {{ home.name }}
+              @if (home.archived) {
+                <em class="badge">{{ h.soldBadge }}</em>
+              }
+            </h2>
+            <span class="actions">
+              <button
+                type="button"
+                class="link-button"
+                (click)="renaming.set({ id: home.id, name: home.name })"
+              >
+                {{ h.rename }}
+              </button>
+              <button
+                type="button"
+                class="link-button"
+                [disabled]="busy()"
+                (click)="setArchived(home, !home.archived)"
+              >
+                {{ home.archived ? h.unsold : h.sold }}
+              </button>
+              <button
+                type="button"
+                class="link-button link-button--danger"
+                [disabled]="busy()"
+                (click)="removeHome(home)"
+              >
+                {{ t.delete }}
+              </button>
+            </span>
+          }
+        </div>
+
+        <div class="kpis">
+          <div class="kpi">
+            <span class="kpi__label">{{ h.value }}</span>
+            <strong>{{ home.value ?? 0 | money: false : cur }}</strong>
+            <small>
+              @if (home.valueDate) {
+                {{ h.asOf(i18n.date(home.valueDate)) }}
+              } @else {
+                {{ h.noValue }}
+              }
+            </small>
+          </div>
+          <div class="kpi">
+            <span class="kpi__label">{{ h.owedToday }}</span>
+            <strong>{{ home.owed | money: false : cur }}</strong>
+            <small>{{ h.owedTodayHint }}</small>
+          </div>
+          <div class="kpi">
+            <span class="kpi__label">{{ h.equity }}</span>
+            <strong>{{ home.equity | money: false : cur }}</strong>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="actions">
+            @if (!isAmountFor('value', home.id)) {
+              <button type="button" class="link-button" (click)="startAmount('value', home)">
+                {{ h.updateValue }}
+              </button>
+            }
+            @if (home.valueDate) {
+              <button type="button" class="link-button" (click)="toggleHistory(home.id)">
+                {{ isHistoryFor(home.id) ? h.hideHistory : h.valueHistory }}
+              </button>
+            }
+          </span>
+        </div>
+        @if (isAmountFor('value', home.id)) {
+          <ng-container *ngTemplateOutlet="amountForm; context: { $implicit: h.value }" />
+        }
+        @if (isHistoryFor(home.id)) {
+          <ng-container *ngTemplateOutlet="historyList" />
+        }
+
+        <h3 class="loans__title">{{ h.loans }}</h3>
+        @if (home.loans.length === 0) {
+          <p class="muted">{{ h.noLoans }}</p>
+        }
+        <ul class="loans">
+          @for (loan of home.loans; track loan.id) {
+            <li [class.archived]="loan.archived">
+              <div class="loan__head">
+                <span class="loan__name">
+                  {{ loan.name }}
+                  @if (loan.archived) {
+                    <em class="badge">{{ h.paidBadge }}</em>
+                  }
+                </span>
+                <strong class="num">{{ loan.owed ?? 0 | money: false : cur }}</strong>
+              </div>
+              <p class="loan__meta">
+                @if (loan.statementDate) {
+                  @if (hasTerms(loan)) {
+                    {{
+                      h.owedFrom(
+                        loan.statement! | money: false : cur,
+                        i18n.date(loan.statementDate)
+                      )
+                    }}
+                  } @else {
+                    {{ h.owedAsOf(i18n.date(loan.statementDate)) }}
+                  }
+                } @else {
+                  {{ h.noStatement }}
+                }
+              </p>
+              <dl class="terms">
+                <div>
+                  <dt>{{ h.interestShort }}</dt>
+                  <dd>{{ percent(loan.interestPct) }}</dd>
+                </div>
+                <div>
+                  <dt>{{ h.contributionShort }}</dt>
+                  <dd>{{ percent(loan.contributionPct) }}</dd>
+                </div>
+                <div>
+                  <dt>{{ h.endShort }}</dt>
+                  <dd>{{ loan.endDate ? i18n.date(loan.endDate) : '–' }}</dd>
+                </div>
+                @if (loan.interestOnlyUntil) {
+                  <div>
+                    <dt>{{ h.interestOnlyShort }}</dt>
+                    <dd>{{ i18n.date(loan.interestOnlyUntil) }}</dd>
+                  </div>
+                }
+              </dl>
+              @if (!hasTerms(loan)) {
+                <p class="muted hint">{{ h.noTerms }}</p>
+              } @else if (loan.payment; as p) {
+                <p class="payment">
+                  {{ h.paymentThisMonth }}
+                  <strong>{{ paymentTotal(loan) | money: false : cur }}</strong>
+                  <small>
+                    {{
+                      h.paymentSplit(
+                        p.interest | money: false : cur,
+                        p.contribution | money: false : cur,
+                        p.repayment | money: false : cur
+                      )
+                    }}
+                  </small>
+                </p>
+              }
+              <span class="actions">
+                <button type="button" class="link-button" (click)="startLoan(home, loan)">
+                  {{ h.editTerms }}
+                </button>
+                @if (!loan.archived && !isAmountFor('statement', home.id, loan.id)) {
+                  <button
+                    type="button"
+                    class="link-button"
+                    (click)="startAmount('statement', home, loan)"
+                  >
+                    {{ h.updateOwed }}
+                  </button>
+                }
+                @if (loan.statementDate) {
+                  <button
+                    type="button"
+                    class="link-button"
+                    (click)="toggleHistory(home.id, loan.id)"
+                  >
+                    {{ isHistoryFor(home.id, loan.id) ? h.hideHistory : h.owedHistory }}
+                  </button>
+                }
+                <button
+                  type="button"
+                  class="link-button"
+                  [disabled]="busy()"
+                  (click)="setLoanArchived(home, loan, !loan.archived)"
+                >
+                  {{ loan.archived ? h.unpaid : h.paid }}
+                </button>
+                <button
+                  type="button"
+                  class="link-button link-button--danger"
+                  [disabled]="busy()"
+                  (click)="removeLoan(home, loan)"
+                >
+                  {{ t.delete }}
+                </button>
+              </span>
+              @if (isAmountFor('statement', home.id, loan.id)) {
+                <ng-container *ngTemplateOutlet="amountForm; context: { $implicit: h.owed }" />
+              }
+              @if (isHistoryFor(home.id, loan.id)) {
+                <ng-container *ngTemplateOutlet="historyList" />
+              }
+              @if (isLoanFormFor(home.id, loan.id)) {
+                <ng-container *ngTemplateOutlet="loanForm; context: { home, loan }" />
+              }
+            </li>
+          }
+        </ul>
+        @if (isLoanFormFor(home.id, null)) {
+          <ng-container *ngTemplateOutlet="loanForm; context: { home, loan: null }" />
+        } @else if (!home.archived) {
+          <button type="button" class="btn btn--secondary add-loan" (click)="startLoan(home)">
+            {{ h.addLoan }}
+          </button>
+        }
+      </section>
+    }
+
+    @if (visible().length && !addingHome()) {
+      <button type="button" class="btn btn--secondary add-home" (click)="addingHome.set(true)">
+        {{ h.addAnother }}
+      </button>
+    } @else {
+      <form class="card add" (submit)="addHome($event)">
+        <h2>{{ visible().length ? h.addAnother : h.addFirst }}</h2>
+        <p class="muted hint">{{ h.addHint }}</p>
+        <div class="add__grid">
+          <label class="form-field add__name">
+            <span>{{ h.name }}</span>
+            <input
+              type="text"
+              maxlength="100"
+              required
+              [placeholder]="h.namePlaceholder"
+              [value]="newHome().name"
+              (input)="setNewHome('name', $any($event.target).value)"
+            />
+          </label>
+          <label class="form-field">
+            <span>{{ h.value }}</span>
+            <input
+              type="text"
+              inputmode="decimal"
+              appDecimal
+              required
+              [value]="newHome().value"
+              (input)="setNewHome('value', $any($event.target).value)"
+            />
+          </label>
+          <label class="form-field">
+            <span>{{ h.owed }}</span>
+            <input
+              type="text"
+              inputmode="decimal"
+              appDecimal
+              placeholder="0"
+              [value]="newHome().owed"
+              (input)="setNewHome('owed', $any($event.target).value)"
+            />
+          </label>
+          <label class="form-field">
+            <span>{{ h.date }}</span>
+            <input
+              type="date"
+              required
+              [max]="today"
+              [value]="newHome().date"
+              (input)="setNewHome('date', $any($event.target).value)"
+            />
+          </label>
+        </div>
+        <div class="form-actions">
+          <button
+            type="submit"
+            class="btn btn--primary"
+            [disabled]="busy() || !newHome().name.trim() || !newHome().value"
+          >
+            {{ h.addButton }}
+          </button>
+          @if (visible().length) {
+            <button type="button" class="link-button" (click)="addingHome.set(false)">
+              {{ t.cancel }}
+            </button>
+          }
+        </div>
+      </form>
+    }
+  </div>
+}

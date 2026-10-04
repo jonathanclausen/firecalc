@@ -249,6 +249,27 @@
   }
 }
 
+.planner .goal-helper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 520px;
+  margin-bottom: 16px;
+  padding: 24px;
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .goal-helper__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px;
+  }
+}
+
 .planner .goal-form {
   display: flex;
   flex-direction: column;
@@ -264,5 +285,59 @@
 
   .goal-form__buttons .link-button {
     margin-left: auto;
+  }
+}
+
+/* An on/off switch: a visually hidden checkbox followed by .switch__track. */
+.planner .switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+
+  input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+
+  .switch__track {
+    position: relative;
+    flex-shrink: 0;
+    width: 36px;
+    height: 20px;
+    border-radius: 999px;
+    background: var(--track);
+    transition: background 0.15s;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--surface-card);
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.15s;
+    }
+  }
+
+  input:checked + .switch__track {
+    background: var(--accent);
+
+    &::after {
+      transform: translateX(16px);
+    }
+  }
+
+  input:focus-visible + .switch__track {
+    outline: 2px solid var(--accent-ring);
+    outline-offset: 2px;
   }
 }

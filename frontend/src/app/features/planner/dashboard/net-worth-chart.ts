@@ -39,6 +39,8 @@ interface Layer {
 export class NetWorthChart {
   readonly series = input.required<SeriesPoint[]>();
   readonly currency = input.required<string>();
+  /** Points after this date are a projection: drawn faded, behind a "today" line. */
+  readonly futureFrom = input<string | null>(null);
 
   protected readonly i18n = inject(I18n);
   private readonly currencySettings = inject(CurrencySettings);
@@ -166,6 +168,20 @@ export class NetWorthChart {
       net: `M${series.map((p, i) => `${this.xAt(i)},${this.y(p.total)}`).join(' L')}`,
     };
   });
+
+  /** Where the projection starts on the x-axis, or null without one. */
+  protected readonly futureX = computed(() => {
+    const from = this.futureFrom();
+    if (!from) return null;
+    const [min, max] = this.domain();
+    const t = Date.parse(from);
+    return t > max ? null : PAD.left + ((t - min) / (max - min)) * this.innerWidth();
+  });
+
+  protected isFuture(date: string) {
+    const from = this.futureFrom();
+    return !!from && date > from;
+  }
 
   protected readonly hovered = computed(() => {
     const i = this.hoverIndex();

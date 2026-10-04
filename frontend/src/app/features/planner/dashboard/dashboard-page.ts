@@ -1,7 +1,7 @@
 import { httpResource } from '@angular/common/http';
 import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ACCOUNT_TYPES, Account, Dashboard, today } from '../../../core/api/planner-api';
+import { ACCOUNT_TYPES, Account, Dashboard, Home, today } from '../../../core/api/planner-api';
 import {
   averageMonthlyChange,
   monthsBetween,
@@ -11,13 +11,15 @@ import { I18n } from '../../../core/i18n/i18n';
 import { readStorage, writeStorage } from '../../../core/storage';
 import { CurrencySettings } from '../../../core/settings/currency';
 import { MoneyPipe } from '../../../shared/money.pipe';
+import { HelpTip } from '../../../shared/help-tip';
+import { GettingStarted } from '../onboarding/getting-started';
 import { NetWorthChart } from './net-worth-chart';
 
-const INCLUDE_HOME_KEY = 'firecalc.includeHome';
+export const INCLUDE_HOME_KEY = 'firecalc.includeHome';
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [RouterLink, MoneyPipe, NetWorthChart],
+  imports: [RouterLink, MoneyPipe, NetWorthChart, HelpTip, GettingStarted],
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.scss',
 })
@@ -38,12 +40,9 @@ export class DashboardPage {
   });
   protected readonly accounts = httpResource<Account[]>(() => '/api/accounts');
 
-  /** The switch only shows once there is a home, or a loan for one, to leave out. */
-  protected readonly hasHome = computed(() =>
-    (this.accounts.value() ?? []).some(
-      (a) => (a.type === 'property' || a.partOfHome) && !a.archived,
-    ),
-  );
+  /** The switch only shows once there is a home to leave out. */
+  private readonly homes = httpResource<Home[]>(() => '/api/homes');
+  protected readonly hasHome = computed(() => (this.homes.value() ?? []).length > 0);
 
   protected readonly loading = computed(() => !this.view() || !this.accounts.hasValue());
   protected readonly failed = computed(() => !!(this.dashboard.error() || this.accounts.error()));

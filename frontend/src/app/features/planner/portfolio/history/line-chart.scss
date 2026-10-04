@@ -41,6 +41,21 @@
   &--deposits {
     color: var(--text-muted);
   }
+  &--s0 {
+    color: var(--series-contrib);
+  }
+  &--s1 {
+    color: var(--series-interest);
+  }
+  &--s2 {
+    color: var(--series-home);
+  }
+  &--s3 {
+    color: var(--series-cash);
+  }
+  &--s4 {
+    color: var(--series-loan);
+  }
   &--dashed {
     border-top-style: dashed;
   }
@@ -97,6 +112,21 @@
     stroke: var(--text-muted);
     stroke-width: 1.5;
   }
+  &--s0 {
+    stroke: var(--series-contrib);
+  }
+  &--s1 {
+    stroke: var(--series-interest);
+  }
+  &--s2 {
+    stroke: var(--series-home);
+  }
+  &--s3 {
+    stroke: var(--series-cash);
+  }
+  &--s4 {
+    stroke: var(--series-loan);
+  }
   &--dashed {
     stroke-dasharray: 5 4;
   }
@@ -114,6 +144,21 @@
   }
   &--deposits {
     fill: var(--text-muted);
+  }
+  &--s0 {
+    fill: var(--series-contrib);
+  }
+  &--s1 {
+    fill: var(--series-interest);
+  }
+  &--s2 {
+    fill: var(--series-home);
+  }
+  &--s3 {
+    fill: var(--series-cash);
+  }
+  &--s4 {
+    fill: var(--series-loan);
   }
 }
 
