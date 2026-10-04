@@ -5,11 +5,13 @@ import { Goal, PlannerApi } from '../../../core/api/planner-api';
 import { Auth } from '../../../core/auth/auth';
 import { I18n } from '../../../core/i18n/i18n';
 import { DecimalInput } from '../../../shared/decimal-input';
+import { HelpTip } from '../../../shared/help-tip';
+import { MoneyPipe } from '../../../shared/money.pipe';
 import { formatDecimal, parseDecimal } from '../../../shared/parse-decimal';
 
 @Component({
   selector: 'app-goal-page',
-  imports: [RouterLink, DecimalInput],
+  imports: [RouterLink, DecimalInput, HelpTip, MoneyPipe],
   templateUrl: './goal-page.html',
 })
 export class GoalPage {
@@ -27,6 +29,16 @@ export class GoalPage {
   protected readonly expectedReturn = signal('7');
   protected readonly placeholder = computed(() => formatDecimal(5_000_000, this.i18n.lang()));
   protected readonly saving = signal(false);
+  /** The helper's yearly spending, and the FIRE number it gives (25 times, the 4 % rule). */
+  protected readonly spending = signal('');
+  protected readonly suggested = computed(() => {
+    const value = parseDecimal(this.spending(), this.i18n.lang());
+    return value && value > 0 ? value * 25 : null;
+  });
+
+  protected useSuggested(amount: number) {
+    this.targetAmount.set(formatDecimal(amount, this.i18n.lang()));
+  }
   protected readonly error = signal<string | null>(null);
 
   constructor() {

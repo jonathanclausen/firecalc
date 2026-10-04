@@ -63,6 +63,7 @@ api.MapGoalEndpoints();
 api.MapDashboardEndpoints();
 api.MapPortfolioEndpoints();
 api.MapScenarioEndpoints();
+api.MapDemoEndpoints();
 
 app.Run();
 

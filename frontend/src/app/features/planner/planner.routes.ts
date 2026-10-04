@@ -43,6 +43,10 @@ export const plannerRoutes: Routes = [
         loadComponent: () => import('./future/scenario-page').then((m) => m.ScenarioPage),
       },
       {
+        path: 'welcome',
+        loadComponent: () => import('./onboarding/welcome-page').then((m) => m.WelcomePage),
+      },
+      {
         path: 'goal',
         loadComponent: () => import('./goal/goal-page').then((m) => m.GoalPage),
       },

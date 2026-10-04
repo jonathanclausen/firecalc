@@ -41,6 +41,7 @@ public static class GoalEndpoints
             g.TargetAmount = req.TargetAmount;
             g.TargetDate = req.TargetDate;
             g.ExpectedAnnualReturnPct = req.ExpectedAnnualReturnPct;
+            g.IsDemo = false;
             await db.SaveChangesAsync(ct);
             return Results.Ok(ToDto(g));
         });

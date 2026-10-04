@@ -14,13 +14,44 @@
 } @else if (!goal.hasValue()) {
   <p class="muted">{{ t.loading }}</p>
 } @else {
+  @if (!goal.value()) {
+    <section class="card goal-helper">
+      <h2>{{ g.helperTitle }}</h2>
+      <p class="muted">{{ g.helperText }}</p>
+      <div class="goal-helper__row">
+        <label class="form-field">
+          <span>{{ g.spending }} ({{ currency() }})</span>
+          <input
+            type="text"
+            inputmode="decimal"
+            appDecimal
+            placeholder="300.000"
+            [value]="spending()"
+            (input)="spending.set($any($event.target).value)"
+          />
+        </label>
+        @if (suggested(); as amount) {
+          <button type="button" class="btn btn--secondary" (click)="useSuggested(amount)">
+            {{ g.useAmount(amount | money: false : currency()) }}
+          </button>
+        }
+      </div>
+    </section>
+  }
   <form class="card goal-form" (submit)="save($event)">
     @if (error(); as message) {
       <p class="alert" role="alert">{{ message }}</p>
     }
-    <label class="form-field">
-      <span>{{ g.targetAmount }} ({{ currency() }})</span>
+    <label class="form-field" for="goal-target">
+      <span
+        >{{ g.targetAmount }} ({{ currency() }})
+        <app-help-tip
+          [title]="t.help.fireNumberTerm"
+          [text]="t.help.fireNumber"
+          [label]="t.help.label(t.help.fireNumberTerm)"
+      /></span>
       <input
+        id="goal-target"
         type="text"
         inputmode="decimal"
         appDecimal

@@ -7,9 +7,11 @@ import {
   afterNextRender,
   effect,
   inject,
+  signal,
   viewChild,
 } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { PlannerApi } from '../../core/api/planner-api';
 import { Auth } from '../../core/auth/auth';
 import { I18n } from '../../core/i18n/i18n';
 import { BrandMark } from '../../shared/brand-mark';
@@ -39,6 +41,9 @@ export class PlannerShell {
     (this.auth.user()?.name || this.auth.user()?.email || '?').charAt(0).toUpperCase(),
   );
   private readonly button = viewChild<ElementRef<HTMLElement>>('googleButton');
+  private readonly router = inject(Router);
+  private readonly api = inject(PlannerApi);
+  protected readonly removingDemo = signal(false);
 
   constructor() {
     this.i18n.pageTitle.set((t) => t.planner.pageTitle);
@@ -54,5 +59,29 @@ export class PlannerShell {
       el.replaceChildren();
       void this.auth.renderButton(el, locale);
     });
+
+    // A new user starts in the welcome guide, once per visit; they can leave it at any time.
+    let guided = false;
+    effect(() => {
+      const user = this.auth.user();
+      if (!user || user.onboarded || guided) return;
+      guided = true;
+      if (!this.router.url.startsWith('/planner/welcome'))
+        void this.router.navigateByUrl('/planner/welcome');
+    });
+  }
+
+  protected async removeDemo() {
+    if (!confirm(this.i18n.t().planner.demo.confirmRemove)) return;
+    this.removingDemo.set(true);
+    try {
+      this.auth.user.set(await this.api.removeDemo());
+      // Reload the page shown so it stops showing the example numbers.
+      const url = this.router.url;
+      await this.router.navigateByUrl('/planner/welcome', { skipLocationChange: true });
+      await this.router.navigateByUrl(url);
+    } finally {
+      this.removingDemo.set(false);
+    }
   }
 }

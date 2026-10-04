@@ -65,6 +65,25 @@
       <p class="muted">{{ t.loading }}</p>
     } @else if (visible().length === 0) {
       <p class="muted">{{ a.empty }}</p>
+      @if (accounts.value()!.length === 0) {
+        <div class="guide">
+          <h3>{{ a.guideTitle }}</h3>
+          <p class="muted">{{ a.guideText }}</p>
+          <ul>
+            @for (type of types; track type) {
+              <li>
+                <i class="type-dot type-dot--{{ type }}"></i>
+                <span
+                  ><strong>{{ t.types[type] }}</strong> {{ a.guide[type] }}</span
+                >
+              </li>
+            }
+          </ul>
+          <a class="btn btn--secondary" routerLink="/planner/welcome">{{
+            t.dashboard.startGuide
+          }}</a>
+        </div>
+      }
     } @else {
       <ul class="list">
         @for (acc of visible(); track acc.id) {
@@ -134,7 +153,13 @@
 
             @if (acc.tracked) {
               <div class="balance">
-                <span class="balance__text">{{ a.tracked }}</span>
+                <span class="balance__text"
+                  >{{ a.tracked }}
+                  <app-help-tip
+                    [title]="t.help.trackedTerm"
+                    [text]="t.help.tracked"
+                    [label]="t.help.label(t.help.trackedTerm)"
+                /></span>
                 <a class="link-button" routerLink="/planner/portfolio">{{ a.seePortfolio }}</a>
               </div>
             } @else if (!acc.archived || acc.balance !== null) {
@@ -144,6 +169,11 @@
                   @if (acc.balance !== null && acc.balanceDate) {
                     @if (loan) {
                       {{ a.owed }}
+                      <app-help-tip
+                        [title]="t.help.owedTerm"
+                        [text]="t.help.owed"
+                        [label]="t.help.label(t.help.owedTerm)"
+                      />
                     }
                     <strong>{{ acc.balance | money: false : currency() }}</strong>
                     {{ a.balanceFrom(i18n.date(acc.balanceDate)) }}
