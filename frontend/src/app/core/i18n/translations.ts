@@ -128,6 +128,7 @@ const da = {
     signedInAs: (email: string) => `Logget ind som ${email}`,
     signOut: 'Log ud',
     tools: 'Værktøjer',
+    guide: 'Kom godt i gang',
     account: 'Din konto',
     types: {
       investment: 'Investering',
@@ -148,6 +149,167 @@ const da = {
         'Frontend-serveren mangler et Google OAuth client id. Sæt GOOGLE_CLIENT_ID og genstart den.',
     },
 
+    help: {
+      label: (term: string) => `Hvad betyder ${term}?`,
+      equityTerm: 'friværdi',
+      equity:
+        'Det, din bolig er værd, minus det, du skylder på den (restgæld og lån, der hører til boligen).',
+      owedTerm: 'restgæld',
+      owed: 'Det, du stadig skylder på et lån. Står på din årsopgørelse eller i netbanken.',
+      fireNumberTerm: 'FIRE-tal',
+      fireNumber:
+        'Den formue, du skal have for at kunne leve af afkastet. En tommelfingerregel er 25 gange dit årlige forbrug (4 %-reglen).',
+      ruleTerm: '4 %-reglen',
+      rule: 'Hæver du 4 % af formuen om året, har pengene historisk holdt i mindst 30 år. Derfor er FIRE-tallet 25 × årligt forbrug.',
+      trackedTerm: 'følger porteføljen',
+      tracked:
+        'Kontoen har handler, så værdien regnes ud fra dine papirer og dagens kurser. Du skal ikke skrive saldoen.',
+    },
+
+    onboarding: {
+      title: 'Kom godt i gang',
+      step: (n: number, of: number) => `Trin ${n} af ${of}`,
+      next: 'Næste',
+      back: 'Tilbage',
+      skipStep: 'Spring over',
+      saving: 'Gemmer …',
+      welcome: {
+        title: 'Velkommen til FireCalc',
+        text: 'Få overblik over din formue, sæt et mål for økonomisk frihed og se, hvornår du kan nå det. Det tager et par minutter at komme i gang, og du kan springe alt over.',
+        points: [
+          {
+            icon: 'overview',
+            title: 'Formue i dag',
+            text: 'Aktiedepot, opsparing, bolig og lån samlet ét sted.',
+          },
+          {
+            icon: 'goal',
+            title: 'Dit mål',
+            text: 'Et FIRE-tal at arbejde hen imod, og hvor langt du er.',
+          },
+          {
+            icon: 'future',
+            title: 'Din fremtid',
+            text: 'Hvor du står om 5, 10 og 20 år, og hvornår du kan stoppe.',
+          },
+        ],
+        start: 'Kom i gang',
+        demo: 'Prøv med eksempeldata',
+        demoHint: 'Se appen med en opdigtet økonomi først. Du fjerner det med ét klik.',
+        skip: 'Spring introduktionen over',
+        privacy: 'Vi gemmer kun det, du selv skriver ind. Ingen forbindelse til din bank.',
+      },
+      about: {
+        title: 'Om dig',
+        text: 'Bruges til at vise din fremtid efter alder, fx "FIRE som 55-årig". Alt kan rettes senere.',
+        birthDate: 'Fødselsdato',
+        fireAge: 'Hvornår vil du gerne kunne stoppe?',
+        fireAgeHint: 'Alder. Du behøver ikke vide det præcist.',
+        monthlySavings: 'Hvor meget sparer du op om måneden?',
+        monthlySavingsHint: 'Til investeringer og opsparing tilsammen, ca.',
+      },
+      accounts: {
+        title: 'Dine konti',
+        text: 'Vælg det, du har. Skriv værdien i dag, så er dit overblik klar med det samme.',
+        existing: (n: number) =>
+          n === 1 ? 'Du har allerede 1 konto.' : `Du har allerede ${n} konti.`,
+        options: {
+          investment: {
+            name: 'Aktiedepot',
+            text: 'Fx Nordnet eller Saxo',
+            value: 'Værdi i dag',
+            hint: 'Importér dine handler bagefter, så følger værdien kurserne hver dag.',
+          },
+          savings: {
+            name: 'Opsparing',
+            text: 'Højrentekonto, børneopsparing o.l.',
+            value: 'Saldo i dag',
+            hint: '',
+          },
+          cash: {
+            name: 'Lønkonto',
+            text: 'Det, der står på din daglige konto',
+            value: 'Saldo i dag',
+            hint: '',
+          },
+          property: {
+            name: 'Bolig',
+            text: 'Ejerbolig eller andelsbolig',
+            value: 'Boligens værdi',
+            hint: 'Brug en vurdering eller købsprisen.',
+          },
+          loan: {
+            name: 'Lån',
+            text: 'Billån, studielån, forbrugslån',
+            value: 'Restgæld',
+            hint: '',
+          },
+        } as Record<string, { name: string; text: string; value: string; hint: string }>,
+        name: 'Navn',
+        homeLoan: 'Restgæld på boliglån',
+        selected: 'Valgt',
+        noneChosen: 'Vælg mindst én, eller spring over.',
+      },
+      goal: {
+        title: 'Dit mål',
+        text: 'Hvor stor skal formuen være, før du kan leve af den? Skriv dit forbrug, så regner vi et bud ud.',
+        spending: 'Årligt forbrug i dag',
+        spendingHint: 'Det, du bruger på et år. Månedligt forbrug × 12.',
+        target: 'Dit FIRE-tal',
+        targetHint: (rule: string) => `Årligt forbrug × 25 (${rule}). Ret det, hvis du vil.`,
+      },
+      done: {
+        title: 'Du er klar',
+        netWorth: 'Din formue i dag',
+        reach: (age: string, year: number) =>
+          `Fortsætter du med at spare op, rammer dine investeringer og din opsparing dit FIRE-tal, når du er omkring <strong>${age} år</strong> (${year}).`,
+        reachNever:
+          'Med den opsparing, du har skrevet, når du ikke dit FIRE-tal før 90 år. Prøv forskellige planer under Fremtid.',
+        reachUnknown: 'Skriv din fødselsdato og dit mål, så kan vi vise, hvornår du kan nå det.',
+        assumption: 'Beregnet med 7 % årligt afkast før skat. Et skøn, ikke rådgivning.',
+        next: 'Det næste, du kan gøre',
+        importTitle: 'Importér dine handler',
+        importText: 'Så følger dit aktiedepot kurserne hver dag.',
+        futureTitle: 'Se din fremtid',
+        futureText: 'Sammenlign planer, fx et år fri eller mere opsparing.',
+        toOverview: 'Gå til overblikket',
+      },
+      scenarioName: 'Min plan',
+    },
+
+    checklist: {
+      title: 'Kom godt i gang',
+      progress: (done: number, of: number) => `${done} af ${of} klaret`,
+      hide: 'Skjul',
+      reopen: 'Åbn introduktionen igen',
+      items: {
+        account: {
+          title: 'Opret din første konto',
+          text: 'Aktiedepot, opsparing, bolig eller lån.',
+        },
+        import: {
+          title: 'Importér dine handler',
+          text: 'Fra Nordnet eller Saxo, så følger depotet kurserne.',
+        },
+        goal: { title: 'Sæt dit FIRE-tal', text: 'Den formue, du vil nå.' },
+        profile: {
+          title: 'Skriv din fødselsdato',
+          text: 'Så kan vi vise din fremtid efter alder.',
+        },
+        scenario: {
+          title: 'Lav din første plan',
+          text: 'Se hvornår du når dit mål, og hvad der flytter det.',
+        },
+      } as Record<string, { title: string; text: string }>,
+    },
+
+    demo: {
+      banner: 'Du kigger på eksempeldata.',
+      bannerText: 'Tallene er opdigtede. Fjern dem, når du vil i gang med dine egne.',
+      remove: 'Fjern eksempeldata',
+      confirmRemove: 'Fjern alle eksempeldata? Dine egne konti og tal bliver.',
+    },
+
     dashboard: {
       title: 'Overblik',
       lede: 'Din formue i dag, hvordan den har udviklet sig, og hvor langt du er mod dit mål.',
@@ -159,6 +321,7 @@ const da = {
       startText:
         'Opret de konti, du vil følge, fx dit aktiedepot og din opsparing. Aktiedepoter følges via handler, de øvrige ved at skrive saldoen ned en gang imellem.',
       startAction: 'Opret konti',
+      startGuide: 'Start introduktionen',
       firstTitle: 'Der er intet at vise endnu',
       firstText:
         'Importér handler til dit aktiedepot, eller skriv saldoen på en opsparing eller kontantkonto.',
@@ -205,6 +368,17 @@ const da = {
       type: 'Type',
       addButton: 'Tilføj',
       empty: 'Ingen konti endnu. Tilføj den første ovenfor.',
+      guideTitle: 'Hvilke konti skal jeg oprette?',
+      guideText: 'Opret en konto for hver ting, du vil følge. Navnet bestemmer du selv.',
+      guide: {
+        investment:
+          'Aktiedepot eller aktiesparekonto. Importér handler fra Nordnet eller Saxo, så følger værdien kurserne.',
+        savings: 'Opsparingskonti. Skriv saldoen en gang imellem, fx hver måned.',
+        cash: 'Lønkonto og andre daglige konti.',
+        property:
+          'Din bolig: værdien og restgælden på boliglånet. Friværdien tæller med i formuen.',
+        loan: 'Andre lån, fx billån eller studielån. Trækkes fra formuen.',
+      } as Record<string, string>,
       archive: 'Arkivér',
       unarchive: 'Genaktivér',
       archivedBadge: 'Arkiveret',
@@ -409,6 +583,11 @@ const da = {
       remove: 'Fjern mål',
       saved: 'Målet er gemt.',
       invalidAmount: 'Målbeløbet skal være større end 0.',
+      helperTitle: 'Regn dit FIRE-tal ud',
+      helperText:
+        'Et almindeligt bud er 25 gange det, du bruger på et år. Så kan du hæve 4 % om året og have penge til mindst 30 år.',
+      spending: 'Årligt forbrug',
+      useAmount: (amount: string) => `Brug ${amount}`,
     },
     futurePage: {
       title: 'Fremtid',
@@ -667,6 +846,7 @@ const en: Translations = {
     signedInAs: (email) => `Signed in as ${email}`,
     signOut: 'Sign out',
     tools: 'Tools',
+    guide: 'Getting started',
     account: 'Your account',
     types: {
       investment: 'Investment',
@@ -687,6 +867,164 @@ const en: Translations = {
         'The frontend server has no Google OAuth client id. Set GOOGLE_CLIENT_ID and restart it.',
     },
 
+    help: {
+      label: (term: string) => `What does ${term} mean?`,
+      equityTerm: 'home equity',
+      equity:
+        'What your home is worth minus what you owe on it (the mortgage and loans for the home).',
+      owedTerm: 'outstanding debt',
+      owed: 'What you still owe on a loan. Shown on your yearly statement or in your online bank.',
+      fireNumberTerm: 'FIRE number',
+      fireNumber:
+        'The wealth you need to live off the returns. A rule of thumb is 25 times your yearly spending (the 4 % rule).',
+      ruleTerm: 'the 4 % rule',
+      rule: 'Taking out 4 % of your wealth a year has historically lasted at least 30 years. That is why the FIRE number is 25 × yearly spending.',
+      trackedTerm: 'follows the portfolio',
+      tracked:
+        'The account has trades, so its value comes from your holdings at today’s prices. You don’t type a balance.',
+    },
+
+    onboarding: {
+      title: 'Getting started',
+      step: (n: number, of: number) => `Step ${n} of ${of}`,
+      next: 'Next',
+      back: 'Back',
+      skipStep: 'Skip',
+      saving: 'Saving …',
+      welcome: {
+        title: 'Welcome to FireCalc',
+        text: 'See your net worth in one place, set a goal for financial independence and find out when you can reach it. Getting started takes a couple of minutes, and you can skip anything.',
+        points: [
+          {
+            icon: 'overview',
+            title: 'Net worth today',
+            text: 'Shares, savings, your home and loans in one place.',
+          },
+          {
+            icon: 'goal',
+            title: 'Your goal',
+            text: 'A FIRE number to work towards, and how far you are.',
+          },
+          {
+            icon: 'future',
+            title: 'Your future',
+            text: 'Where you’ll be in 5, 10 and 20 years, and when you can stop.',
+          },
+        ],
+        start: 'Get started',
+        demo: 'Try it with example data',
+        demoHint: 'Look around with made-up numbers first. One click removes them.',
+        skip: 'Skip the introduction',
+        privacy: 'We only store what you type in. No connection to your bank.',
+      },
+      about: {
+        title: 'About you',
+        text: 'Used to show your future by age, e.g. "FIRE at 55". You can change everything later.',
+        birthDate: 'Date of birth',
+        fireAge: 'When would you like to be able to stop?',
+        fireAgeHint: 'Age. It doesn’t need to be exact.',
+        monthlySavings: 'How much do you save each month?',
+        monthlySavingsHint: 'Into investments and savings together, roughly.',
+      },
+      accounts: {
+        title: 'Your accounts',
+        text: 'Pick what you have. Type today’s value and your overview is ready straight away.',
+        existing: (n: number) =>
+          n === 1 ? 'You already have 1 account.' : `You already have ${n} accounts.`,
+        options: {
+          investment: {
+            name: 'Share account',
+            text: 'E.g. Nordnet or Saxo',
+            value: 'Value today',
+            hint: 'Import your trades afterwards so the value follows prices every day.',
+          },
+          savings: {
+            name: 'Savings',
+            text: 'Savings account, child savings and the like',
+            value: 'Balance today',
+            hint: '',
+          },
+          cash: {
+            name: 'Current account',
+            text: 'What’s on your everyday account',
+            value: 'Balance today',
+            hint: '',
+          },
+          property: {
+            name: 'Home',
+            text: 'A home you own',
+            value: 'Value of the home',
+            hint: 'Use a valuation or what you paid.',
+          },
+          loan: {
+            name: 'Loan',
+            text: 'Car loan, student loan, consumer loan',
+            value: 'Outstanding debt',
+            hint: '',
+          },
+        } as Record<string, { name: string; text: string; value: string; hint: string }>,
+        name: 'Name',
+        homeLoan: 'Outstanding mortgage',
+        selected: 'Selected',
+        noneChosen: 'Pick at least one, or skip.',
+      },
+      goal: {
+        title: 'Your goal',
+        text: 'How large must your wealth be before you can live off it? Type your spending and we’ll suggest a number.',
+        spending: 'Yearly spending today',
+        spendingHint: 'What you spend in a year. Monthly spending × 12.',
+        target: 'Your FIRE number',
+        targetHint: (rule: string) => `Yearly spending × 25 (${rule}). Change it if you like.`,
+      },
+      done: {
+        title: 'You’re all set',
+        netWorth: 'Your net worth today',
+        reach: (age: string, year: number) =>
+          `If you keep saving, your investments and savings reach your FIRE number around <strong>age ${age}</strong> (${year}).`,
+        reachNever:
+          'With the savings you entered, you don’t reach your FIRE number before 90. Try other plans under Future.',
+        reachUnknown: 'Add your date of birth and goal to see when you can reach it.',
+        assumption: 'Assumes a 7 % yearly return before tax. An estimate, not advice.',
+        next: 'What you can do next',
+        importTitle: 'Import your trades',
+        importText: 'So your share account follows prices every day.',
+        futureTitle: 'See your future',
+        futureText: 'Compare plans, e.g. a year off or saving more.',
+        toOverview: 'Go to the overview',
+      },
+      scenarioName: 'My plan',
+    },
+
+    checklist: {
+      title: 'Getting started',
+      progress: (done: number, of: number) => `${done} of ${of} done`,
+      hide: 'Hide',
+      reopen: 'Open the introduction again',
+      items: {
+        account: {
+          title: 'Add your first account',
+          text: 'A share account, savings, a home or a loan.',
+        },
+        import: {
+          title: 'Import your trades',
+          text: 'From Nordnet or Saxo, so the account follows prices.',
+        },
+        goal: { title: 'Set your FIRE number', text: 'The wealth you want to reach.' },
+        profile: { title: 'Add your date of birth', text: 'So we can show your future by age.' },
+        scenario: {
+          title: 'Make your first plan',
+          text: 'See when you reach your goal and what moves it.',
+        },
+      } as Record<string, { title: string; text: string }>,
+    },
+
+    demo: {
+      banner: 'You’re looking at example data.',
+      bannerText: 'The numbers are made up. Remove them when you want to start with your own.',
+      remove: 'Remove example data',
+      confirmRemove: 'Remove all example data? Your own accounts and numbers stay.',
+    },
+
     dashboard: {
       title: 'Overview',
       lede: 'Your net worth today, how it has developed, and how far you are toward your goal.',
@@ -698,6 +1036,7 @@ const en: Translations = {
       startText:
         'Create the accounts you want to follow, such as your brokerage account and your savings. Brokerage accounts follow their trades; for the others you note the balance now and then.',
       startAction: 'Create accounts',
+      startGuide: 'Start the introduction',
       firstTitle: 'Nothing to show yet',
       firstText:
         'Import the trades for your brokerage account, or enter the balance of a savings or cash account.',
@@ -743,6 +1082,17 @@ const en: Translations = {
       type: 'Type',
       addButton: 'Add',
       empty: 'No accounts yet. Add the first one above.',
+      guideTitle: 'Which accounts should I add?',
+      guideText: 'Add one account for each thing you want to follow. You choose the name.',
+      guide: {
+        investment:
+          'Share accounts. Import trades from Nordnet or Saxo so the value follows prices.',
+        savings: 'Savings accounts. Type the balance now and then, e.g. every month.',
+        cash: 'Current account and other everyday accounts.',
+        property:
+          'Your home: its value and what you owe on the mortgage. The equity counts in net worth.',
+        loan: 'Other loans, e.g. a car or student loan. Subtracted from net worth.',
+      } as Record<string, string>,
       archive: 'Archive',
       unarchive: 'Restore',
       archivedBadge: 'Archived',
@@ -944,6 +1294,11 @@ const en: Translations = {
       remove: 'Remove goal',
       saved: 'Goal saved.',
       invalidAmount: 'The target amount must be greater than 0.',
+      helperTitle: 'Work out your FIRE number',
+      helperText:
+        'A common estimate is 25 times what you spend in a year. Then you can take out 4 % a year and have money for at least 30 years.',
+      spending: 'Yearly spending',
+      useAmount: (amount: string) => `Use ${amount}`,
     },
     futurePage: {
       title: 'Future',

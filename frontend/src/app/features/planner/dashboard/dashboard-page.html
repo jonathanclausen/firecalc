@@ -17,6 +17,11 @@
         />
         <span class="switch__track" aria-hidden="true"></span>
         {{ d.includeHome }}
+        <app-help-tip
+          [title]="t.help.equityTerm"
+          [text]="t.help.equity"
+          [label]="t.help.label(t.help.equityTerm)"
+        />
       </label>
     }
     @if ((accounts.value()?.length ?? 0) > 0) {
@@ -33,9 +38,13 @@
   <section class="card empty">
     <h2>{{ d.startTitle }}</h2>
     <p>{{ d.startText }}</p>
-    <a class="btn btn--primary" routerLink="/planner/accounts">{{ d.startAction }}</a>
+    <div class="empty__actions">
+      <a class="btn btn--primary" routerLink="/planner/welcome">{{ d.startGuide }}</a>
+      <a class="btn btn--secondary" routerLink="/planner/accounts">{{ d.startAction }}</a>
+    </div>
   </section>
 } @else if (!view()!.latest) {
+  <app-getting-started [accounts]="accounts.value()!" [hasGoal]="!!view()!.goal" />
   <section class="card empty">
     <h2>{{ d.firstTitle }}</h2>
     <p>{{ d.firstText }}</p>
@@ -47,6 +56,7 @@
 } @else {
   @let dash = view()!;
   @let cur = currency();
+  <app-getting-started [accounts]="accounts.value()!" [hasGoal]="!!dash.goal" />
   <div class="top">
     <section class="card hero" [attr.aria-label]="d.netWorth">
       <span class="hero__label">{{ d.netWorth }}</span>
@@ -82,7 +92,14 @@
 
     <section class="card goal">
       <div class="card__header">
-        <h2>{{ d.goalTitle }}</h2>
+        <h2>
+          {{ d.goalTitle }}
+          <app-help-tip
+            [title]="t.help.fireNumberTerm"
+            [text]="t.help.fireNumber"
+            [label]="t.help.label(t.help.fireNumberTerm)"
+          />
+        </h2>
         @if (goal()) {
           <a class="link-button" routerLink="/planner/goal">{{ t.edit }}</a>
         }

@@ -1,0 +1,304 @@
+@let t = i18n.t().planner;
+@let o = t.onboarding;
+@let cur = currency();
+
+<div class="wizard">
+  @if (stepIndex() >= 0) {
+    <div class="progress">
+      <span class="progress__label">{{ o.step(stepIndex() + 1, numbered.length) }}</span>
+      <ol class="progress__bar" [attr.aria-label]="o.title">
+        @for (s of numbered; track s; let i = $index) {
+          <li [class.done]="i < stepIndex()" [class.current]="i === stepIndex()"></li>
+        }
+      </ol>
+    </div>
+  }
+
+  @if (error(); as message) {
+    <p class="alert" role="alert">{{ message }}</p>
+  }
+
+  @switch (step()) {
+    @case ('welcome') {
+      @let w = o.welcome;
+      <section class="card panel welcome">
+        <p class="eyebrow">{{ o.title }}</p>
+        <h1>{{ w.title }}</h1>
+        <p class="lede">{{ w.text }}</p>
+        <ul class="points">
+          @for (p of w.points; track p.icon) {
+            <li>
+              <span class="points__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  @switch (p.icon) {
+                    @case ('overview') {
+                      <path d="M4 19V10M10 19V5M16 19v-7M21 19H3" />
+                    }
+                    @case ('goal') {
+                      <circle cx="12" cy="12" r="8" />
+                      <circle cx="12" cy="12" r="3.5" />
+                    }
+                    @default {
+                      <path d="M12 7.5V12l3 2" />
+                      <path d="M20 12a8 8 0 1 1-2.34-5.66M20 3.5V8h-4.5" />
+                    }
+                  }
+                </svg>
+              </span>
+              <span>
+                <strong>{{ p.title }}</strong>
+                {{ p.text }}
+              </span>
+            </li>
+          }
+        </ul>
+        <div class="actions">
+          <button type="button" class="btn btn--primary" [disabled]="busy()" (click)="go('about')">
+            {{ w.start }}
+          </button>
+          @if (!auth.user()?.hasDemo) {
+            <button
+              type="button"
+              class="btn btn--secondary"
+              [disabled]="busy()"
+              [title]="w.demoHint"
+              (click)="tryDemo()"
+            >
+              {{ w.demo }}
+            </button>
+          }
+        </div>
+        <p class="muted small">
+          @if (!auth.user()?.hasDemo) {
+            {{ w.demoHint }}
+          }
+          {{ w.privacy }}
+        </p>
+        <button type="button" class="link-button skip-all" [disabled]="busy()" (click)="skipAll()">
+          {{ w.skip }}
+        </button>
+      </section>
+    }
+
+    @case ('about') {
+      @let a = o.about;
+      <form class="card panel" (submit)="saveAbout($event)">
+        <h1>{{ a.title }}</h1>
+        <p class="lede">{{ a.text }}</p>
+        <div class="fields">
+          <label class="form-field">
+            <span>{{ a.birthDate }}</span>
+            <input
+              type="date"
+              [max]="todayIso"
+              [value]="birthDate()"
+              (input)="birthDate.set($any($event.target).value)"
+            />
+          </label>
+          <label class="form-field">
+            <span>{{ a.fireAge }}</span>
+            <input
+              type="text"
+              inputmode="numeric"
+              appDecimal
+              placeholder="55"
+              [value]="fireAge()"
+              (input)="fireAge.set($any($event.target).value)"
+            />
+            <small>{{ a.fireAgeHint }}</small>
+          </label>
+          <label class="form-field">
+            <span>{{ a.monthlySavings }} ({{ cur }})</span>
+            <input
+              type="text"
+              inputmode="decimal"
+              appDecimal
+              placeholder="5.000"
+              [value]="monthlySavings()"
+              (input)="monthlySavings.set($any($event.target).value)"
+            />
+            <small>{{ a.monthlySavingsHint }}</small>
+          </label>
+        </div>
+        <ng-container *ngTemplateOutlet="nav" />
+      </form>
+    }
+
+    @case ('accounts') {
+      @let a = o.accounts;
+      <form class="card panel" (submit)="saveAccounts($event)">
+        <h1>{{ a.title }}</h1>
+        <p class="lede">{{ a.text }}</p>
+        @if (existingAccounts() > 0) {
+          <p class="muted">{{ a.existing(existingAccounts()) }}</p>
+        }
+        <ul class="choices">
+          @for (d of drafts(); track d.type) {
+            @let opt = a.options[d.type];
+            <li class="choice" [class.chosen]="d.chosen">
+              <label class="choice__head">
+                <input
+                  type="checkbox"
+                  [checked]="d.chosen"
+                  (change)="updateDraft(d.type, { chosen: $any($event.target).checked })"
+                />
+                <i class="type-dot type-dot--{{ d.type }}"></i>
+                <span>
+                  <strong>{{ opt.name }}</strong>
+                  <small>{{ opt.text }}</small>
+                </span>
+              </label>
+              @if (d.chosen) {
+                <div class="choice__fields">
+                  <label class="form-field">
+                    <span>{{ a.name }}</span>
+                    <input
+                      type="text"
+                      maxlength="100"
+                      [value]="d.name"
+                      (input)="updateDraft(d.type, { name: $any($event.target).value })"
+                    />
+                  </label>
+                  <label class="form-field">
+                    <span>{{ opt.value }} ({{ cur }})</span>
+                    <input
+                      type="text"
+                      inputmode="decimal"
+                      appDecimal
+                      [value]="d.value"
+                      (input)="updateDraft(d.type, { value: $any($event.target).value })"
+                    />
+                  </label>
+                  @if (d.type === 'property') {
+                    <label class="form-field" for="welcome-home-loan">
+                      <span
+                        >{{ a.homeLoan }} ({{ cur }})
+                        <app-help-tip
+                          [title]="t.help.owedTerm"
+                          [text]="t.help.owed"
+                          [label]="t.help.label(t.help.owedTerm)"
+                      /></span>
+                      <input
+                        id="welcome-home-loan"
+                        type="text"
+                        inputmode="decimal"
+                        appDecimal
+                        [value]="d.loan"
+                        (input)="updateDraft(d.type, { loan: $any($event.target).value })"
+                      />
+                    </label>
+                  }
+                  @if (opt.hint) {
+                    <small class="choice__hint">{{ opt.hint }}</small>
+                  }
+                </div>
+              }
+            </li>
+          }
+        </ul>
+        <ng-container *ngTemplateOutlet="nav" />
+      </form>
+    }
+
+    @case ('goal') {
+      @let g = o.goal;
+      <form class="card panel" (submit)="saveGoal($event)">
+        <h1>{{ g.title }}</h1>
+        <p class="lede">{{ g.text }}</p>
+        <div class="fields">
+          <label class="form-field">
+            <span>{{ g.spending }} ({{ cur }})</span>
+            <input
+              type="text"
+              inputmode="decimal"
+              appDecimal
+              placeholder="300.000"
+              [value]="spending()"
+              (input)="setSpending($any($event.target).value)"
+            />
+            <small>{{ g.spendingHint }}</small>
+          </label>
+          <label class="form-field" for="welcome-target">
+            <span
+              >{{ g.target }} ({{ cur }})
+              <app-help-tip
+                [title]="t.help.fireNumberTerm"
+                [text]="t.help.fireNumber"
+                [label]="t.help.label(t.help.fireNumberTerm)"
+            /></span>
+            <input
+              id="welcome-target"
+              type="text"
+              inputmode="decimal"
+              appDecimal
+              [value]="target()"
+              (input)="setTarget($any($event.target).value)"
+            />
+            <small
+              >{{ g.targetHint(t.help.ruleTerm) }}
+              <app-help-tip
+                [title]="t.help.ruleTerm"
+                [text]="t.help.rule"
+                [label]="t.help.label(t.help.ruleTerm)"
+            /></small>
+          </label>
+        </div>
+        <ng-container *ngTemplateOutlet="nav" />
+      </form>
+    }
+
+    @case ('done') {
+      @let d = o.done;
+      @let s = summary();
+      <section class="card panel done">
+        <span class="done__check" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+        </span>
+        <h1>{{ d.title }}</h1>
+        @if (s?.netWorth !== null && s?.netWorth !== undefined) {
+          <div class="done__worth">
+            <span>{{ d.netWorth }}</span>
+            <strong>{{ s!.netWorth | money: false : s!.currency }}</strong>
+          </div>
+        }
+        @if (s?.reach; as r) {
+          <p class="done__reach" [innerHTML]="d.reach(i18n.number(r.age, 0), r.year)"></p>
+          <p class="muted small">{{ d.assumption }}</p>
+        } @else if (s?.reach === null) {
+          <p class="done__reach">{{ d.reachNever }}</p>
+        } @else {
+          <p class="muted">{{ d.reachUnknown }}</p>
+        }
+
+        <h2>{{ d.next }}</h2>
+        <div class="next">
+          <a class="next__item" routerLink="/planner/portfolio/import">
+            <strong>{{ d.importTitle }}</strong>
+            <span>{{ d.importText }}</span>
+          </a>
+          <a class="next__item" routerLink="/planner/future">
+            <strong>{{ d.futureTitle }}</strong>
+            <span>{{ d.futureText }}</span>
+          </a>
+        </div>
+        <div class="actions">
+          <a class="btn btn--primary" routerLink="/planner">{{ d.toOverview }}</a>
+        </div>
+      </section>
+    }
+  }
+</div>
+
+<ng-template #nav>
+  <div class="nav">
+    <button type="button" class="btn btn--secondary" [disabled]="busy()" (click)="back()">
+      {{ o.back }}
+    </button>
+    <button type="button" class="link-button nav__skip" [disabled]="busy()" (click)="skip()">
+      {{ o.skipStep }}
+    </button>
+    <button type="submit" class="btn btn--primary" [disabled]="busy()">
+      {{ busy() ? o.saving : o.next }}
+    </button>
+  </div>
+</ng-template>

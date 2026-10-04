@@ -197,3 +197,37 @@
     color: var(--text-muted);
   }
 }
+
+.guide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+
+  h3 {
+    margin: 0;
+    font-size: 0.9375rem;
+  }
+
+  ul {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+
+  li {
+    display: flex;
+    align-items: baseline;
+  }
+
+  strong {
+    color: var(--text-primary);
+  }
+}

@@ -12,12 +12,13 @@ import {
 } from '../../../core/api/planner-api';
 import { I18n } from '../../../core/i18n/i18n';
 import { DecimalInput } from '../../../shared/decimal-input';
+import { HelpTip } from '../../../shared/help-tip';
 import { MoneyPipe } from '../../../shared/money.pipe';
 import { formatDecimal, parseDecimal } from '../../../shared/parse-decimal';
 
 @Component({
   selector: 'app-accounts-page',
-  imports: [RouterLink, MoneyPipe, DecimalInput],
+  imports: [RouterLink, MoneyPipe, DecimalInput, HelpTip],
   templateUrl: './accounts-page.html',
   styleUrl: './accounts-page.scss',
 })

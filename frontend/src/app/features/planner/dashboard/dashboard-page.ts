@@ -11,13 +11,15 @@ import { I18n } from '../../../core/i18n/i18n';
 import { readStorage, writeStorage } from '../../../core/storage';
 import { CurrencySettings } from '../../../core/settings/currency';
 import { MoneyPipe } from '../../../shared/money.pipe';
+import { HelpTip } from '../../../shared/help-tip';
+import { GettingStarted } from '../onboarding/getting-started';
 import { NetWorthChart } from './net-worth-chart';
 
 export const INCLUDE_HOME_KEY = 'firecalc.includeHome';
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [RouterLink, MoneyPipe, NetWorthChart],
+  imports: [RouterLink, MoneyPipe, NetWorthChart, HelpTip, GettingStarted],
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.scss',
 })

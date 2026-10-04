@@ -249,6 +249,27 @@
   }
 }
 
+.planner .goal-helper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 520px;
+  margin-bottom: 16px;
+  padding: 24px;
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .goal-helper__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px;
+  }
+}
+
 .planner .goal-form {
   display: flex;
   flex-direction: column;

@@ -22,6 +22,10 @@
             <path d="M12 7.5V12l3 2" />
             <path d="M20 12a8 8 0 1 1-2.34-5.66M20 3.5V8h-4.5" />
           }
+          @case ('guide') {
+            <circle cx="12" cy="12" r="8.5" />
+            <path d="M9.6 9.4a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.4M12 16.6v.01" />
+          }
           @case ('calculator') {
             <rect x="5" y="3" width="14" height="18" rx="2.5" />
             <path
@@ -59,6 +63,10 @@
 
         <p class="sidenav__heading">{{ t.tools }}</p>
         <nav class="sidenav" [attr.aria-label]="t.tools">
+          <a routerLink="/planner/welcome" routerLinkActive="active">
+            <ng-container *ngTemplateOutlet="icon; context: { $implicit: 'guide' }" />
+            {{ t.guide }}
+          </a>
           <a routerLink="/compound-interest">
             <ng-container *ngTemplateOutlet="icon; context: { $implicit: 'calculator' }" />
             {{ i18n.t().nav.compoundInterest }}
@@ -116,6 +124,22 @@
       </header>
 
       <div class="app__main">
+        @if (auth.user()?.hasDemo) {
+          <div class="demo-banner" role="status">
+            <span>
+              <strong>{{ t.demo.banner }}</strong>
+              {{ t.demo.bannerText }}
+            </span>
+            <button
+              type="button"
+              class="btn btn--secondary"
+              [disabled]="removingDemo()"
+              (click)="removeDemo()"
+            >
+              {{ t.demo.remove }}
+            </button>
+          </div>
+        }
         <router-outlet />
         <p class="app__footer">{{ i18n.t().footer }}</p>
       </div>

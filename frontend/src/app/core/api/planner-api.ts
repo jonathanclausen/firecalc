@@ -22,6 +22,12 @@ export interface Me {
   currency: string;
   /** Places scenario events and the FIRE age on a timeline. */
   birthDate: string | null;
+  /** The welcome guide was finished or skipped; until then it opens on sign-in. */
+  onboarded: boolean;
+  /** The "getting started" checklist on the overview was hidden. */
+  checklistHidden: boolean;
+  /** Example data is loaded and can be removed. */
+  hasDemo: boolean;
 }
 
 export interface Account {
@@ -319,6 +325,21 @@ export class PlannerApi {
 
   saveProfile(body: { birthDate: string | null }) {
     return firstValueFrom(this.http.put<Me>('/api/me/profile', body));
+  }
+
+  /** Only the fields sent are changed. */
+  saveOnboarding(body: { onboarded?: boolean; checklistHidden?: boolean }) {
+    return firstValueFrom(this.http.put<Me>('/api/me/onboarding', body));
+  }
+
+  /** Loads a made-up household with two years of history, named in the given language. */
+  loadDemo(lang: string) {
+    return firstValueFrom(this.http.post<Me>('/api/demo', null, { params: { lang } }));
+  }
+
+  /** Removes everything the example data added, and nothing else. */
+  removeDemo() {
+    return firstValueFrom(this.http.delete<Me>('/api/demo'));
   }
 
   createScenario(body: SaveScenario) {
