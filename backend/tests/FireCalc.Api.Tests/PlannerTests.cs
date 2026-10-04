@@ -238,4 +238,24 @@ public class PlannerTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.InRange(pace.GetProperty("investedPerMonth").GetDecimal(), 4990m, 5010m);
         Assert.InRange(pace.GetProperty("savedPerMonth").GetDecimal(), 5000m + 990m, 5000m + 1010m);
     }
+
+    [Fact]
+    public async Task A_one_off_withdrawal_does_not_make_the_saving_pace_negative()
+    {
+        var client = NewOwner();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var depot = await CreateAccount(client, "Depot", "investment");
+        await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = today.AddMonths(-13), type = "deposit", amount = 500000m });
+        await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = today.AddMonths(-9), type = "deposit", amount = 60000m });
+        // Sold for a house down payment.
+        await client.PostAsJsonAsync($"/api/accounts/{depot}/transactions", new { date = today.AddMonths(-3), type = "withdrawal", amount = 400000m });
+        var savings = await CreateAccount(client, "Opsparing", "savings");
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddYears(-1), balance = 300000m });
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today.AddMonths(-3), balance = 20000m });
+        await client.PutAsJsonAsync($"/api/accounts/{savings}/balances", new { date = today, balance = 56000m });
+
+        var pace = (await client.GetFromJsonAsync<JsonElement>("/api/dashboard")).GetProperty("pace");
+        Assert.InRange(pace.GetProperty("investedPerMonth").GetDecimal(), 4990m, 5010m);
+        Assert.InRange(pace.GetProperty("savedPerMonth").GetDecimal(), 2990m, 3010m);
+    }
 }

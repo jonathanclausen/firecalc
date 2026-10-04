@@ -21,8 +21,8 @@ public static class DashboardEndpoints
 
     /// <summary>
     /// How much was put aside per month lately, from up to the last 12 months: money put into the investment
-    /// accounts (deposits less withdrawals) and the growth of savings and cash balances. Each part is null
-    /// until it has a month of history.
+    /// accounts and the growth of savings and cash balances. Months where money went out (a sale or a drop
+    /// in balance) count as zero rather than negative. Each part is null until it has a month of history.
     /// </summary>
     public record SavingPace(DateOnly Since, decimal? InvestedPerMonth, decimal? SavedPerMonth);
 
@@ -122,12 +122,19 @@ public static class DashboardEndpoints
                     var months = (to.DayNumber - from.DayNumber) / (365.2425m / 12);
                     return months >= 1 ? Math.Round(change / months, 2) : null;
                 }
+                // Only the rises count, so a one-off sale or withdrawal (say for a house) doesn't turn the
+                // pace negative; ordinary saving is what the projection carries forward.
+                static decimal Ups(IEnumerable<decimal> values) =>
+                    values.Zip(values.Skip(1), (a, b) => Math.Max(0, b - a)).Sum();
 
                 decimal? invested = null;
                 if (daily.Count > 0)
                 {
                     var start = daily.LastOrDefault(d => d.Date <= yearAgo) ?? daily[0];
-                    invested = PerMonth(daily[^1].PutIn - start.PutIn, start.Date, today);
+                    var monthEnds = daily.Where(d => d.Date > start.Date)
+                        .GroupBy(d => (d.Date.Year, d.Date.Month))
+                        .Select(g => g.Last().PutIn);
+                    invested = PerMonth(Ups(monthEnds.Prepend(start.PutIn)), start.Date, today);
                 }
 
                 // Each savings account from its balance a year ago, or from its first balance if it is newer,
@@ -137,7 +144,8 @@ public static class DashboardEndpoints
                 {
                     if (!balances.TryGetValue(a.Id, out var list)) continue;
                     var start = list.LastOrDefault(b => b.Date <= yearAgo) ?? list[0];
-                    if (PerMonth(list[^1].Balance - start.Balance, start.Date, today) is { } perMonth)
+                    var since = list.Where(b => b.Date >= start.Date).Select(b => b.Balance);
+                    if (PerMonth(Ups(since), start.Date, today) is { } perMonth)
                         saved = (saved ?? 0) + perMonth;
                 }
                 return new SavingPace(yearAgo, invested, saved);

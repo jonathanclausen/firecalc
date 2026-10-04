@@ -453,11 +453,14 @@ const da = {
       course: {
         title: 'Hvis du fortsætter som nu',
         basis: (invested: string, saved: string) =>
-          `Det seneste år har du sat ${invested} om måneden ind på dine investeringer og ${saved} om måneden på din opsparing. Det fortsætter vi med.`,
+          `Det seneste år har du sat ${invested} om måneden ind på dine investeringer og ${saved} om måneden på din opsparing. Salg og hævninger, fx til en bolig, tæller ikke med. Det fortsætter vi med, men du kan rette beløbene nedenfor.`,
         basisNone:
           'Der er endnu ikke et års historik at regne opsparingen ud fra, så kun afkast og renter tæller med.',
         inYears: (years: number) => (years === 1 ? 'Om 1 år' : `Om ${years} år`),
         fromToday: (change: string) => `${change} fra i dag`,
+        investedPerMonth: 'Til investeringer om måneden',
+        savedPerMonth: 'Til opsparing om måneden',
+        resetAmounts: 'Brug beløbene fra det seneste år',
         investmentReturn: 'Afkast på investeringer (%)',
         savingsReturn: 'Rente på opsparing (%)',
         homeGrowth: 'Boligens værdistigning (%)',
@@ -975,11 +978,14 @@ const en: Translations = {
       course: {
         title: 'If you keep going as now',
         basis: (invested: string, saved: string) =>
-          `Over the last year you put ${invested} a month into your investments and ${saved} a month into savings. The projection keeps that up.`,
+          `Over the last year you put ${invested} a month into your investments and ${saved} a month into savings. Sales and withdrawals, say for a home, don't count. The projection keeps that up, but you can change the amounts below.`,
         basisNone:
           "There isn't a year of history yet to work out your savings from, so only returns and interest count.",
         inYears: (years: number) => (years === 1 ? 'In 1 year' : `In ${years} years`),
         fromToday: (change: string) => `${change} from today`,
+        investedPerMonth: 'Into investments a month',
+        savedPerMonth: 'Into savings a month',
+        resetAmounts: 'Use the amounts from the last year',
         investmentReturn: 'Return on investments (%)',
         savingsReturn: 'Interest on savings (%)',
         homeGrowth: 'Home price growth (%)',

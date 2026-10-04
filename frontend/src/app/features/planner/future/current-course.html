@@ -27,6 +27,18 @@
   <app-net-worth-chart [series]="series()" [currency]="cur" [futureFrom]="today" />
 
   <div class="rates">
+    @for (field of amountFields; track field.key) {
+      <label class="form-field">
+        <span>{{ c[field.label] }}</span>
+        <input
+          type="text"
+          inputmode="decimal"
+          appDecimal
+          [value]="amountText(field.key)"
+          (change)="setAmount(field.key, $any($event.target).value)"
+        />
+      </label>
+    }
     @for (field of rateFields; track field.key) {
       <label class="form-field">
         <span>{{ c[field.label] }}</span>
@@ -40,5 +52,10 @@
       </label>
     }
   </div>
+  @if (edited()) {
+    <button type="button" class="link-button reset" (click)="resetAmounts()">
+      {{ c.resetAmounts }}
+    </button>
+  }
   <p class="muted note">{{ c.note }}</p>
 </section>
