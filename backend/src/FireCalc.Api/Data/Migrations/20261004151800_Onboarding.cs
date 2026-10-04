@@ -11,45 +11,16 @@ namespace FireCalc.Api.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<DateTimeOffset>(
-                name: "ChecklistHiddenAt",
-                table: "Users",
-                type: "timestamp with time zone",
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTimeOffset>(
-                name: "OnboardedAt",
-                table: "Users",
-                type: "timestamp with time zone",
-                nullable: true);
-
-            migrationBuilder.AddColumn<bool>(
-                name: "IsDemo",
-                table: "Scenarios",
-                type: "boolean",
-                nullable: false,
-                defaultValue: false);
-
-            migrationBuilder.AddColumn<bool>(
-                name: "IsDemo",
-                table: "Homes",
-                type: "boolean",
-                nullable: false,
-                defaultValue: false);
-
-            migrationBuilder.AddColumn<bool>(
-                name: "IsDemo",
-                table: "Goals",
-                type: "boolean",
-                nullable: false,
-                defaultValue: false);
-
-            migrationBuilder.AddColumn<bool>(
-                name: "IsDemo",
-                table: "Accounts",
-                type: "boolean",
-                nullable: false,
-                defaultValue: false);
+            // IF NOT EXISTS: an earlier version of this migration, under another id, already ran on the
+            // preview database.
+            migrationBuilder.Sql("""
+                ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "ChecklistHiddenAt" timestamp with time zone NULL;
+                ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "OnboardedAt" timestamp with time zone NULL;
+                ALTER TABLE "Scenarios" ADD COLUMN IF NOT EXISTS "IsDemo" boolean NOT NULL DEFAULT FALSE;
+                ALTER TABLE "Homes" ADD COLUMN IF NOT EXISTS "IsDemo" boolean NOT NULL DEFAULT FALSE;
+                ALTER TABLE "Goals" ADD COLUMN IF NOT EXISTS "IsDemo" boolean NOT NULL DEFAULT FALSE;
+                ALTER TABLE "Accounts" ADD COLUMN IF NOT EXISTS "IsDemo" boolean NOT NULL DEFAULT FALSE;
+                """);
 
             // People who already have accounts or a home are past getting started; the guide only opens for new ones.
             migrationBuilder.Sql("""
