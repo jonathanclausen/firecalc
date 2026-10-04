@@ -152,7 +152,9 @@ export class CurrentCourse {
   }
 
   protected amountText(key: AmountKey) {
-    return formatDecimal(Math.round(this.monthly()[key]), this.i18n.lang());
+    // The last year's pace is shown in whole kroner; the user's own amount as typed.
+    const value = this.amounts()[key] ?? Math.round(this.monthly()[key]);
+    return formatDecimal(value, this.i18n.lang());
   }
 
   protected setAmount(key: AmountKey, raw: string) {
