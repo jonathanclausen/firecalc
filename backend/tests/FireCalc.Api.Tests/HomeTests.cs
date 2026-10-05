@@ -82,4 +82,29 @@ public class HomeTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/homes/{home}")).StatusCode);
         Assert.Empty((await client.GetFromJsonAsync<JsonElement>("/api/homes")).EnumerateArray());
     }
+
+    [Fact]
+    public async Task A_value_or_a_statement_can_be_deleted()
+    {
+        var client = NewOwner();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var created = await client.PostAsJsonAsync("/api/homes", new { name = "Huset" });
+        var home = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString();
+        var older = today.AddMonths(-6);
+        await client.PutAsJsonAsync($"/api/homes/{home}/values", new { date = older, value = 4000000m });
+        await client.PutAsJsonAsync($"/api/homes/{home}/values", new { date = today, value = 4200000m });
+
+        var values = await client.GetFromJsonAsync<JsonElement>($"/api/homes/{home}/values");
+        var latest = values[0].GetProperty("date").GetString();
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/homes/{home}/values/{latest}")).StatusCode);
+        var listed = (await client.GetFromJsonAsync<JsonElement>("/api/homes"))[0];
+        Assert.Equal(4000000m, listed.GetProperty("value").GetDecimal());
+
+        var loan = await client.PostAsJsonAsync($"/api/homes/{home}/loans", new { name = "Lån" });
+        var loanId = (await loan.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString();
+        await client.PutAsJsonAsync($"/api/homes/{home}/loans/{loanId}/balances", new { date = older, balance = 1000000m });
+        var statement = (await client.GetFromJsonAsync<JsonElement>($"/api/homes/{home}/loans/{loanId}/balances"))[0].GetProperty("date").GetString();
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/homes/{home}/loans/{loanId}/balances/{statement}")).StatusCode);
+        Assert.Empty((await client.GetFromJsonAsync<JsonElement>($"/api/homes/{home}/loans/{loanId}/balances")).EnumerateArray());
+    }
 }
