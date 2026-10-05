@@ -296,7 +296,22 @@
                               (input)="patchCounting({ tradeDate: $any($event.target).value })"
                             />
                           </label>
+                          <label class="form-field">
+                            <span>{{
+                              draft.mode === 'buy' ? p.totalPaid(cur) : p.totalReceived(cur)
+                            }}</span>
+                            <input
+                              type="text"
+                              inputmode="decimal"
+                              appDecimal
+                              [value]="draft.tradeTotal"
+                              (input)="patchCounting({ tradeTotal: $any($event.target).value })"
+                            />
+                          </label>
                           <small class="hint">{{ p.tradeHint(draft.quantityWas) }}</small>
+                          <small class="hint">{{
+                            draft.mode === 'buy' ? p.totalBuyHint : p.totalSellHint
+                          }}</small>
                         }
                         <div class="holding-form__buttons">
                           <button type="submit" class="btn btn--primary" [disabled]="busy()">

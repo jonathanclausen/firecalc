@@ -599,6 +599,13 @@ const da = {
       tradeDate: 'Dato (valgfri)',
       tradeHint: (held: number) =>
         `Du ejer ${held.toLocaleString('da-DK')} nu. Tom kurs eller dato betyder dagens.`,
+      totalPaid: (currency: string) => `Samlet købsbeløb i ${currency} inkl. gebyrer (valgfri)`,
+      totalReceived: (currency: string) =>
+        `Samlet salgsbeløb i ${currency} efter gebyrer (valgfri)`,
+      totalBuyHint:
+        'Skriv beløbet fra handelsnotaen, så kurtage og valutagebyr tæller med i GAK og afkast. Tom = antal × kurs.',
+      totalSellHint:
+        'Skriv beløbet fra handelsnotaen, så kurtage og valutagebyr tæller med i din gevinst. Tom = antal × kurs.',
       sellTooMany: 'Du kan ikke sælge flere, end du ejer.',
       cannotCorrectAverage: 'Der blev ikke fundet en valutakurs for papiret. Prøv igen senere.',
       needPrice: 'Skriv kursen pr. aktie, så afkastet kan regnes ud.',
@@ -1496,6 +1503,12 @@ const en: Translations = {
       tradeDate: 'Date (optional)',
       tradeHint: (held: number) =>
         `You own ${held.toLocaleString('en-GB')} now. An empty price or date means today’s.`,
+      totalPaid: (currency: string) => `Total paid in ${currency} incl. fees (optional)`,
+      totalReceived: (currency: string) => `Total received in ${currency} after fees (optional)`,
+      totalBuyHint:
+        'Enter the amount from the trade confirmation so brokerage and currency fees count in your GAK and return. Empty = count × price.',
+      totalSellHint:
+        'Enter the amount from the trade confirmation so brokerage and currency fees count in your gain. Empty = count × price.',
       sellTooMany: 'You cannot sell more than you own.',
       cannotCorrectAverage: 'No exchange rate was found for this share. Try again later.',
       needPrice: 'Enter the price per share so the return can be worked out.',
