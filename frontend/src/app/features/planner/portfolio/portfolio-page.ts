@@ -100,6 +100,9 @@ export class PortfolioPage {
     tradeQuantity: string;
     tradePrice: string;
     tradeDate: string;
+    /** Kurtage and valutagebyr, in the user's currency. */
+    tradeBrokerage: string;
+    tradeFxFee: string;
   } | null>(null);
 
   // Patches read the latest draft, so quick successive inputs never overwrite each other.
@@ -152,6 +155,8 @@ export class PortfolioPage {
       tradeQuantity: '',
       tradePrice: '',
       tradeDate: '',
+      tradeBrokerage: '',
+      tradeFxFee: '',
     });
   }
 
@@ -198,12 +203,15 @@ export class PortfolioPage {
       this.error.set(this.i18n.t().planner.portfolioPage.sellTooMany);
       return;
     }
+    const lang = this.i18n.lang();
+    const fees = (parse(draft.tradeBrokerage, lang) ?? 0) + (parse(draft.tradeFxFee, lang) ?? 0);
     await this.saveHolding(
       draft.accountId,
       holding,
       quantity,
       draft.tradePrice,
       draft.tradeDate || null,
+      { fees: fees || null },
     );
   }
 
@@ -213,7 +221,7 @@ export class PortfolioPage {
     quantity: number,
     price: string,
     date: string | null = null,
-    extra: { averagePrice?: number | null } = {},
+    extra: { averagePrice?: number | null; fees?: number | null } = {},
   ) {
     const t = this.i18n.t().planner;
     this.busy.set(true);
@@ -234,9 +242,11 @@ export class PortfolioPage {
       this.error.set(
         errors?.unitPrice
           ? t.portfolioPage.needPrice
-          : errors?.averagePrice
-            ? t.portfolioPage.cannotCorrectAverage
-            : t.error,
+          : errors?.fees
+            ? t.portfolioPage.feesTooHigh
+            : errors?.averagePrice
+              ? t.portfolioPage.cannotCorrectAverage
+              : t.error,
       );
     } finally {
       this.busy.set(false);

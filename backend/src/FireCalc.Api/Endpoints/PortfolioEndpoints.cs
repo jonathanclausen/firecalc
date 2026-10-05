@@ -24,7 +24,7 @@ public static class PortfolioEndpoints
     public record UpdateInstrumentRequest(string? Symbol, string? Name);
 
     /// <summary>Amount is the total paid or received; UnitPrice is per share in the instrument's own currency.</summary>
-    public record SetHoldingRequest(InstrumentRef? Instrument, decimal? Quantity, decimal? Amount, decimal? UnitPrice, DateOnly? Date, decimal? AveragePrice);
+    public record SetHoldingRequest(InstrumentRef? Instrument, decimal? Quantity, decimal? Amount, decimal? UnitPrice, DateOnly? Date, decimal? AveragePrice, decimal? Fees = null);
     public record SetHoldingResult(decimal Quantity, decimal Change, decimal Amount);
 
     public record ImportPreviewRow(int Line, DateOnly Date, TransactionType Type, string RawType, string? Name, decimal Quantity, decimal Amount);
@@ -208,6 +208,7 @@ public static class PortfolioEndpoints
                 .Check(req.Amount is null or >= 0, "amount", "The amount cannot be negative.")
                 .Check(req.UnitPrice is null or > 0, "unitPrice", "The price must be above 0.")
                 .Check(req.AveragePrice is null or > 0, "averagePrice", "The price must be above 0.")
+                .Check(req.Fees is null or >= 0, "fees", "Fees cannot be negative.")
                 .Check(req.Date is null || req.Date <= DateOnly.FromDateTime(DateTime.UtcNow), "date", "The purchase date cannot be in the future.");
             if (!v.IsValid) return v.Problem();
             var resolved = await ResolveInstrumentAsync(req.Instrument, db, ct);
@@ -246,6 +247,12 @@ public static class PortfolioEndpoints
             }
 
             var buying = change > 0;
+            // Brokerage and currency fees are part of what a purchase cost and come off what a sale brought in,
+            // so they land in the GAK and the realised gain the same way a broker's own export books them.
+            var fees = change == 0 ? 0 : req.Fees ?? 0;
+            if (!buying && fees > amount)
+                return new Validation().Check(false, "fees", "The fees cannot be more than the sale brought in.").Problem();
+            amount = buying ? amount + fees : amount - fees;
             var note = $"{current:0.####} → {req.Quantity:0.####}";
             if (change != 0) db.Transactions.AddRange(
                 new PortfolioTransaction

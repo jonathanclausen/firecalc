@@ -296,7 +296,36 @@
                               (input)="patchCounting({ tradeDate: $any($event.target).value })"
                             />
                           </label>
+                          <div class="holding-form__row">
+                            <label class="form-field">
+                              <span>{{ p.brokerage(cur) }}</span>
+                              <input
+                                type="text"
+                                inputmode="decimal"
+                                appDecimal
+                                [value]="draft.tradeBrokerage"
+                                (input)="
+                                  patchCounting({ tradeBrokerage: $any($event.target).value })
+                                "
+                              />
+                            </label>
+                            @if (draft.currency && draft.currency !== cur) {
+                              <label class="form-field">
+                                <span>{{ p.fxFee(cur) }}</span>
+                                <input
+                                  type="text"
+                                  inputmode="decimal"
+                                  appDecimal
+                                  [value]="draft.tradeFxFee"
+                                  (input)="patchCounting({ tradeFxFee: $any($event.target).value })"
+                                />
+                              </label>
+                            }
+                          </div>
                           <small class="hint">{{ p.tradeHint(draft.quantityWas) }}</small>
+                          <small class="hint">{{
+                            draft.mode === 'buy' ? p.feesBuyHint : p.feesSellHint
+                          }}</small>
                         }
                         <div class="holding-form__buttons">
                           <button type="submit" class="btn btn--primary" [disabled]="busy()">

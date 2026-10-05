@@ -459,6 +459,8 @@ export class PlannerApi {
       unitPrice: number | null;
       date?: string | null;
       averagePrice?: number | null;
+      /** Kurtage and valutagebyr together, in the user's currency. */
+      fees?: number | null;
     },
   ) {
     return firstValueFrom(

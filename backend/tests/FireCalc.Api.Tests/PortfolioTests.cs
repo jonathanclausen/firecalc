@@ -307,6 +307,35 @@ public class PortfolioTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Fees_on_a_buy_or_sale_count_in_the_cost_and_the_proceeds()
+    {
+        var m = factory.MarketData;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        m.Prices["FEE.CO"] = new("DKK", [new(today, 100m)]);
+        var client = NewOwner();
+        var account = await CreateAccount(client);
+
+        var negative = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "FEE.CO" }, quantity = 10, unitPrice = 100, fees = -1 });
+        Assert.Equal(HttpStatusCode.BadRequest, negative.StatusCode);
+
+        // 10 × 100 plus 29 kurtage and 15 valutagebyr.
+        var bought = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "FEE.CO" }, quantity = 10, unitPrice = 100, fees = 44 });
+        Assert.Equal(1044m, (await bought.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("amount").GetDecimal());
+
+        var tooMuch = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "FEE.CO" }, quantity = 9, unitPrice = 10, fees = 11 });
+        Assert.Equal(HttpStatusCode.BadRequest, tooMuch.StatusCode);
+
+        // Selling 5 at 120 brings in 600 less 29 in fees.
+        var sold = await client.PutAsJsonAsync($"/api/accounts/{account}/holdings", new { instrument = new { symbol = "FEE.CO" }, quantity = 5, unitPrice = 120, fees = 29 });
+        Assert.Equal(571m, (await sold.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("amount").GetDecimal());
+
+        var acc = (await client.GetFromJsonAsync<JsonElement>("/api/portfolio")).GetProperty("accounts")[0];
+        var position = acc.GetProperty("positions")[0];
+        Assert.Equal(522m, position.GetProperty("costBasis").GetDecimal()); // 1044 / 10 × 5
+        Assert.Equal(0m, acc.GetProperty("cash").GetDecimal());
+    }
+
+    [Fact]
     public async Task Setting_a_share_count_without_any_price_asks_for_one()
     {
         var client = NewOwner();

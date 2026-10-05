@@ -599,6 +599,12 @@ const da = {
       tradeDate: 'Dato (valgfri)',
       tradeHint: (held: number) =>
         `Du ejer ${held.toLocaleString('da-DK')} nu. Tom kurs eller dato betyder dagens.`,
+      brokerage: (currency: string) => `Kurtage i ${currency} (valgfri)`,
+      fxFee: (currency: string) => `Valutagebyr i ${currency} (valgfri)`,
+      feesBuyHint: 'Gebyrerne lægges til købsprisen, så de tæller med i GAK og afkast.',
+      feesSellHint:
+        'Gebyrerne trækkes fra salgsbeløbet, så de tæller med i din realiserede gevinst.',
+      feesTooHigh: 'Gebyrerne kan ikke være større end salgsbeløbet.',
       sellTooMany: 'Du kan ikke sælge flere, end du ejer.',
       cannotCorrectAverage: 'Der blev ikke fundet en valutakurs for papiret. Prøv igen senere.',
       needPrice: 'Skriv kursen pr. aktie, så afkastet kan regnes ud.',
@@ -1496,6 +1502,12 @@ const en: Translations = {
       tradeDate: 'Date (optional)',
       tradeHint: (held: number) =>
         `You own ${held.toLocaleString('en-GB')} now. An empty price or date means today’s.`,
+      brokerage: (currency: string) => `Brokerage fee in ${currency} (optional)`,
+      fxFee: (currency: string) => `Currency exchange fee in ${currency} (optional)`,
+      feesBuyHint: 'Fees are added to the purchase price, so they count in your GAK and return.',
+      feesSellHint:
+        'Fees are taken off what the sale brought in, so they count in your realised gain.',
+      feesTooHigh: 'The fees cannot be more than the sale brought in.',
       sellTooMany: 'You cannot sell more than you own.',
       cannotCorrectAverage: 'No exchange rate was found for this share. Try again later.',
       needPrice: 'Enter the price per share so the return can be worked out.',
