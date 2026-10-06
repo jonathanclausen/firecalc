@@ -71,10 +71,11 @@ public sealed class PortfolioValuation(FireCalcDbContext db, PriceService prices
         return rate is null ? null : close * rate;
     }
 
+    /// <summary>Archived accounts are left out: archiving takes an account out of every total.</summary>
     public async Task<List<AccountPortfolio>> ValueAsync(Guid userId, string currency, DateOnly asOf, bool refresh, CancellationToken ct)
     {
         var accounts = await db.Accounts.AsNoTracking()
-            .Where(a => a.UserId == userId && db.Transactions.Any(t => t.AccountId == a.Id))
+            .Where(a => a.UserId == userId && !a.Archived && db.Transactions.Any(t => t.AccountId == a.Id))
             .OrderBy(a => a.CreatedAt)
             .ToListAsync(ct);
         if (accounts.Count == 0) return [];
