@@ -25,6 +25,9 @@ env:
   OPEN_SIGNUP: ${{ vars.OPEN_SIGNUP || 'true' }}
   # "" for production, "-preview" for the preview environment.
   SUFFIX: ${{ (github.ref != 'refs/heads/main' || github.event_name == 'pull_request') && '-preview' || '' }}
+  # Production's own domain, served through a Cloud Run domain mapping next to the run.app address.
+  # Set the repository variable CUSTOM_DOMAIN to change it, or to "none" to turn it off.
+  CUSTOM_DOMAIN: ${{ vars.CUSTOM_DOMAIN || 'okonomi.concensur.dk' }}
 
 jobs:
   deploy:
@@ -73,6 +76,12 @@ jobs:
             echo "API_URL=https://firecalc-api$SUFFIX-$number.$REGION.run.app"
             echo "WEB_HOST=firecalc-web$SUFFIX-$number.$REGION.run.app"
           } >> "$GITHUB_ENV"
+          # Hosts the SSR server answers for; requests for any other host are refused.
+          hosts="firecalc-web$SUFFIX-$number.$REGION.run.app"
+          if [ -z "$SUFFIX" ] && [ "$CUSTOM_DOMAIN" != "none" ]; then
+            hosts="$hosts,$CUSTOM_DOMAIN"
+          fi
+          echo "WEB_HOSTS=$hosts" >> "$GITHUB_ENV"
           echo "url=https://firecalc-web$SUFFIX-$number.$REGION.run.app" >> "$GITHUB_OUTPUT"
           gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
 
@@ -120,7 +129,7 @@ jobs:
             --region="$REGION" \
             --service-account="firecalc-web@$PROJECT_ID.iam.gserviceaccount.com" \
             --allow-unauthenticated \
-            --set-env-vars="^;^API_URL=$API_URL;API_AUDIENCE=$API_URL;FIREBASE_API_KEY=$FIREBASE_API_KEY;FIREBASE_PROJECT_ID=$PROJECT_ID;NG_ALLOWED_HOSTS=$WEB_HOST" \
+            --set-env-vars="^;^API_URL=$API_URL;API_AUDIENCE=$API_URL;FIREBASE_API_KEY=$FIREBASE_API_KEY;FIREBASE_PROJECT_ID=$PROJECT_ID;NG_ALLOWED_HOSTS=$WEB_HOSTS" \
             --min-instances=0 --max-instances=2 \
             --cpu=1 --memory=512Mi --cpu-boost \
             --quiet

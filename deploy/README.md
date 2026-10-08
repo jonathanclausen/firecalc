@@ -44,6 +44,23 @@ Expected to stay at 0 kr for personal use: Cloud Run's free tier (2 million requ
 
 6. **Budget.** Under *Billing > Budgets & alerts*, add a small budget (for example 50 kr) with email alerts.
 
+## Own domain (okonomi.concensur.dk)
+
+Production is also served at `https://okonomi.concensur.dk` through a Cloud Run domain mapping (available in `europe-west1`); the `run.app` address keeps working. The preview environment has no own domain. The deploy workflow adds the domain to the hosts the web server answers for; the repository variable `CUSTOM_DOMAIN` changes it (`none` turns it off).
+
+1. **DNS.** At Simply.com, `concensur.dk` has the record `okonomi CNAME ghs.googlehosted.com`. It takes precedence over the zone's `*` A record.
+2. **Prove you own the domain.** Domain mappings need the domain verified in Search Console by the Google account gcloud uses. Check with
+   ```sh
+   gcloud domains list-user-verified
+   ```
+   If `concensur.dk` is missing, run `gcloud domains verify concensur.dk`, add the TXT record Search Console shows at the zone apex, and click *Verify*.
+3. **Map it.**
+   ```sh
+   gcloud beta run domain-mappings create --service=firecalc-web --domain=okonomi.concensur.dk --region=europe-west1 --project=firecalc-510316
+   ```
+   Google then issues the HTTPS certificate, which can take from a few minutes to a day. `gcloud beta run domain-mappings describe --domain=okonomi.concensur.dk --region=europe-west1 --project=firecalc-510316` shows its progress.
+4. **Sign-in.** In Firebase *Authentication > Settings > Authorized domains*, add `okonomi.concensur.dk`. Google and Facebook logins open a popup on `firecalc-510316.firebaseapp.com`, so their redirect settings stay as they are.
+
 ## Sign-in (Firebase)
 
 People sign in with Google, Facebook, or email and password through Firebase Authentication in the same Google Cloud project. Firebase sends the verification and password-reset emails and keeps one user per email address, so the different logins of one person reach the same data. It is free for this kind of sign-in (no SMS).
