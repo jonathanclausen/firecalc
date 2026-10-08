@@ -196,7 +196,10 @@
     </div>
   }
   @case ('loading') {
-    <p class="muted gate-loading">{{ t.loading }}</p>
+    <p class="muted gate-loading" role="status">
+      <span class="spinner" aria-hidden="true"></span>
+      {{ auth.signingIn() ? t.signIn.signingIn : t.loading }}
+    </p>
   }
   @default {
     <section class="card gate">

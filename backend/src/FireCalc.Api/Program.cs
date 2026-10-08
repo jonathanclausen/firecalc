@@ -4,7 +4,9 @@ using FireCalc.Api.Auth;
 using FireCalc.Api.Data;
 using FireCalc.Api.Endpoints;
 using FireCalc.Api.Portfolio;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,6 +58,18 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/healthz", () => Results.Ok("ok"));
+
+// The sign-in page calls this while the person picks a login, so a cold start of this service and
+// a suspended Neon database are paid before the first real request rather than after it. It also
+// loads Firebase's signing keys, which the first token check would otherwise fetch.
+app.MapGet("/api/warmup", async (FireCalcDbContext db, IOptionsMonitor<JwtBearerOptions> jwt, CancellationToken ct) =>
+{
+    var keys = jwt.Get(JwtBearerDefaults.AuthenticationScheme).ConfigurationManager?.GetConfigurationAsync(ct)
+        ?? Task.CompletedTask;
+    await db.Database.CanConnectAsync(ct);
+    try { await keys; } catch { /* the first real token check tries again */ }
+    return Results.NoContent();
+});
 
 var api = app.MapGroup("/api").RequireAuthorization(AuthSetup.OwnerPolicy).AddEndpointFilter<LastSeenFilter>();
 api.MapMeEndpoints();

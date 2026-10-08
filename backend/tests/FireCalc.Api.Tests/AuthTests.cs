@@ -14,6 +14,13 @@ public class AuthTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Warmup_needs_no_login()
+    {
+        var res = await factory.CreateClient().GetAsync("/api/warmup");
+        Assert.Equal(HttpStatusCode.NoContent, res.StatusCode);
+    }
+
+    [Fact]
     public async Task Api_rejects_requests_without_a_token()
     {
         var res = await factory.CreateClient().GetAsync("/api/me");

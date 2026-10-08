@@ -3,6 +3,7 @@ import { Auth, AuthErrorKey, authErrorKey } from '../../../core/auth/auth';
 import { I18n } from '../../../core/i18n/i18n';
 
 type Mode = 'signIn' | 'signUp' | 'reset';
+type Action = 'google' | 'facebook' | 'form';
 
 /** The signed-out gate: Google, Facebook, or email and password, plus sign-up and password reset. */
 @Component({
@@ -17,7 +18,8 @@ export class SignInPanel {
   protected readonly mode = signal<Mode>('signIn');
   protected readonly email = signal('');
   protected readonly password = signal('');
-  protected readonly busy = signal(false);
+  /** The button whose sign-in is running; every button is disabled meanwhile. */
+  protected readonly busy = signal<Action | null>(null);
   protected readonly error = signal<AuthErrorKey | null>(null);
   protected readonly resetSentTo = signal<string | null>(null);
 
@@ -28,11 +30,11 @@ export class SignInPanel {
   }
 
   protected google() {
-    return this.run(() => this.auth.signInWithGoogle());
+    return this.run('google', () => this.auth.signInWithGoogle());
   }
 
   protected facebook() {
-    return this.run(() => this.auth.signInWithFacebook());
+    return this.run('facebook', () => this.auth.signInWithFacebook());
   }
 
   protected submit(event: Event) {
@@ -40,11 +42,11 @@ export class SignInPanel {
     const email = this.email();
     switch (this.mode()) {
       case 'signIn':
-        return this.run(() => this.auth.signInWithPassword(email, this.password()));
+        return this.run('form', () => this.auth.signInWithPassword(email, this.password()));
       case 'signUp':
-        return this.run(() => this.auth.signUp(email, this.password()));
+        return this.run('form', () => this.auth.signUp(email, this.password()));
       case 'reset':
-        return this.run(async () => {
+        return this.run('form', async () => {
           await this.auth.resetPassword(email);
           this.resetSentTo.set(email.trim());
         });
@@ -55,15 +57,15 @@ export class SignInPanel {
     return this.i18n.t().planner.accountPage.providers[id] ?? id;
   }
 
-  private async run(action: () => Promise<void>) {
-    this.busy.set(true);
+  private async run(name: Action, action: () => Promise<void>) {
+    this.busy.set(name);
     this.error.set(null);
     try {
       await action();
     } catch (error) {
       this.error.set(authErrorKey(error));
     } finally {
-      this.busy.set(false);
+      this.busy.set(null);
     }
   }
 }
