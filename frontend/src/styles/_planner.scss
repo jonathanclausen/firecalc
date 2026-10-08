@@ -53,6 +53,28 @@
     }
   }
 
+  // A small turning ring in the current text colour, for buttons and loading messages.
+  .spinner {
+    display: inline-block;
+    flex: none;
+    width: 1.1em;
+    height: 1.1em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation-duration: 2s;
+    }
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
   .btn {
     display: inline-flex;
     align-items: center;

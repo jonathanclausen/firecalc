@@ -7,7 +7,12 @@ import { Me } from '../api/planner-api';
 import { I18n } from '../i18n/i18n';
 
 export type AuthState =
-  'loading' | 'unconfigured' | 'signedOut' | 'verifyEmail' | 'denied' | 'signedIn';
+  | 'loading'
+  | 'unconfigured'
+  | 'signedOut'
+  | 'verifyEmail'
+  | 'denied'
+  | 'signedIn';
 
 export type ProviderId = 'google.com' | 'facebook.com' | 'password';
 
@@ -34,6 +39,11 @@ export class Auth {
   readonly state = signal<AuthState>('loading');
   readonly user = signal<Me | null>(null);
   readonly signedIn = computed(() => this.state() === 'signedIn');
+  /**
+   * True from the moment Firebase has a user until the API has answered who it is. That answer
+   * can take seconds after a cold start, and the sign-in page shows a loading state meanwhile.
+   */
+  readonly signingIn = signal(false);
   /** The Firebase user's email while it waits for verification. */
   readonly pendingEmail = signal<string | null>(null);
   /** Logins attached to the signed-in user. */
@@ -49,6 +59,7 @@ export class Auth {
   private fb: FirebaseAuthModule | null = null;
   private pendingCredential: AuthCredential | null = null;
   private started = false;
+  private warmedUp = false;
 
   /** A fresh ID token for API calls, or null when signed out. Firebase refreshes it when needed. */
   async getIdToken(): Promise<string | null> {
@@ -196,13 +207,28 @@ export class Auth {
 
   private async onUser(user: User | null) {
     if (!user) {
+      this.signingIn.set(false);
       this.user.set(null);
       this.providers.set([]);
       this.pendingEmail.set(null);
       this.state.set('signedOut');
+      this.warmUp();
       return;
     }
 
+    // Leave the sign-in page at once, so nobody clicks again while the API wakes up.
+    if (this.state() !== 'signedIn') {
+      this.signingIn.set(true);
+      this.state.set('loading');
+    }
+    try {
+      await this.load(user);
+    } finally {
+      this.signingIn.set(false);
+    }
+  }
+
+  private async load(user: User) {
     if (this.pendingCredential) {
       const credential = this.pendingCredential;
       this.cancelLink();
@@ -222,6 +248,16 @@ export class Auth {
     }
     this.pendingEmail.set(null);
     await this.verify();
+  }
+
+  /**
+   * Wakes the API and its database while the person picks a login, so the request after sign-in
+   * doesn't wait for a cold start. Only the first sign-out of a page load needs it.
+   */
+  private warmUp() {
+    if (this.warmedUp) return;
+    this.warmedUp = true;
+    this.http.get('/api/warmup').subscribe({ error: () => undefined });
   }
 
   /** Asks the API who we are; this is also where the allow-list answers. */

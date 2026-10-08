@@ -297,8 +297,11 @@
 }
 
 .gate-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   padding: 48px 0;
-  text-align: center;
 }
 
 .gate {
