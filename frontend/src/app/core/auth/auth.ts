@@ -7,12 +7,7 @@ import { Me } from '../api/planner-api';
 import { I18n } from '../i18n/i18n';
 
 export type AuthState =
-  | 'loading'
-  | 'unconfigured'
-  | 'signedOut'
-  | 'verifyEmail'
-  | 'denied'
-  | 'signedIn';
+  'loading' | 'unconfigured' | 'signedOut' | 'verifyEmail' | 'denied' | 'signedIn';
 
 export type ProviderId = 'google.com' | 'facebook.com' | 'password';
 
