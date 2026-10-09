@@ -200,10 +200,10 @@ export class GettingStarted {
           (accounts.length > 0 && !accounts.some((a) => a.type === 'investment')),
       },
       { key: 'goal', link: '/planner/goal', done: this.hasGoal() },
-      { key: 'profile', link: '/planner/future', done: !!this.auth.user()?.birthDate },
+      { key: 'profile', link: '/planner/fire', done: !!this.auth.user()?.birthDate },
       {
         key: 'scenario',
-        link: '/planner/future',
+        link: '/planner/fire',
         done: (this.scenarios.value()?.length ?? 0) > 0,
       },
     ];

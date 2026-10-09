@@ -181,6 +181,10 @@
     color: var(--text-primary);
   }
 
+  &.active {
+    color: var(--accent);
+  }
+
   &:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px var(--accent-ring);
