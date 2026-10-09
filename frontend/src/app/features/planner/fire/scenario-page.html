@@ -3,7 +3,7 @@
 @let f = t.futurePage;
 <section class="intro">
   <div>
-    <p class="eyebrow">{{ f.title }}</p>
+    <p class="eyebrow">{{ t.fire }}</p>
     <h1>{{ isNew() ? s.newTitle : s.editTitle }}</h1>
     <p class="lede">{{ s.lede }}</p>
   </div>
@@ -15,7 +15,7 @@
   <p class="muted">{{ t.loading }}</p>
 } @else if (notFound()) {
   <p class="alert" role="alert">{{ s.notFound }}</p>
-  <a class="btn btn--secondary" routerLink="/planner/future">{{ t.cancel }}</a>
+  <a class="btn btn--secondary" routerLink="/planner/fire">{{ t.cancel }}</a>
 } @else {
   @let cur = currency();
   <div class="layout">
@@ -116,7 +116,7 @@
 
       <div class="buttons">
         <button type="submit" class="btn btn--primary" [disabled]="saving()">{{ s.save }}</button>
-        <a class="btn btn--secondary" routerLink="/planner/future">{{ t.cancel }}</a>
+        <a class="btn btn--secondary" routerLink="/planner/fire">{{ t.cancel }}</a>
         @if (!isNew()) {
           <button
             type="button"
@@ -134,7 +134,7 @@
       <h2>{{ s.preview }}</h2>
       @if (!birthDate()) {
         <p class="muted">{{ f.noBirth }}</p>
-        <a class="link-button" routerLink="/planner/future">{{ f.birthTitle }}</a>
+        <a class="link-button" routerLink="/planner/fire">{{ f.birthTitle }}</a>
       } @else if (preview(); as p) {
         <div class="kpis">
           <div class="kpi">
