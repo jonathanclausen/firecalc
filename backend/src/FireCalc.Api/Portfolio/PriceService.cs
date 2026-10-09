@@ -11,6 +11,7 @@ namespace FireCalc.Api.Portfolio;
 public sealed class PriceService(FireCalcDbContext db, IMarketData market, PriceRefreshState state, ILogger<PriceService> log)
 {
     private static readonly TimeSpan MaxAge = TimeSpan.FromHours(6);
+    private const int MaxParallelFetches = 8;
 
     /// <summary>Finds missing symbols and fetches prices and rates back to <paramref name="from"/>.</summary>
     public async Task RefreshAsync(IReadOnlyCollection<Guid> instrumentIds, DateOnly from, string currency, CancellationToken ct)
@@ -21,30 +22,54 @@ public sealed class PriceService(FireCalcDbContext db, IMarketData market, Price
         {
             var now = DateTimeOffset.UtcNow;
             var instruments = await db.Instruments.Where(i => instrumentIds.Contains(i.Id)).ToListAsync(ct);
-            foreach (var instrument in instruments)
+            // Adding older transactions clears PricesCheckedAt, so missing history is fetched right away.
+            var stale = instruments.Where(i => i.PricesCheckedAt is null || now - i.PricesCheckedAt >= MaxAge).ToList();
+            if (stale.Count > 0)
             {
-                var firstStored = await db.InstrumentPrices.Where(p => p.InstrumentId == instrument.Id).MinAsync(p => (DateOnly?)p.Date, ct);
-                var missingHistory = firstStored is null || firstStored > from.AddDays(7);
-                // Adding older transactions clears PricesCheckedAt, so missing history is fetched right away.
-                if (instrument.PricesCheckedAt is not null && now - instrument.PricesCheckedAt < MaxAge) continue;
+                var staleIds = stale.Select(i => i.Id).ToList();
+                var stored = await db.InstrumentPrices
+                    .Where(p => staleIds.Contains(p.InstrumentId))
+                    .GroupBy(p => p.InstrumentId)
+                    .Select(g => new { g.Key, First = g.Min(p => p.Date), Last = g.Max(p => p.Date) })
+                    .ToDictionaryAsync(x => x.Key, x => (x.First, x.Last), ct);
 
-                instrument.PricesCheckedAt = now;
-                instrument.Symbol ??= await FindSymbolAsync(instrument, ct);
-                if (instrument.Symbol is null) continue;
+                // Each instrument is a separate request to the price source, so they run a few at a time
+                // rather than one after another. Only the network calls run side by side; the database
+                // context is used again once they are all back.
+                using var gate = new SemaphoreSlim(MaxParallelFetches);
+                var fetched = await Task.WhenAll(stale.Select(async instrument =>
+                {
+                    await gate.WaitAsync(ct);
+                    try
+                    {
+                        var symbol = instrument.Symbol ?? await FindSymbolAsync(instrument, ct);
+                        if (symbol is null) return (instrument, symbol, From: from, History: (PriceHistory?)null);
+                        var (first, last) = stored.TryGetValue(instrument.Id, out var range) ? range : ((DateOnly?)null, (DateOnly?)null);
+                        var missingHistory = first is null || first > from.AddDays(7);
+                        var fetchFrom = missingHistory || last is null ? from : last.Value.AddDays(-7);
+                        return (instrument, symbol, From: fetchFrom, History: await market.GetDailyClosesAsync(symbol, fetchFrom, ct));
+                    }
+                    finally
+                    {
+                        gate.Release();
+                    }
+                }));
 
-                var lastStored = await db.InstrumentPrices.Where(p => p.InstrumentId == instrument.Id).MaxAsync(p => (DateOnly?)p.Date, ct);
-                var fetchFrom = missingHistory || lastStored is null ? from : lastStored.Value.AddDays(-7);
-                var history = await market.GetDailyClosesAsync(instrument.Symbol, fetchFrom, ct);
-                if (history is null) continue;
+                foreach (var (instrument, symbol, fetchFrom, history) in fetched)
+                {
+                    instrument.PricesCheckedAt = now;
+                    instrument.Symbol = symbol;
+                    if (history is null) continue;
 
-                instrument.Currency = history.Currency;
-                await db.InstrumentPrices.Where(p => p.InstrumentId == instrument.Id && p.Date >= fetchFrom).ExecuteDeleteAsync(ct);
-                db.InstrumentPrices.AddRange(history.Closes
-                    .Where(c => c.Date >= fetchFrom)
-                    .DistinctBy(c => c.Date)
-                    .Select(c => new InstrumentPrice { InstrumentId = instrument.Id, Date = c.Date, Close = c.Close }));
+                    instrument.Currency = history.Currency;
+                    await db.InstrumentPrices.Where(p => p.InstrumentId == instrument.Id && p.Date >= fetchFrom).ExecuteDeleteAsync(ct);
+                    db.InstrumentPrices.AddRange(history.Closes
+                        .Where(c => c.Date >= fetchFrom)
+                        .DistinctBy(c => c.Date)
+                        .Select(c => new InstrumentPrice { InstrumentId = instrument.Id, Date = c.Date, Close = c.Close }));
+                }
+                await db.SaveChangesAsync(ct);
             }
-            await db.SaveChangesAsync(ct);
 
             var currencies = instruments.Select(i => i.Currency).OfType<string>().Where(c => c != currency).Distinct();
             foreach (var fx in currencies)
@@ -95,16 +120,20 @@ public sealed class PriceService(FireCalcDbContext db, IMarketData market, Price
     private async Task RefreshFxAsync(string fx, string quote, DateOnly from, DateTimeOffset now, CancellationToken ct)
     {
         var key = $"{fx}/{quote}";
-        var firstStored = await db.FxRates.Where(r => r.Currency == fx && r.QuoteCurrency == quote).MinAsync(r => (DateOnly?)r.Date, ct);
-        var missingHistory = firstStored is null || firstStored > from.AddDays(7);
-        // A check only counts if it reached back as far as this one needs.
+        // A check only counts if it reached back as far as this one needs. When the source had no rates
+        // that far back, it is asked again sooner in case they turn up.
         if (state.FxCheckedAt.TryGetValue(key, out var checkedAt) && checkedAt.From <= from
-            && now - checkedAt.At < (missingHistory ? TimeSpan.FromMinutes(5) : MaxAge)) return;
-        state.FxCheckedAt[key] = (now, from);
+            && now - checkedAt.At < (checkedAt.Complete ? MaxAge : TimeSpan.FromMinutes(5))) return;
 
-        var lastStored = await db.FxRates.Where(r => r.Currency == fx && r.QuoteCurrency == quote).MaxAsync(r => (DateOnly?)r.Date, ct);
-        var fetchFrom = missingHistory || lastStored is null ? from : lastStored.Value.AddDays(-7);
+        var stored = await db.FxRates.Where(r => r.Currency == fx && r.QuoteCurrency == quote)
+            .GroupBy(r => 1)
+            .Select(g => new { First = g.Min(r => r.Date), Last = g.Max(r => r.Date) })
+            .SingleOrDefaultAsync(ct);
+        var missingHistory = stored is null || stored.First > from.AddDays(7);
+        var fetchFrom = missingHistory || stored is null ? from : stored.Last.AddDays(-7);
         var rates = await market.GetFxRatesAsync(fx, quote, fetchFrom, ct);
+        var first = new[] { stored?.First, rates.Count > 0 ? rates.Min(r => r.Date) : null }.Min();
+        state.FxCheckedAt[key] = (now, from, first is not null && first <= from.AddDays(7));
         if (rates.Count == 0) return;
 
         await db.FxRates.Where(r => r.Currency == fx && r.QuoteCurrency == quote && r.Date >= fetchFrom).ExecuteDeleteAsync(ct);
@@ -117,5 +146,5 @@ public sealed class PriceService(FireCalcDbContext db, IMarketData market, Price
 public sealed class PriceRefreshState
 {
     public SemaphoreSlim Lock { get; } = new(1, 1);
-    public ConcurrentDictionary<string, (DateTimeOffset At, DateOnly From)> FxCheckedAt { get; } = new();
+    public ConcurrentDictionary<string, (DateTimeOffset At, DateOnly From, bool Complete)> FxCheckedAt { get; } = new();
 }
