@@ -10,7 +10,7 @@ name: Deploy
 on:
   push:
     branches: [main]
-    paths: ["frontend/**", "backend/**", ".github/workflows/deploy.yml"]
+    paths: ["frontend/**", "backend/**", "deploy/monitoring/**", "deploy/setup-monitoring.sh", ".github/workflows/deploy.yml"]
   pull_request:
     types: [labeled, opened, reopened, synchronize]
   workflow_dispatch:
@@ -135,3 +135,14 @@ jobs:
             --cpu=1 --memory=512Mi --cpu-boost \
             --quiet
           echo "Live at https://$WEB_HOST" >> "$GITHUB_STEP_SUMMARY"
+
+      # Keeps the latency metric and dashboard in step with deploy/monitoring. Production only, and a
+      # failure (say the deploy account lacks the monitoring roles, see deploy/README.md) doesn't fail the deploy.
+      - name: Latency monitoring
+        if: env.SUFFIX == ''
+        continue-on-error: true
+        env:
+          SKIP_ENABLE: "1"
+        run: |
+          set -o pipefail
+          bash deploy/setup-monitoring.sh "$PROJECT_ID" | tee -a "$GITHUB_STEP_SUMMARY"

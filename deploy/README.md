@@ -83,14 +83,14 @@ Existing data carries over: the first time someone signs in through Firebase wit
 
 Cloud Run already records every request's latency. Open *Cloud Run > firecalc-api > Metrics* (or `firecalc-web`) and look at *Request latencies*, which shows p50, p95 and p99. This works without any setup, also in the Google Cloud app on a phone.
 
-For p95 per API endpoint (say `/api/dashboard` against `/api/portfolio`), the API writes one log line per request with its route and duration, and a log-based metric turns those into percentiles. Set it up once in Cloud Shell:
+For p95 per API endpoint (say `/api/dashboard` against `/api/portfolio`), the API writes one log line per request with its route and duration, and a log-based metric turns those into percentiles. Each production deploy sets this up once the deploy account may: under *IAM & Admin > IAM > Grant access*, give `firecalc-deploy@<project-id>.iam.gserviceaccount.com` the roles *Logs Configuration Writer* and *Monitoring Dashboard Configuration Editor* (this works from a phone). Or run it yourself in Cloud Shell:
 
 ```sh
 git clone https://github.com/jonathanclausen/firecalc && cd firecalc
 bash deploy/setup-monitoring.sh firecalc-510316
 ```
 
-It creates the metric `firecalc_api_latency` and a dashboard named *FireCalc latency* (*Monitoring > Dashboards*) with p95 per endpoint, overall p50/p95/p99 for the API and the web service, and request counts. Only requests made after the setup count. Re-running it updates both. Cost: a line of log per request, well inside the free allowance of Cloud Logging and Cloud Monitoring.
+It creates the metric `firecalc_api_latency` and a dashboard named *FireCalc latency* (*Monitoring > Dashboards*) with p95 per endpoint, overall p50/p95/p99 for the API and the web service, and request counts. Only requests made after the setup count. Re-running it updates both, and the dashboard keeps its link. Cost: a line of log per request, well inside the free allowance of Cloud Logging and Cloud Monitoring.
 
 To get an email when it gets slow, open the dashboard's p95 chart, choose *Create alerting policy* and set a threshold (for example 2,000 ms over 10 minutes).
 
