@@ -43,6 +43,12 @@
               d="M3 19.5c.6-3.3 3-5.5 6-5.5s5.4 2.2 6 5.5M16 5.5a3.5 3.5 0 0 1 0 6.5M18 14.5c1.6.8 2.7 2.7 3 5"
             />
           }
+          @case ('menu') {
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          }
+          @case ('close') {
+            <path d="M6 6l12 12M18 6L6 18" />
+          }
           @case ('signOut') {
             <path
               d="M14 4h3.5A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5H14M10 8l-4 4 4 4M6 12h10"
@@ -131,16 +137,6 @@
         </a>
         <div class="appbar__actions">
           <app-lang-switch />
-          @if (isAdmin()) {
-            <a
-              class="icon-button"
-              routerLink="/planner/admin"
-              [title]="t.admin.nav"
-              [attr.aria-label]="t.admin.nav"
-            >
-              <ng-container *ngTemplateOutlet="icon; context: { $implicit: 'admin' }" />
-            </a>
-          }
           <a
             class="icon-button avatar-button"
             routerLink="/planner/account"
@@ -149,32 +145,6 @@
           >
             <span class="avatar" aria-hidden="true">{{ initial() }}</span>
           </a>
-          <a
-            class="icon-button"
-            routerLink="/planner/fire"
-            routerLinkActive="active"
-            [title]="t.fire"
-            [attr.aria-label]="t.fire"
-          >
-            <ng-container *ngTemplateOutlet="icon; context: { $implicit: 'fire' }" />
-          </a>
-          <a
-            class="icon-button"
-            routerLink="/compound-interest"
-            [title]="i18n.t().nav.compoundInterest"
-            [attr.aria-label]="i18n.t().nav.compoundInterest"
-          >
-            <ng-container *ngTemplateOutlet="icon; context: { $implicit: 'calculator' }" />
-          </a>
-          <button
-            type="button"
-            class="icon-button"
-            [title]="t.signOut"
-            [attr.aria-label]="t.signOut"
-            (click)="auth.signOut()"
-          >
-            <ng-container *ngTemplateOutlet="icon; context: { $implicit: 'signOut' }" />
-          </button>
         </div>
       </header>
 
@@ -199,17 +169,50 @@
         <p class="app__footer">{{ i18n.t().footer }}</p>
       </div>
 
+      @if (menuOpen()) {
+        <div class="menu-backdrop" (click)="menuOpen.set(false)"></div>
+        <nav id="more-menu" class="menu" [attr.aria-label]="t.more">
+          @for (item of menu(); track item.path) {
+            @if (item.heading) {
+              <p class="menu__heading">{{ item.heading }}</p>
+            }
+            <a [routerLink]="item.path" routerLinkActive="active" (click)="menuOpen.set(false)">
+              <ng-container *ngTemplateOutlet="icon; context: { $implicit: item.icon }" />
+              {{ item.label }}
+            </a>
+          }
+          <hr />
+          <button type="button" (click)="menuOpen.set(false); auth.signOut()">
+            <ng-container *ngTemplateOutlet="icon; context: { $implicit: 'signOut' }" />
+            {{ t.signOut }}
+          </button>
+        </nav>
+      }
+
       <nav class="tabbar" [attr.aria-label]="t.tabs">
-        @for (item of nav; track item.path) {
+        @for (item of tabs; track item.path) {
           <a
             [routerLink]="item.path"
             routerLinkActive="active"
             [routerLinkActiveOptions]="{ exact: item.exact }"
+            (click)="menuOpen.set(false)"
           >
             <ng-container *ngTemplateOutlet="icon; context: { $implicit: item.icon }" />
             <span>{{ t[item.label] }}</span>
           </a>
         }
+        <button
+          type="button"
+          [class.active]="menuOpen() || inMenu()"
+          [attr.aria-expanded]="menuOpen()"
+          aria-controls="more-menu"
+          (click)="menuOpen.set(!menuOpen())"
+        >
+          <ng-container
+            *ngTemplateOutlet="icon; context: { $implicit: menuOpen() ? 'close' : 'menu' }"
+          />
+          <span>{{ t.more }}</span>
+        </button>
       </nav>
     </div>
   }
