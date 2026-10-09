@@ -204,6 +204,22 @@ public class PortfolioTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Prices_fetched_in_the_last_hours_are_not_fetched_again()
+    {
+        SeedPrices();
+        var client = NewOwner();
+        var account = await CreateAccount(client);
+        await Import(client, account, Export, commit: true);
+        await client.GetFromJsonAsync<JsonElement>("/api/portfolio?date=2026-03-10");
+
+        var before = factory.MarketData.PriceRequests;
+        await client.GetFromJsonAsync<JsonElement>("/api/portfolio?date=2026-03-10");
+        await client.GetFromJsonAsync<JsonElement>("/api/portfolio/history");
+        await client.GetFromJsonAsync<JsonElement>("/api/dashboard");
+        Assert.Equal(before, factory.MarketData.PriceRequests);
+    }
+
+    [Fact]
     public async Task Positions_without_a_price_fall_back_to_cost()
     {
         var client = NewOwner();

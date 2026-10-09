@@ -56,21 +56,26 @@ public sealed class PortfolioHistory(FireCalcDbContext db, PriceService prices)
         await prices.RefreshAsync(instrumentIds, first, currency, ct);
 
         var instruments = await db.Instruments.AsNoTracking().Where(i => instrumentIds.Contains(i.Id)).ToDictionaryAsync(i => i.Id, ct);
-        var closes = (await db.InstrumentPrices.AsNoTracking()
-                .Where(p => instrumentIds.Contains(p.InstrumentId) && p.Date <= end)
+        // Instruments are shared between users, so prices from long before this person's first
+        // transaction (stored for someone else) are left out; a month back covers weekends and holidays.
+        var since = first.AddDays(-31);
+        var closes = (await db.InstrumentPrices
+                .Where(p => instrumentIds.Contains(p.InstrumentId) && p.Date >= since && p.Date <= end)
+                .Select(p => new { p.InstrumentId, p.Date, p.Close })
                 .ToListAsync(ct))
             .GroupBy(p => p.InstrumentId)
             .ToDictionary(g => g.Key, g => new Series(g.Select(p => (p.Date, p.Close))));
         var currencies = instruments.Values.Select(i => i.Currency).OfType<string>().Where(c => c != currency).Distinct().ToList();
-        var rates = (await db.FxRates.AsNoTracking()
-                .Where(r => currencies.Contains(r.Currency) && r.QuoteCurrency == currency && r.Date <= end)
+        var rates = (await db.FxRates
+                .Where(r => currencies.Contains(r.Currency) && r.QuoteCurrency == currency && r.Date >= since && r.Date <= end)
+                .Select(r => new { r.Currency, r.Date, r.Rate })
                 .ToListAsync(ct))
             .GroupBy(r => r.Currency)
             .ToDictionary(g => g.Key, g => new Series(g.Select(r => (r.Date, r.Rate))));
 
         var byDay = transactions.GroupBy(x => x.Date).ToDictionary(g => g.Key, g => g.ToList());
         var replay = new PortfolioReplay();
-                decimal index = 1, previousValue = 0, previousDeposits = 0, putIn = 0;
+        decimal index = 1, previousValue = 0, previousDeposits = 0, putIn = 0;
         var days = new List<Day>();
 
         // Market value of shares on a day; before the first known price (or rate) they count at what they cost.

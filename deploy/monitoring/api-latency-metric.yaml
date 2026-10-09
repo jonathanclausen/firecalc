@@ -1,0 +1,26 @@
+# Log-based metric: turns the API's request-timing log lines into a latency distribution per endpoint,
+# so Cloud Monitoring can chart p50/p95/p99 for each route. Created by deploy/setup-monitoring.sh.
+description: FireCalc API request latency per endpoint (from the API's request-timing log lines)
+filter: >-
+  resource.type="cloud_run_revision"
+  AND resource.labels.service_name="firecalc-api"
+  AND jsonPayload.kind="request-timing"
+valueExtractor: EXTRACT(jsonPayload.latencyMs)
+labelExtractors:
+  route: EXTRACT(jsonPayload.route)
+  method: EXTRACT(jsonPayload.method)
+metricDescriptor:
+  metricKind: DELTA
+  valueType: DISTRIBUTION
+  unit: ms
+  labels:
+    - key: route
+      description: Route template, e.g. /api/portfolio
+    - key: method
+      description: HTTP method
+# 1 ms to about 10 minutes in steps of 25 %, so a percentile is accurate to within about 12 %.
+bucketOptions:
+  exponentialBuckets:
+    numFiniteBuckets: 60
+    growthFactor: 1.25
+    scale: 1

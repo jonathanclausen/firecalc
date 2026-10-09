@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using FireCalc.Api.Auth;
 using FireCalc.Api.Data;
 using FireCalc.Api.Endpoints;
+using FireCalc.Api.Monitoring;
 using FireCalc.Api.Portfolio;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -51,6 +52,7 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
     await scope.ServiceProvider.GetRequiredService<FireCalcDbContext>().Database.MigrateAsync();
 }
 
+app.UseRequestTiming();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseCors();

@@ -79,6 +79,21 @@ People sign in with Google, Facebook, or email and password through Firebase Aut
 
 Existing data carries over: the first time someone signs in through Firebase with a verified email that already has a FireCalc user, that user is taken over.
 
+## Monitoring (request latency)
+
+Cloud Run already records every request's latency. Open *Cloud Run > firecalc-api > Metrics* (or `firecalc-web`) and look at *Request latencies*, which shows p50, p95 and p99. This works without any setup, also in the Google Cloud app on a phone.
+
+For p95 per API endpoint (say `/api/dashboard` against `/api/portfolio`), the API writes one log line per request with its route and duration, and a log-based metric turns those into percentiles. Set it up once in Cloud Shell:
+
+```sh
+git clone https://github.com/jonathanclausen/firecalc && cd firecalc
+bash deploy/setup-monitoring.sh firecalc-510316
+```
+
+It creates the metric `firecalc_api_latency` and a dashboard named *FireCalc latency* (*Monitoring > Dashboards*) with p95 per endpoint, overall p50/p95/p99 for the API and the web service, and request counts. Only requests made after the setup count. Re-running it updates both. Cost: a line of log per request, well inside the free allowance of Cloud Logging and Cloud Monitoring.
+
+To get an email when it gets slow, open the dashboard's p95 chart, choose *Create alerting policy* and set a threshold (for example 2,000 ms over 10 minutes).
+
 ## Day to day
 
 - Preview a branch: add the `preview` label to its pull request, or run *Actions > Deploy > Run workflow* and pick the branch.
