@@ -4,9 +4,7 @@
 #
 #   bash deploy/setup-monitoring.sh <project-id>
 #
-# Safe to run again: the metric and the dashboard are updated in place, so the dashboard keeps its link.
-# The deploy workflow also runs it on each production deploy (with SKIP_ENABLE=1), which needs the deploy
-# account to have the roles Logs Configuration Writer and Monitoring Dashboard Configuration Editor.
+# Safe to run again: the metric is updated and the dashboard replaced.
 set -euo pipefail
 
 PROJECT_ID=${1:?usage: setup-monitoring.sh <project-id>}
@@ -15,9 +13,7 @@ METRIC=firecalc_api_latency
 DASHBOARD="FireCalc latency"
 
 gcloud config set project "$PROJECT_ID" >/dev/null
-if [[ -z ${SKIP_ENABLE:-} ]]; then
-  gcloud services enable logging.googleapis.com monitoring.googleapis.com
-fi
+gcloud services enable logging.googleapis.com monitoring.googleapis.com
 
 echo "== Log-based metric $METRIC"
 if gcloud logging metrics describe "$METRIC" >/dev/null 2>&1; then
@@ -27,12 +23,11 @@ else
 fi
 
 echo "== Dashboard \"$DASHBOARD\""
-name=$(gcloud monitoring dashboards list --filter="displayName=\"$DASHBOARD\"" --format='value(name)' --limit=1)
-if [[ -n $name ]]; then
-  gcloud monitoring dashboards update "$name" --config-from-file="$DIR/dashboard.json" >/dev/null
-else
-  name=$(gcloud monitoring dashboards create --config-from-file="$DIR/dashboard.json" --format='value(name)')
-fi
+for old in $(gcloud monitoring dashboards list --filter="displayName=\"$DASHBOARD\"" --format='value(name)'); do
+  gcloud monitoring dashboards delete "$old" --quiet >/dev/null
+done
+name=$(gcloud monitoring dashboards create --config-from-file="$DIR/dashboard.json" --format='value(name)')
+
 echo
 echo "Done. The per-endpoint chart fills in as requests come in (only requests from now on count)."
 if [[ -n $name ]]; then
