@@ -21,7 +21,7 @@ browser ──▶ firecalc-web (public, Angular SSR) ──/api──▶ firecal
 
 ## Cost
 
-Expected to stay at 0 kr for personal use: Cloud Run's free tier (2 million requests and 180,000 vCPU-seconds a month) covers both environments, Neon's free plan includes branches, and the image registry keeps only the 2 newest images per service and environment (a few cents a month at most if it passes the 0.5 GB free storage). Set a budget alert anyway (step 5).
+Expected to stay at 0 kr for personal use: Cloud Run's free tier (2 million requests and 180,000 vCPU-seconds a month) covers both environments, Neon's free plan includes branches, and the image registry keeps only the 2 newest images per service and environment (a few cents a month at most if it passes the 0.5 GB free storage; see [Image registry](#image-registry)). Set a budget alert anyway (step 6).
 
 ## One-time setup
 
@@ -43,6 +43,20 @@ Expected to stay at 0 kr for personal use: Cloud Run's free tier (2 million requ
 5. **Sign-in.** Set up Firebase Authentication as described in [Sign-in](#sign-in-firebase) below.
 
 6. **Budget.** Under *Billing > Budgets & alerts*, add a small budget (for example 50 kr) with email alerts.
+
+## Image registry
+
+Every deploy pushes two images (`api` and `web`, or `api-preview` and `web-preview`) to the `firecalc` repository in Artifact Registry. Storage is free up to 0.5 GB, then about 0.70 kr per GB a month. Vulnerability scanning, if it is on, costs about 2 kr for every pushed image, so it is turned off.
+
+The *Clean up images* workflow (`.github/workflows/registry-cleanup.yml`) runs after each production deploy, every Monday, and on demand under *Actions > Clean up images > Run workflow*. It deletes all but the 2 newest images of each package, never the ones Cloud Run is running, re-applies the registry's cleanup policy, turns off vulnerability scanning, and shows the registry's size in the run summary.
+
+It signs in as `firecalc-deploy`, which needs the *Artifact Registry Administrator* role. `setup-gcp.sh` grants it; on a project set up before that, grant it once in the console (works on a phone):
+
+1. Open [IAM](https://console.cloud.google.com/iam-admin/iam?project=firecalc-510316) and tap *Grant access*.
+2. Principal: `firecalc-deploy@firecalc-510316.iam.gserviceaccount.com`. Role: *Artifact Registry Administrator*. Save.
+3. Run *Actions > Clean up images > Run workflow* on `main`.
+
+To see what the registry costs, open *Billing > Reports*, group by *SKU* and look at the Artifact Registry storage line and, if present, a vulnerability or container scanning line.
 
 ## Own domain (okonomi.concensur.dk)
 
