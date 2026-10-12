@@ -99,7 +99,8 @@ jobs:
           ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS || secrets.ALLOWED_EMAILS }}
         run: |
           # One Auth__AllowedEmails__<n> variable per comma-separated address.
-          vars="Auth__FirebaseProjectId=$PROJECT_ID;Auth__OpenSignUp=$OPEN_SIGNUP"
+          # Monitoring__RequestLog: one log line per request, read by the latency metric (deploy/setup-monitoring.sh).
+          vars="Auth__FirebaseProjectId=$PROJECT_ID;Auth__OpenSignUp=$OPEN_SIGNUP;Monitoring__RequestLog=true"
           i=0
           for email in ${ALLOWED_EMAILS//,/ }; do
             vars="$vars;Auth__AllowedEmails__$i=$email"
