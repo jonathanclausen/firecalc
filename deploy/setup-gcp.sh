@@ -112,6 +112,9 @@ for deployer in deploy deploy-preview; do
   gcloud artifacts repositories add-iam-policy-binding firecalc --location="$REGION" \
     --member="serviceAccount:$(sa "$deployer")" --role=roles/artifactregistry.writer >/dev/null
 done
+# Production deploys also clean up old images and the registry's settings (Clean up images workflow).
+gcloud artifacts repositories add-iam-policy-binding firecalc --location="$REGION" \
+  --member="serviceAccount:$(sa deploy)" --role=roles/artifactregistry.admin >/dev/null
 # Each deploy account may run services as the identities its environment uses.
 for pair in deploy:api deploy:web deploy-preview:api-preview deploy-preview:web; do
   gcloud iam service-accounts add-iam-policy-binding "$(sa "${pair#*:}")" \

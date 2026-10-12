@@ -1,0 +1,108 @@
+# Keeps the image registry small so it stays inside Artifact Registry's free 0.5 GB:
+#   - deletes all but the newest images of each service and environment (the ones Cloud Run
+#     currently runs are always kept),
+#   - (re)applies the registry's own cleanup policy and turns off paid vulnerability scanning,
+#   - writes the registry's size and settings to the run summary.
+# Runs after each production deploy, weekly, and on demand (Actions > Clean up images > Run workflow).
+# It signs in as the production deploy account, which needs the "Artifact Registry Administrator"
+# role once; see "Image registry" in deploy/README.md.
+name: Clean up images
+
+on:
+  workflow_run:
+    workflows: [Deploy]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      keep:
+        description: Images to keep per service and environment
+        default: "2"
+
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
+  KEEP: ${{ inputs.keep || '2' }}
+
+jobs:
+  cleanup:
+    if: vars.GCP_PROJECT_ID != '' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: registry-cleanup
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write # lets the job sign in to Google Cloud without a stored key
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: firecalc-deploy@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Report registry size and settings
+        run: |
+          repo=$(gcloud artifacts repositories describe firecalc --location="$REGION" \
+            --project="$PROJECT_ID" --format=json)
+          size=$(jq -r '(.sizeBytes // "0" | tonumber) / 1048576 | floor' <<< "$repo")
+          scanning=$(jq -r '.vulnerabilityScanningConfig.enablementState // "unknown"' <<< "$repo")
+          policies=$(jq -c '.cleanupPolicies // {} | keys' <<< "$repo")
+          {
+            echo "### Image registry before cleanup"
+            echo "- Size: $size MB (free up to 500 MB)"
+            echo "- Vulnerability scanning: $scanning"
+            echo "- Cleanup policies: $policies"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Apply cleanup policy and turn off scanning
+        run: |
+          policy=$(mktemp)
+          cat > "$policy" <<JSON
+          [
+            {"name": "keep-newest", "action": {"type": "Keep"}, "mostRecentVersions": {"keepCount": $KEEP}},
+            {"name": "delete-rest", "action": {"type": "Delete"}, "condition": {"tagState": "any"}}
+          ]
+          JSON
+          if ! gcloud artifacts repositories set-cleanup-policies firecalc --location="$REGION" \
+            --project="$PROJECT_ID" --policy="$policy" --no-dry-run >/dev/null; then
+            echo "::error::firecalc-deploy may not manage the registry yet. Give it the Artifact Registry Administrator role once, as described under 'Image registry' in deploy/README.md."
+            exit 1
+          fi
+          # Scanning costs about 2 kr per pushed image, and every deploy pushes two.
+          gcloud artifacts repositories update firecalc --location="$REGION" \
+            --project="$PROJECT_ID" --disable-vulnerability-scanning >/dev/null
+
+      - name: Delete old images
+        run: |
+          registry="$REGION-docker.pkg.dev/$PROJECT_ID/firecalc"
+          # Digests of the revisions Cloud Run serves now, so they are never deleted.
+          running=""
+          for service in firecalc-web firecalc-api firecalc-web-preview firecalc-api-preview; do
+            revision=$(gcloud run services describe "$service" --region="$REGION" --project="$PROJECT_ID" \
+              --format='value(status.latestReadyRevisionName)' 2>/dev/null || true)
+            if [ -n "$revision" ]; then
+              digest=$(gcloud run revisions describe "$revision" --region="$REGION" --project="$PROJECT_ID" \
+                --format='value(status.imageDigest)')
+              running="$running ${digest##*@}"
+            fi
+          done
+          # Every image older than the newest $KEEP of its package (api, web, api-preview, web-preview).
+          old=$(gcloud artifacts docker images list "$registry" --project="$PROJECT_ID" --format=json \
+            | jq -r --argjson keep "$KEEP" '
+                group_by(.package)[]
+                | sort_by(.createTime) | reverse | .[$keep:][]
+                | "\(.package)@\(.version)"')
+          deleted=0
+          for image in $old; do
+            if [[ " $running " == *" ${image##*@} "* ]]; then
+              continue
+            fi
+            gcloud artifacts docker images delete "$image" --delete-tags --quiet --project="$PROJECT_ID"
+            deleted=$((deleted + 1))
+          done
+          echo "Deleted $deleted old images, kept the newest $KEEP per service and environment." \
+            >> "$GITHUB_STEP_SUMMARY"
