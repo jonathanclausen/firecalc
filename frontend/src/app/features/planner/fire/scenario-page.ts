@@ -23,7 +23,7 @@ import { formatDecimal, parseDecimal } from '../../../shared/parse-decimal';
 import { MoneyPipe } from '../../../shared/money.pipe';
 import { INCLUDE_HOME_KEY } from '../dashboard/dashboard-page';
 import { LineChart, LineSeries } from '../portfolio/history/line-chart';
-import { startingPoint, yearly } from './future-data';
+import { startingPoint, yearly } from '../future/future-data';
 
 const END_AGE = 90;
 
@@ -264,7 +264,7 @@ export class ScenarioPage {
     this.error.set(null);
     try {
       await action();
-      await this.router.navigateByUrl('/planner/future');
+      await this.router.navigateByUrl('/planner/fire');
     } catch {
       this.error.set(this.i18n.t().planner.error);
     } finally {

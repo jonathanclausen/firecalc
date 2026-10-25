@@ -120,6 +120,8 @@ const da = {
     home: 'Bolig',
     goal: 'Mål',
     future: 'Fremtid',
+    fire: 'FIRE',
+    more: 'Mere',
     loading: 'Henter …',
     error: 'Noget gik galt. Prøv igen.',
     save: 'Gem',
@@ -775,7 +777,11 @@ const da = {
 
     futurePage: {
       title: 'Fremtid',
-      lede: 'Se hvor du står om 1, 2, 5 og 10 år, hvis du fortsætter som nu, og gem FIRE-scenarier. Alt regnes fra din formue i dag.',
+      lede: 'Se hvor du står om 1, 2, 5 og 10 år, hvis du fortsætter som nu. Alt regnes fra din formue i dag.',
+      toFire: 'FIRE-scenarier',
+      courseEmpty:
+        'Indtast en saldo eller tilføj din portefølje, så vi har noget at regne fremtiden ud fra.',
+      toAccounts: 'Gå til konti',
       birthTitle: 'Hvornår er du født?',
       birthText: 'Scenarier bygger på din alder, fx "1 år fri fra 33 år" og "FIRE som 50-årig".',
       birthDate: 'Fødselsdato',
@@ -1022,6 +1028,8 @@ const en: Translations = {
     home: 'Home',
     goal: 'Goal',
     future: 'Future',
+    fire: 'FIRE',
+    more: 'More',
     loading: 'Loading …',
     error: 'Something went wrong. Please try again.',
     save: 'Save',
@@ -1672,7 +1680,10 @@ const en: Translations = {
 
     futurePage: {
       title: 'Future',
-      lede: 'See where you will be in 1, 2, 5 and 10 years if you keep going as now, and save FIRE scenarios. Everything starts from your net worth today.',
+      lede: 'See where you will be in 1, 2, 5 and 10 years if you keep going as now. Everything starts from your net worth today.',
+      toFire: 'FIRE scenarios',
+      courseEmpty: 'Enter a balance or add your portfolio so there is something to project from.',
+      toAccounts: 'Go to accounts',
       birthTitle: 'When were you born?',
       birthText: 'Scenarios are based on your age, e.g. "1 year off from 33" and "FIRE at 50".',
       birthDate: 'Date of birth',

@@ -9,7 +9,9 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { PlannerApi } from '../../core/api/planner-api';
 import { Auth } from '../../core/auth/auth';
 import { I18n } from '../../core/i18n/i18n';
@@ -33,7 +35,7 @@ type NavLabel = 'overview' | 'portfolio' | 'accounts' | 'home' | 'future';
   ],
   templateUrl: './planner-shell.html',
   styleUrl: './planner-shell.scss',
-  host: { class: 'planner' },
+  host: { class: 'planner', '(document:keydown.escape)': 'menuOpen.set(false)' },
 })
 export class PlannerShell {
   protected readonly auth = inject(Auth);
@@ -45,6 +47,32 @@ export class PlannerShell {
     { path: '/planner/home', label: 'home', icon: 'home', exact: false },
     { path: '/planner/future', label: 'future', icon: 'future', exact: false },
   ];
+  /** The phone tab bar; the rest sits behind "Mere". */
+  protected readonly tabs = this.nav.filter((item) => item.label !== 'accounts');
+  protected readonly menuOpen = signal(false);
+  /** Pages behind "Mere" on phones, with the tools under their own heading. */
+  protected readonly menu = computed(() => {
+    const t = this.i18n.t().planner;
+    const items: { path: string; label: string; icon: string; heading?: string }[] = [
+      { path: '/planner/accounts', label: t.accounts, icon: 'accounts' },
+      { path: '/planner/welcome', label: t.guide, icon: 'guide', heading: t.tools },
+      { path: '/planner/fire', label: t.fire, icon: 'fire' },
+      { path: '/compound-interest', label: this.i18n.t().nav.compoundInterest, icon: 'calculator' },
+    ];
+    if (this.isAdmin()) items.push({ path: '/planner/admin', label: t.admin.nav, icon: 'admin' });
+    return items;
+  });
+  private readonly url = toSignal(
+    inject(Router).events.pipe(
+      filter((e) => e instanceof NavigationEnd),
+      map((e) => e.urlAfterRedirects),
+    ),
+    { initialValue: inject(Router).url },
+  );
+  /** Lights up "Mere" while one of its pages is open. */
+  protected readonly inMenu = computed(() =>
+    this.menu().some((item) => this.url().startsWith(item.path)),
+  );
   protected readonly initial = computed(() =>
     (this.auth.user()?.name || this.auth.user()?.email || '?').charAt(0).toUpperCase(),
   );

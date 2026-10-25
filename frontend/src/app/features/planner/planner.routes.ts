@@ -39,9 +39,15 @@ export const plannerRoutes: Routes = [
         loadComponent: () => import('./future/future-page').then((m) => m.FuturePage),
       },
       {
-        path: 'future/:id',
-        loadComponent: () => import('./future/scenario-page').then((m) => m.ScenarioPage),
+        path: 'fire',
+        loadComponent: () => import('./fire/fire-page').then((m) => m.FirePage),
       },
+      {
+        path: 'fire/:id',
+        loadComponent: () => import('./fire/scenario-page').then((m) => m.ScenarioPage),
+      },
+      // Scenarios moved from Fremtid to their own FIRE page.
+      { path: 'future/:id', redirectTo: 'fire/:id' },
       {
         path: 'welcome',
         loadComponent: () => import('./onboarding/welcome-page').then((m) => m.WelcomePage),
