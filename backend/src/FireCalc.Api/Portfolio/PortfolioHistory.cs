@@ -42,12 +42,12 @@ public sealed class PortfolioHistory(FireCalcDbContext db, PriceService prices)
 
     /// <summary>
     /// Every day's combined value, money put in so far, and the time-weighted return as an index that
-    /// starts at 1. Empty when there are no transactions.
+    /// starts at 1. Empty when there are no transactions. Archived accounts are left out, as in the live value.
     /// </summary>
     public async Task<List<Day>> DailyAsync(Guid userId, string currency, DateOnly end, CancellationToken ct)
     {
         var transactions = await db.Transactions.AsNoTracking()
-            .Where(x => db.Accounts.Any(a => a.Id == x.AccountId && a.UserId == userId && a.Type == AccountType.Investment))
+            .Where(x => db.Accounts.Any(a => a.Id == x.AccountId && a.UserId == userId && a.Type == AccountType.Investment && !a.Archived))
             .ToListAsync(ct);
         if (transactions.Count == 0) return [];
 

@@ -73,18 +73,23 @@ public static class AccountEndpoints
             return Results.Ok(ToDto(account));
         });
 
-        accounts.MapDelete("/{id:guid}", async (Guid id, ClaimsPrincipal principal, FireCalcDbContext db, CancellationToken ct) =>
+        // An account with history is only deleted when asked for with withHistory=true; its balances and transactions go with it.
+        accounts.MapDelete("/{id:guid}", async (Guid id, bool? withHistory, ClaimsPrincipal principal, FireCalcDbContext db, CancellationToken ct) =>
         {
             var user = await db.GetOrCreateUserAsync(principal, ct);
             var account = await db.Accounts.SingleOrDefaultAsync(a => a.Id == id && a.UserId == user.Id, ct);
             if (account is null) return Results.NotFound();
 
-            // Deleting would rewrite history; accounts with balances are archived instead.
-            if (await db.Balances.AnyAsync(x => x.AccountId == id, ct) || await db.SnapshotEntries.AnyAsync(x => x.AccountId == id, ct))
-                return Results.Problem("The account has balances. Archive it instead.", statusCode: StatusCodes.Status409Conflict);
-            if (await db.Transactions.AnyAsync(t => t.AccountId == id, ct))
-                return Results.Problem("The account has transactions. Archive it instead.", statusCode: StatusCodes.Status409Conflict);
+            if (withHistory != true)
+            {
+                if (await db.Balances.AnyAsync(x => x.AccountId == id, ct) || await db.SnapshotEntries.AnyAsync(x => x.AccountId == id, ct))
+                    return Results.Problem("The account has balances. Archive it, or delete it with its history.", statusCode: StatusCodes.Status409Conflict);
+                if (await db.Transactions.AnyAsync(t => t.AccountId == id, ct))
+                    return Results.Problem("The account has transactions. Archive it, or delete it with its history.", statusCode: StatusCodes.Status409Conflict);
+            }
 
+            // Balances and transactions cascade; the old snapshot entries don't.
+            await db.SnapshotEntries.Where(x => x.AccountId == id).ExecuteDeleteAsync(ct);
             db.Accounts.Remove(account);
             await db.SaveChangesAsync(ct);
             return Results.NoContent();
