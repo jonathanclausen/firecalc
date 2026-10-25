@@ -100,6 +100,8 @@ export class PortfolioPage {
     tradeQuantity: string;
     tradePrice: string;
     tradeDate: string;
+    /** What was paid or received in the user's currency, fees included. */
+    tradeTotal: string;
   } | null>(null);
 
   // Patches read the latest draft, so quick successive inputs never overwrite each other.
@@ -152,6 +154,7 @@ export class PortfolioPage {
       tradeQuantity: '',
       tradePrice: '',
       tradeDate: '',
+      tradeTotal: '',
     });
   }
 
@@ -204,6 +207,7 @@ export class PortfolioPage {
       quantity,
       draft.tradePrice,
       draft.tradeDate || null,
+      { amount: parse(draft.tradeTotal, this.i18n.lang()) },
     );
   }
 
@@ -213,7 +217,7 @@ export class PortfolioPage {
     quantity: number,
     price: string,
     date: string | null = null,
-    extra: { averagePrice?: number | null } = {},
+    extra: { averagePrice?: number | null; amount?: number | null } = {},
   ) {
     const t = this.i18n.t().planner;
     this.busy.set(true);
