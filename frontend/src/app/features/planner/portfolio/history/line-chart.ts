@@ -38,6 +38,8 @@ export class LineChart {
   readonly ariaLabel = input.required<string>();
   /** Draw a stronger line at zero (for returns that can go negative). */
   readonly zeroLine = input(false);
+  /** Fit the y-axis to the data alone, without stretching it down to zero. */
+  readonly fitData = input(false);
   /** Show the legend above the plot (when there is more than one line). */
   readonly legend = input(true);
   /** Labels a point on the x-axis (short) and in the tooltip; defaults to its date. */
@@ -86,12 +88,19 @@ export class LineChart {
   /** Ticks cover the data with nice steps; the axis includes zero when values sit near it. */
   protected readonly yTicks = computed(() => {
     const all = this.series().flatMap((s) => s.values);
-    let min = Math.min(0, ...all);
-    let max = Math.max(0, ...all);
+    const fit = this.fitData() && all.length > 0;
+    let min = fit ? Math.min(...all) : Math.min(0, ...all);
+    let max = fit ? Math.max(...all) : Math.max(0, ...all);
     // A value chart far above zero starts near its data instead of squashing it at the top.
-    if (!this.zeroLine() && min >= 0 && all.length) {
+    if (!fit && !this.zeroLine() && min >= 0 && all.length) {
       const low = Math.min(...all);
       if (low > max * 0.5) min = low;
+    }
+    if (max === min && fit) {
+      // A flat line still gets some room above and below it.
+      const room = Math.abs(max) * 0.01 || 1;
+      min -= room;
+      max += room;
     }
     if (max === min) max = min + 1;
     const step = niceStep((max - min) / 4);
