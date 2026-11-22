@@ -268,3 +268,93 @@ td.down {
     display: inline;
   }
 }
+
+.accounts-head {
+  margin-bottom: -12px;
+
+  h2 {
+    margin: 0 0 4px;
+    font-size: 1.125rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.875rem;
+  }
+}
+
+.card.account {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.account__toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 16px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--accent-ring);
+    outline-offset: 2px;
+  }
+
+  &:hover strong {
+    color: var(--accent);
+  }
+}
+
+.account__name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+
+  strong {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  small {
+    font-size: 0.8125rem;
+  }
+}
+
+.account__value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.account__chevron {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+
+  .account--open & {
+    transform: rotate(180deg);
+  }
+}
+
+.account__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 0 16px;
+}
+
+.card.account--open {
+  padding-bottom: 16px;
+}

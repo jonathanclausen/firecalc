@@ -568,4 +568,50 @@ public class PortfolioTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(2200m, points[2].GetProperty("value").GetDecimal());
         Assert.Equal(10m, points[2].GetProperty("returnPct").GetDecimal());
     }
+
+    [Fact]
+    public async Task History_lists_how_each_security_did_in_the_period_per_account()
+    {
+        var m = factory.MarketData;
+        var d0 = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-10);
+        m.Prices["PER.CO"] = new("DKK", [new(d0, 100m), new(d0.AddDays(2), 120m), new(d0.AddDays(4), 150m)]);
+        m.Prices["SOLD.CO"] = new("DKK", [new(d0, 50m), new(d0.AddDays(3), 60m)]);
+        var client = NewOwner();
+        var a = await CreateAccount(client, "Nordnet");
+        var b = await CreateAccount(client, "Saxo");
+
+        await client.PutAsJsonAsync($"/api/accounts/{a}/holdings", new { instrument = new { symbol = "PER.CO" }, quantity = 10, unitPrice = 100, date = d0 });
+        await client.PutAsJsonAsync($"/api/accounts/{a}/holdings", new { instrument = new { symbol = "SOLD.CO" }, quantity = 10, unitPrice = 50, date = d0 });
+        await client.PutAsJsonAsync($"/api/accounts/{b}/holdings", new { instrument = new { symbol = "PER.CO" }, quantity = 5, unitPrice = 100, date = d0 });
+        // In the period: 5 more bought at 120 in Saxo, all of SOLD sold at 60, and a dividend of 30 on PER in Nordnet.
+        await client.PutAsJsonAsync($"/api/accounts/{b}/holdings", new { instrument = new { symbol = "PER.CO" }, quantity = 10, unitPrice = 120, date = d0.AddDays(2) });
+        await client.PostAsJsonAsync($"/api/accounts/{a}/transactions", new { date = d0.AddDays(3), type = "sell", instrument = new { symbol = "SOLD.CO" }, quantity = 10, amount = 600 });
+        await client.PostAsJsonAsync($"/api/accounts/{a}/transactions", new { date = d0.AddDays(3), type = "dividend", instrument = new { symbol = "PER.CO" }, amount = 30 });
+
+        var h = await client.GetFromJsonAsync<JsonElement>($"/api/portfolio/history?from={d0.AddDays(1):yyyy-MM-dd}&to={d0.AddDays(4):yyyy-MM-dd}");
+        var rows = h.GetProperty("securities").EnumerateArray().ToList();
+        JsonElement Row(string account, string symbol) => rows.Single(r => r.GetProperty("accountId").GetString() == account && r.GetProperty("symbol").GetString() == symbol);
+
+        // Nordnet PER: 1,000 → 1,500 plus 30 dividend.
+        Assert.Equal(530m, Row(a, "PER.CO").GetProperty("gain").GetDecimal());
+        Assert.Equal(1000m, Row(a, "PER.CO").GetProperty("invested").GetDecimal());
+        // Saxo PER: 500 at the start, 600 bought, worth 1,500 at the end.
+        Assert.Equal(400m, Row(b, "PER.CO").GetProperty("gain").GetDecimal());
+        Assert.Equal(1100m, Row(b, "PER.CO").GetProperty("invested").GetDecimal());
+        Assert.Equal(10m, Row(b, "PER.CO").GetProperty("quantity").GetDecimal());
+        // SOLD: 500 at the start, sold for 600.
+        var s = Row(a, "SOLD.CO");
+        Assert.Equal(100m, s.GetProperty("gain").GetDecimal());
+        Assert.Equal(0m, s.GetProperty("quantity").GetDecimal());
+        Assert.Equal(0m, s.GetProperty("value").GetDecimal());
+
+        // The accounts' gains add up to the combined gain over the period.
+        var points = h.GetProperty("points").EnumerateArray().ToList();
+        var combined = points[^1].GetProperty("value").GetDecimal() - points[^1].GetProperty("netDeposits").GetDecimal()
+            - (points[0].GetProperty("value").GetDecimal() - points[0].GetProperty("netDeposits").GetDecimal());
+        var accounts = h.GetProperty("accounts").EnumerateArray().ToList();
+        Assert.Equal(combined, accounts.Sum(x => x.GetProperty("gain").GetDecimal()));
+        Assert.Equal(1030m, combined);
+        Assert.Contains(accounts, x => x.GetProperty("name").GetString() == "Saxo");
+    }
 }
