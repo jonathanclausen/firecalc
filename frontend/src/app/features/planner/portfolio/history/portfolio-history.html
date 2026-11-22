@@ -84,3 +84,13 @@
     <p class="muted">{{ i18n.t().planner.loading }}</p>
   }
 </section>
+
+@if (history.hasValue() && history.value(); as hv) {
+  @if (hv.securities.length > 0) {
+    <app-portfolio-holdings
+      [history]="hv"
+      [periodLabel]="periodLabel()"
+      [loading]="history.isLoading()"
+    />
+  }
+}

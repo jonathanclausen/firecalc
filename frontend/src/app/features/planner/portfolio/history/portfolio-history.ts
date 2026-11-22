@@ -1,9 +1,10 @@
 import { httpResource } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { PortfolioHistory as History } from '../../../../core/api/planner-api';
 import { I18n } from '../../../../core/i18n/i18n';
 import { CurrencySettings } from '../../../../core/settings/currency';
 import { LineChart, LineSeries } from './line-chart';
+import { PortfolioHoldings } from './portfolio-holdings';
 
 type Range = 'm1' | 'm3' | 'ytd' | 'y1' | 'y5' | 'all' | 'custom';
 const RANGES: Exclude<Range, 'custom'>[] = ['m1', 'm3', 'ytd', 'y1', 'y5', 'all'];
@@ -39,13 +40,16 @@ function rangeStart(range: Exclude<Range, 'custom'>, today: Date): string | null
 /** Combined return and value of all investment accounts over a chosen period. */
 @Component({
   selector: 'app-portfolio-history',
-  imports: [LineChart],
+  imports: [LineChart, PortfolioHoldings],
   templateUrl: './portfolio-history.html',
   styleUrl: './portfolio-history.scss',
 })
 export class PortfolioHistoryCard {
   protected readonly i18n = inject(I18n);
   private readonly currencySettings = inject(CurrencySettings);
+
+  /** Bumped by the page after a trade, so the history is fetched again. */
+  readonly version = input(0);
 
   protected readonly ranges = RANGES;
   protected readonly today = iso(new Date());
@@ -62,10 +66,18 @@ export class PortfolioHistoryCard {
 
   protected readonly history = httpResource<History>(() => {
     const { from, to } = this.period();
+    this.version();
     const params: Record<string, string> = {};
     if (from) params['from'] = from;
     if (to) params['to'] = to;
     return { url: '/api/portfolio/history', params };
+  });
+
+  /** The period's name for column headers: the preset's label, or "in the period" for picked dates. */
+  protected readonly periodLabel = computed(() => {
+    const h = this.i18n.t().planner.portfolioPage.history;
+    const range = this.range();
+    return range === 'custom' ? h.customPeriod : h.ranges[range];
   });
 
   protected readonly points = computed(() => this.history.value()?.points ?? []);

@@ -50,6 +50,22 @@ export class PortfolioPage {
       .map((account) => ({ account, data: valued.get(account.id) ?? null }));
   });
 
+  /** Bumped after every change, so the performance card fetches its history again. */
+  protected readonly version = signal(0);
+
+  /** Accounts opened or closed by hand; otherwise an account is open only while it has no holdings. */
+  private readonly expanded = signal<Record<string, boolean>>({});
+
+  protected isOpen(accountId: string, data: AccountPortfolio | null) {
+    const set = this.expanded()[accountId];
+    if (set !== undefined) return set;
+    return !data || data.positions.length === 0 || this.adding()?.accountId === accountId;
+  }
+
+  protected toggle(accountId: string, open: boolean) {
+    this.expanded.update((e) => ({ ...e, [accountId]: !open }));
+  }
+
   /** Sums across accounts for the hero card. */
   protected readonly totals = computed(() => {
     const list = this.portfolio.value()?.accounts ?? [];
@@ -229,6 +245,7 @@ export class PortfolioPage {
       this.adding.set(null);
       this.counting.set(null);
       this.portfolio.reload();
+      this.version.update((v) => v + 1);
     } catch (e) {
       const errors = e instanceof HttpErrorResponse && e.status === 400 ? e.error?.errors : null;
       this.error.set(
@@ -267,6 +284,7 @@ export class PortfolioPage {
       await this.api.updateInstrument(draft.instrumentId, { symbol: draft.symbol.trim() || null });
       this.editing.set(null);
       this.portfolio.reload();
+      this.version.update((v) => v + 1);
     } catch {
       this.error.set(this.i18n.t().planner.error);
     } finally {

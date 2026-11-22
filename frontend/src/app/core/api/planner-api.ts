@@ -260,12 +260,35 @@ export interface HistoryPoint {
   returnPct: number;
 }
 
+/** How one security did in one account over the period; sold during the period means quantity 0. */
+export interface SecurityPeriod {
+  accountId: string;
+  instrumentId: string;
+  name: string;
+  symbol: string | null;
+  quantity: number;
+  value: number;
+  /** Value change less what was bought, plus what was sold or paid out. */
+  gain: number;
+  /** Value at the start plus what went in, the base for a percentage. */
+  invested: number;
+}
+
+export interface AccountPeriod {
+  accountId: string;
+  name: string;
+  value: number;
+  gain: number;
+}
+
 export interface PortfolioHistory {
   currency: string;
   firstDate: string | null;
   from: string;
   to: string;
   points: HistoryPoint[];
+  accounts: AccountPeriod[];
+  securities: SecurityPeriod[];
 }
 
 export interface Transaction {
