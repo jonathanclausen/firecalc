@@ -80,18 +80,13 @@ export class PortfolioHistoryCard {
     },
   ]);
 
-  protected readonly valueSeries = computed<LineSeries[]>(() => {
-    const h = this.i18n.t().planner.portfolioPage.history;
-    return [
-      { key: 'value', label: h.valueSeries, values: this.points().map((p) => p.value) },
-      {
-        key: 'deposits',
-        label: h.depositsSeries,
-        values: this.points().map((p) => p.netDeposits),
-        dashed: true,
-      },
-    ];
-  });
+  protected readonly valueSeries = computed<LineSeries[]>(() => [
+    {
+      key: 'value',
+      label: this.i18n.t().planner.portfolioPage.history.valueSeries,
+      values: this.points().map((p) => p.value),
+    },
+  ]);
 
   /** Return, value now and the gain over the period (value change minus money put in). */
   protected readonly summary = computed(() => {
