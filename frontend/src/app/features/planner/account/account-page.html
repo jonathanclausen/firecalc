@@ -39,6 +39,47 @@
   </ul>
 </section>
 
+<section class="card account-section">
+  <h2>{{ a.appsTitle }}</h2>
+  <p class="muted">{{ a.appsHint }}</p>
+  <p class="muted">{{ a.appsHowTo }}</p>
+  <div class="mcp-url">
+    <code>{{ mcpUrl }}</code>
+    <button type="button" class="btn btn--secondary" (click)="copy()">
+      {{ copied() ? a.copied : a.copy }}
+    </button>
+  </div>
+  @if (connections.value(); as apps) {
+    @if (apps.length === 0) {
+      <p class="muted">{{ a.appsNone }}</p>
+    } @else {
+      <ul class="logins">
+        @for (app of apps; track app.id) {
+          <li>
+            <span>
+              <strong>{{ app.clientName }}</strong>
+              <small>
+                {{ a.connectedOn(day(app.createdAt)) }}
+                @if (app.lastUsedAt) {
+                  · {{ a.lastUsed(day(app.lastUsedAt)) }}
+                }
+              </small>
+            </span>
+            <button
+              type="button"
+              class="btn btn--secondary"
+              [disabled]="busy()"
+              (click)="disconnect(app)"
+            >
+              {{ a.disconnect }}
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  }
+</section>
+
 <section class="card account-section account-section--danger">
   <h2>{{ a.deleteTitle }}</h2>
   <p class="muted">{{ a.deleteText }}</p>

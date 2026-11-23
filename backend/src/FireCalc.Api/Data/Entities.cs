@@ -264,3 +264,47 @@ public class PortfolioTransaction
     public string? ExternalId { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
+
+/// <summary>
+/// An app that registered itself to connect over MCP (OAuth dynamic client registration), such as Claude.
+/// Public clients only: they prove themselves with PKCE, not a secret.
+/// </summary>
+public class OAuthClient
+{
+    /// <summary>The client_id handed out at registration.</summary>
+    public required string Id { get; set; }
+    public required string Name { get; set; }
+    public List<string> RedirectUris { get; set; } = [];
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>A one-time code from the approval page, swapped for tokens within minutes.</summary>
+public class OAuthCode
+{
+    /// <summary>SHA-256 of the code; the code itself is only ever in the redirect.</summary>
+    public required string CodeHash { get; set; }
+    public required string ClientId { get; set; }
+    public Guid UserId { get; set; }
+    public required string RedirectUri { get; set; }
+    /// <summary>PKCE S256 challenge the token request's verifier must match.</summary>
+    public required string CodeChallenge { get; set; }
+    public DateTimeOffset ExpiresAt { get; set; }
+}
+
+/// <summary>
+/// A connected app: a user's approval for one client to read their data. Holds the current access and
+/// refresh token (as hashes). Deleting it disconnects the app at once.
+/// </summary>
+public class OAuthGrant
+{
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public Guid UserId { get; set; }
+    public required string ClientId { get; set; }
+    public required string ClientName { get; set; }
+    public required string AccessTokenHash { get; set; }
+    public DateTimeOffset AccessExpiresAt { get; set; }
+    public required string RefreshTokenHash { get; set; }
+    public DateTimeOffset RefreshExpiresAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? LastUsedAt { get; set; }
+}

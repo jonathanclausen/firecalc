@@ -19,9 +19,40 @@ public class FireCalcDbContext(DbContextOptions<FireCalcDbContext> options) : Db
     public DbSet<InstrumentPrice> InstrumentPrices => Set<InstrumentPrice>();
     public DbSet<FxRate> FxRates => Set<FxRate>();
     public DbSet<PortfolioTransaction> Transactions => Set<PortfolioTransaction>();
+    public DbSet<OAuthClient> OAuthClients => Set<OAuthClient>();
+    public DbSet<OAuthCode> OAuthCodes => Set<OAuthCode>();
+    public DbSet<OAuthGrant> OAuthGrants => Set<OAuthGrant>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        b.Entity<OAuthClient>(e =>
+        {
+            e.Property(c => c.Id).HasMaxLength(64);
+            e.Property(c => c.Name).HasMaxLength(100);
+        });
+
+        b.Entity<OAuthCode>(e =>
+        {
+            e.HasKey(c => c.CodeHash);
+            e.Property(c => c.CodeHash).HasMaxLength(64);
+            e.HasOne<User>().WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<OAuthClient>().WithMany().HasForeignKey(c => c.ClientId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(c => c.RedirectUri).HasMaxLength(500);
+            e.Property(c => c.CodeChallenge).HasMaxLength(128);
+        });
+
+        b.Entity<OAuthGrant>(e =>
+        {
+            e.HasOne<User>().WithMany().HasForeignKey(g => g.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<OAuthClient>().WithMany().HasForeignKey(g => g.ClientId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(g => g.UserId);
+            e.HasIndex(g => g.AccessTokenHash).IsUnique();
+            e.HasIndex(g => g.RefreshTokenHash).IsUnique();
+            e.Property(g => g.ClientName).HasMaxLength(100);
+            e.Property(g => g.AccessTokenHash).HasMaxLength(64);
+            e.Property(g => g.RefreshTokenHash).HasMaxLength(64);
+        });
+
         b.Entity<User>(e =>
         {
             e.HasIndex(u => u.AuthSubject).IsUnique();

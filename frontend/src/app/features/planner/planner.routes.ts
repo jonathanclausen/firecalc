@@ -55,6 +55,10 @@ export const plannerRoutes: Routes = [
         loadComponent: () => import('./goal/goal-page').then((m) => m.GoalPage),
       },
       {
+        path: 'connect',
+        loadComponent: () => import('./connect/connect-page').then((m) => m.ConnectPage),
+      },
+      {
         path: 'account',
         loadComponent: () => import('./account/account-page').then((m) => m.AccountPage),
       },

@@ -130,7 +130,7 @@ public static class ScenarioEndpoints
         s.Events = JsonSerializer.Serialize(events, Json);
     }
 
-    private static ScenarioDto ToDto(Scenario s) => new(
+    internal static ScenarioDto ToDto(Scenario s) => new(
         s.Id, s.Name, s.MonthlySavings, s.InvestmentReturnPct, s.SavingsReturnPct, s.HomeGrowthPct,
         s.InflationPct, s.FireAge, s.YearlySpending, s.WithdrawalPct,
         JsonSerializer.Deserialize<List<ScenarioEvent>>(s.Events, Json) ?? []);
