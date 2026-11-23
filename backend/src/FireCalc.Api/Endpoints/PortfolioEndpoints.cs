@@ -441,7 +441,7 @@ public static class PortfolioEndpoints
         if (instrument is not null) instrument.PricesCheckedAt = null;
     }
 
-    private static TransactionDto ToDto(PortfolioTransaction t) => new(
+    internal static TransactionDto ToDto(PortfolioTransaction t) => new(
         t.Id, t.AccountId, t.Date, t.Type, t.InstrumentId, t.Instrument?.Name, t.Instrument?.Isin, t.Instrument?.Symbol,
         t.Quantity, t.Price, t.Amount, t.Note, t.Source);
 

@@ -59,6 +59,30 @@ currency rates from Frankfurter (ECB). Both are fetched when a portfolio is view
 more than six hours old, and daily closes are kept in Postgres, so no scheduled job or API key is needed.
 A position without a recent price is valued at what it cost until its symbol is fixed.
 
+## MCP (Claude and other AI apps)
+
+`/mcp` is a read-only [MCP](https://modelcontextprotocol.io) server, so a person can add FireCalc as a custom
+connector in Claude (Settings → Connectors → Add custom connector, URL `https://<site>/mcp`) and ask about
+their own finances. Code in `src/FireCalc.Api/Mcp/`.
+
+- **Login.** Firebase can't act as an OAuth server, so the API is a small OAuth 2.1 server itself:
+  `/.well-known/oauth-protected-resource[/mcp]` and `/.well-known/oauth-authorization-server` describe it,
+  `POST /oauth/register` is dynamic client registration (public clients, https or loopback redirect URIs),
+  the authorization endpoint is the app page `/planner/connect` (signs in with Firebase as usual, then
+  `POST /api/oauth/authorize`), and `POST /oauth/token` swaps the code (PKCE S256 required) or a refresh token
+  for tokens. Access tokens last an hour, refresh tokens 90 days and rotate on use. Only SHA-256 hashes are
+  stored. Each approval is one `OAuthGrants` row; "Forbundne apps" on Din konto lists and deletes them
+  (`GET /api/oauth/connections`, `DELETE /api/oauth/connections/{id}`). Register and token are rate limited.
+- **Scope.** A token's principal carries only the FireCalc user id, and every tool reads that user's rows.
+  MCP tokens are not accepted on `/api`, and Firebase tokens are not accepted on `/mcp`.
+- **Tools.** `get_overview`, `get_net_worth_history`, `get_account_balances`, `get_portfolio`,
+  `get_portfolio_performance`, `list_transactions`, `get_homes`, `get_fire_plan`. `get_fire_plan` runs the
+  Fremtid page's projection (`Mcp/ScenarioProjection.cs` mirrors `frontend/src/app/core/finance/projection.ts`;
+  change both together).
+- **Address.** The web server forwards `/mcp`, `/oauth/*` and the two `/.well-known` paths like `/api`, with
+  `X-Forwarded-Host`/`-Proto`, which the API uses for the public URLs in the metadata. `Mcp__PublicUrl`
+  overrides it. The server is stateless, so any instance can answer.
+
 ## Run locally
 
 Whole app (Postgres, API and frontend) with Docker, from the repo root:

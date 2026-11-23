@@ -173,7 +173,7 @@ public static class HomeEndpoints
         });
     }
 
-    private static HomeDto ToDto(Home home, HomeData data, DateOnly today)
+    internal static HomeDto ToDto(Home home, HomeData data, DateOnly today)
     {
         var value = data.Values.GetValueOrDefault(home.Id)?[^1];
         var loans = data.Loans.GetValueOrDefault(home.Id, []).Select(m =>

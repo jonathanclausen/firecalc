@@ -1,0 +1,49 @@
+@let c = i18n.t().planner.connect;
+<section class="intro">
+  <div>
+    <h1>{{ c.title }}</h1>
+  </div>
+</section>
+
+<section class="card connect">
+  @if (invalid()) {
+    <p class="alert" role="alert">{{ c.invalid }}</p>
+  } @else if (client.value(); as app) {
+    <h2>{{ c.asks(app.name) }}</h2>
+    <p class="muted">{{ c.returnsTo(app.redirectHost) }}</p>
+
+    <p class="label">{{ c.canRead }}</p>
+    <ul class="scopes">
+      @for (item of c.items; track item) {
+        <li>{{ item }}</li>
+      }
+    </ul>
+    <p class="note">
+      <strong>{{ c.readOnly }}</strong>
+      {{ c.revoke }}
+    </p>
+
+    @if (failed()) {
+      <p class="alert" role="alert">{{ c.failed }}</p>
+    }
+    @if (leaving()) {
+      <p class="muted" role="status">{{ c.redirecting }}</p>
+    } @else {
+      <div class="actions">
+        <button
+          type="button"
+          class="btn btn--secondary"
+          [disabled]="busy()"
+          (click)="answer(false)"
+        >
+          {{ c.deny }}
+        </button>
+        <button type="button" class="btn btn--primary" [disabled]="busy()" (click)="answer(true)">
+          {{ c.allow }}
+        </button>
+      </div>
+    }
+  } @else {
+    <p class="muted">…</p>
+  }
+</section>

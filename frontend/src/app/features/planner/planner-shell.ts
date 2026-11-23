@@ -77,7 +77,9 @@ export class PlannerShell {
     let guided = false;
     effect(() => {
       const user = this.auth.user();
-      if (!user || user.onboarded || guided) return;
+      // Someone approving an app (from Claude, say) finishes that first.
+      if (!user || user.onboarded || guided || this.router.url.startsWith('/planner/connect'))
+        return;
       guided = true;
       if (!this.router.url.startsWith('/planner/welcome'))
         void this.router.navigateByUrl('/planner/welcome');

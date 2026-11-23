@@ -195,7 +195,7 @@ const da = {
 
     accountPage: {
       title: 'Din konto',
-      lede: 'Hvordan du logger ind, og muligheden for at slette alt.',
+      lede: 'Hvordan du logger ind, forbundne apps, og muligheden for at slette alt.',
       logins: 'Login',
       loginsHint: 'Alle de her logger ind på den samme konto.',
       providers: {
@@ -211,6 +211,39 @@ const da = {
       deleteButton: 'Slet min konto',
       confirmDelete: 'Vil du slette din konto og alle dine data? Det kan ikke fortrydes.',
       confirmDeleteAgain: 'Er du helt sikker? Alt bliver slettet nu.',
+      appsTitle: 'Forbundne apps',
+      appsHint:
+        'Apps som Claude kan forbindes til FireCalc og svare på spørgsmål om din økonomi. De kan kun læse, ikke ændre noget.',
+      appsHowTo:
+        'Sådan forbinder du Claude: gå til Indstillinger → Connectors → Tilføj custom connector, og indsæt denne adresse. Claude sender dig så hertil for at godkende.',
+      copy: 'Kopiér',
+      copied: 'Kopieret',
+      appsNone: 'Ingen apps er forbundet.',
+      connectedOn: (date: string) => `Forbundet ${date}`,
+      lastUsed: (date: string) => `brugt senest ${date}`,
+      disconnect: 'Afbryd',
+      confirmDisconnect: (name: string) =>
+        `Afbryd forbindelsen til ${name}? Appen mister adgangen med det samme.`,
+    },
+
+    connect: {
+      title: 'Forbind en app',
+      asks: (name: string) => `${name} vil gerne læse dine data i FireCalc`,
+      returnsTo: (host: string) => `Når du har svaret, sendes du tilbage til ${host}.`,
+      canRead: 'Appen kan se:',
+      items: [
+        'Din formue, dine konti og saldi',
+        'Din portefølje: beholdning, afkast og handler',
+        'Din bolig og dine lån',
+        'Dit mål og dine scenarier',
+      ],
+      readOnly: 'Den kan kun læse. Den kan ikke ændre eller slette noget.',
+      revoke: 'Du kan altid afbryde forbindelsen under Din konto.',
+      allow: 'Tillad',
+      deny: 'Afvis',
+      invalid: 'Linket er ugyldigt eller udløbet. Start forbindelsen forfra i den app, du kom fra.',
+      failed: 'Det lykkedes ikke. Prøv igen.',
+      redirecting: 'Sender dig tilbage …',
     },
 
     help: {
@@ -1111,7 +1144,7 @@ const en: Translations = {
 
     accountPage: {
       title: 'Your account',
-      lede: 'How you sign in, and the option to delete everything.',
+      lede: 'How you sign in, connected apps, and the option to delete everything.',
       logins: 'Sign-in',
       loginsHint: 'All of these sign in to the same account.',
       providers: {
@@ -1127,6 +1160,40 @@ const en: Translations = {
       deleteButton: 'Delete my account',
       confirmDelete: 'Delete your account and all your data? This cannot be undone.',
       confirmDeleteAgain: 'Are you completely sure? Everything is deleted now.',
+      appsTitle: 'Connected apps',
+      appsHint:
+        'Apps such as Claude can connect to FireCalc and answer questions about your finances. They can only read, not change anything.',
+      appsHowTo:
+        'To connect Claude: go to Settings → Connectors → Add custom connector, and paste this address. Claude then sends you here to approve.',
+      copy: 'Copy',
+      copied: 'Copied',
+      appsNone: 'No apps are connected.',
+      connectedOn: (date: string) => `Connected ${date}`,
+      lastUsed: (date: string) => `last used ${date}`,
+      disconnect: 'Disconnect',
+      confirmDisconnect: (name: string) =>
+        `Disconnect ${name}? The app loses access straight away.`,
+    },
+
+    connect: {
+      title: 'Connect an app',
+      asks: (name: string) => `${name} would like to read your FireCalc data`,
+      returnsTo: (host: string) => `Once you answer, you are sent back to ${host}.`,
+      canRead: 'The app can see:',
+      items: [
+        'Your net worth, accounts and balances',
+        'Your portfolio: holdings, returns and trades',
+        'Your home and loans',
+        'Your goal and scenarios',
+      ],
+      readOnly: 'It can only read. It cannot change or delete anything.',
+      revoke: 'You can disconnect it at any time under Your account.',
+      allow: 'Allow',
+      deny: 'Deny',
+      invalid:
+        'The link is invalid or has expired. Start connecting again in the app you came from.',
+      failed: 'That did not work. Please try again.',
+      redirecting: 'Sending you back …',
     },
 
     help: {

@@ -1,0 +1,42 @@
+.connect {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 560px;
+
+  h2 {
+    margin: 0;
+    font-size: 1.125rem;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.label {
+  margin-top: 6px !important;
+  font-weight: 600;
+}
+
+.scopes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.note {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}

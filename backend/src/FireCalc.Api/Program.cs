@@ -3,11 +3,14 @@ using System.Text.Json.Serialization;
 using FireCalc.Api.Auth;
 using FireCalc.Api.Data;
 using FireCalc.Api.Endpoints;
+using FireCalc.Api.Mcp;
 using FireCalc.Api.Monitoring;
 using FireCalc.Api.Portfolio;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +41,33 @@ builder.Services.AddFirebaseAuth(builder.Configuration);
 builder.Services.AddSingleton<AdminAccess>();
 builder.Services.AddSingleton<LastSeenThrottle>();
 
+// MCP: apps such as Claude connect at /mcp with a token from the OAuth endpoints (see Mcp/).
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddAuthentication()
+    .AddScheme<AuthenticationSchemeOptions, McpTokenHandler>(McpTokenHandler.SchemeName, null);
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(McpTokenHandler.SchemeName, p => p
+        .AddAuthenticationSchemes(McpTokenHandler.SchemeName)
+        .RequireClaim(McpTokenHandler.UserIdClaim));
+builder.Services.AddMcpServer(o =>
+    {
+        o.ServerInfo = new() { Name = "FireCalc", Version = "1.0.0" };
+        o.ServerInstructions = FireCalcTools.Instructions;
+    })
+    // Stateless: every call stands alone, so any Cloud Run instance can answer it and nothing is kept between calls.
+    .WithHttpTransport(o => o.Stateless = true)
+    .WithTools<FireCalcTools>(FireCalcTools.Json);
+// Anyone may register an app or ask for a token, so both are held to a modest pace.
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddFixedWindowLimiter(OAuthEndpoints.RateLimitPolicy, w =>
+    {
+        w.PermitLimit = 30;
+        w.Window = TimeSpan.FromMinutes(1);
+    });
+});
+
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .WithOrigins(allowedOrigins)
@@ -58,6 +88,7 @@ app.UseStatusCodePages();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapGet("/healthz", () => Results.Ok("ok"));
 
@@ -83,6 +114,8 @@ api.MapPortfolioEndpoints();
 api.MapScenarioEndpoints();
 api.MapDemoEndpoints();
 app.MapAdminEndpoints();
+app.MapOAuthEndpoints(api);
+app.MapMcp("/mcp").RequireAuthorization(McpTokenHandler.SchemeName);
 
 app.Run();
 

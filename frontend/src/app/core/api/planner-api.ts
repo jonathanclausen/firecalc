@@ -349,10 +349,44 @@ export interface ImportResult {
   }[];
 }
 
+/** An app such as Claude that the user let read their data over MCP. */
+export interface AppConnection {
+  id: string;
+  clientName: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+/** The app asking for access on the approval page, and the site it returns to. */
+export interface OAuthClientInfo {
+  name: string;
+  redirectHost: string;
+}
+
+/** The authorization request's query, passed on from the approval page. */
+export interface AuthorizeRequest {
+  clientId: string | null;
+  redirectUri: string | null;
+  responseType: string | null;
+  codeChallenge: string | null;
+  codeChallengeMethod: string | null;
+  state: string | null;
+  approve: boolean;
+}
+
 /** Writes to the planner API. Reads use httpResource in the pages so they stay signal-based. */
 @Injectable({ providedIn: 'root' })
 export class PlannerApi {
   private readonly http = inject(HttpClient);
+
+  /** Approves or declines an app; the answer is where to send the browser next. */
+  authorizeApp(body: AuthorizeRequest) {
+    return firstValueFrom(this.http.post<{ redirectUrl: string }>('/api/oauth/authorize', body));
+  }
+
+  disconnectApp(id: string) {
+    return firstValueFrom(this.http.delete<void>(`/api/oauth/connections/${id}`));
+  }
 
   createAccount(body: { name: string; type: AccountType }) {
     return firstValueFrom(this.http.post<Account>('/api/accounts', body));

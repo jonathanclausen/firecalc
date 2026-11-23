@@ -57,15 +57,31 @@ app.get('/app-config.json', (_req, res) => {
 
 /**
  * Forward /api to the backend on the same origin, so the browser needs no CORS and the
- * API address stays a server setting.
+ * API address stays a server setting. The MCP endpoint and its OAuth login (used by apps such as
+ * Claude) live in the API too and go the same way. The API learns the public address from
+ * X-Forwarded-Host and -Proto, which it puts in the OAuth metadata.
  */
-app.use('/api', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) => {
+const forwardToApi: express.RequestHandler = async (req, res) => {
   try {
     const headers = new Headers();
-    for (const name of ['authorization', 'content-type', 'accept', 'accept-language']) {
+    for (const name of [
+      'authorization',
+      'content-type',
+      'accept',
+      'accept-language',
+      'mcp-protocol-version',
+      'mcp-session-id',
+      'last-event-id',
+    ]) {
       const value = req.headers[name];
       if (typeof value === 'string') headers.set(name, value);
     }
+    const proto = req.headers['x-forwarded-proto'];
+    headers.set(
+      'x-forwarded-proto',
+      typeof proto === 'string' ? proto.split(',')[0] : req.protocol,
+    );
+    if (req.headers.host) headers.set('x-forwarded-host', req.headers.host);
     const token = await getServiceToken();
     if (token) headers.set('x-serverless-authorization', `Bearer ${token}`);
     const hasBody = !['GET', 'HEAD'].includes(req.method) && Buffer.isBuffer(req.body);
@@ -75,7 +91,13 @@ app.use('/api', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) => 
       body: hasBody ? new Uint8Array(req.body) : undefined,
     });
     res.status(upstream.status);
-    for (const name of ['content-type', 'location', 'www-authenticate']) {
+    for (const name of [
+      'content-type',
+      'location',
+      'www-authenticate',
+      'cache-control',
+      'mcp-session-id',
+    ]) {
       const value = upstream.headers.get(name);
       if (value) res.set(name, value);
     }
@@ -83,7 +105,16 @@ app.use('/api', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) => 
   } catch {
     res.status(502).json({ title: 'The API is not reachable.', status: 502 });
   }
-});
+};
+const rawBody = express.raw({ type: '*/*', limit: '1mb' });
+for (const path of [
+  '/api',
+  '/mcp',
+  '/oauth',
+  '/.well-known/oauth-protected-resource',
+  '/.well-known/oauth-authorization-server',
+])
+  app.use(path, rawBody, forwardToApi);
 
 /**
  * Serve static files from /browser
