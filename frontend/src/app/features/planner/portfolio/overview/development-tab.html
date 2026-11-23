@@ -1,0 +1,106 @@
+@let p = i18n.t().planner.portfolioPage;
+@let h = p.history;
+@let pf = portfolio();
+@let gain = period.gain();
+<section class="headline" [attr.aria-label]="p.value">
+  <strong class="value">{{ money(pf.value) }}</strong>
+  <div class="change">
+    @if (gain !== null) {
+      <span class="pill" [class]="tone(gain)">
+        {{ signedMoney(gain) }}
+        @if (returnPct() !== null) {
+          · {{ signedPct(returnPct()!) }}
+        }
+      </span>
+      <span class="muted">{{ h.periodNames[period.range()] }}</span>
+    }
+  </div>
+  <small class="muted">
+    @if (pf.dayChange !== 0) {
+      <span [class]="tone(pf.dayChange)">{{ p.dayChange(signedMoney(pf.dayChange)) }}</span> ·
+    }
+    @if (pricesAsOf()) {
+      {{ p.pricesAsOf(i18n.date(pricesAsOf()!)) }}
+    }
+  </small>
+</section>
+
+<div class="chart-switch" role="radiogroup" [attr.aria-label]="h.title">
+  <button
+    type="button"
+    role="radio"
+    [attr.aria-checked]="chart() === 'value'"
+    [class.active]="chart() === 'value'"
+    (click)="chart.set('value')"
+  >
+    {{ h.valueTitle }}
+  </button>
+  <button
+    type="button"
+    role="radio"
+    [attr.aria-checked]="chart() === 'return'"
+    [class.active]="chart() === 'return'"
+    (click)="chart.set('return')"
+  >
+    {{ h.returnTitle }}
+  </button>
+</div>
+
+<div class="chart" [class.chart--loading]="period.history.isLoading()">
+  @if (period.history.error()) {
+    <p class="alert" role="alert">{{ h.error }}</p>
+  } @else if (period.history.hasValue() && dates().length < 2) {
+    <p class="muted empty">{{ h.empty }}</p>
+  } @else if (period.history.hasValue()) {
+    <app-line-chart
+      [dates]="dates()"
+      [series]="series()"
+      [format]="chart() === 'value' ? money : percent"
+      [fitData]="chart() === 'value'"
+      [zeroLine]="chart() === 'return'"
+      [legend]="false"
+      [ariaLabel]="chart() === 'value' ? h.valueTitle : h.returnTitle"
+    />
+  } @else {
+    <p class="muted empty">{{ i18n.t().planner.loading }}</p>
+  }
+</div>
+
+<app-period-picker />
+
+<div class="tiles">
+  <div class="tile">
+    <span>{{ h.twr }}</span>
+    <strong [class]="tone(returnPct())">{{
+      returnPct() === null ? '–' : signedPct(returnPct()!)
+    }}</strong>
+  </div>
+  <div class="tile">
+    <span>{{ h.dividendsInPeriod }}</span>
+    <strong>{{ money(dividends()) }}</strong>
+  </div>
+  <div class="tile">
+    <span>{{ p.gain }}</span>
+    <strong [class]="tone(unrealized())">{{ signedMoney(unrealized()) }}</strong>
+  </div>
+  @if (cash() !== 0) {
+    <div class="tile">
+      <span>{{ p.cash }}</span>
+      <strong>{{ money(cash()) }}</strong>
+    </div>
+  }
+</div>
+
+@if (movers().length > 0) {
+  <div class="section-head">
+    <h2>{{ h.movers }}</h2>
+    <button type="button" class="link-button" (click)="seeAll.emit()">{{ h.seeAll }} ›</button>
+  </div>
+  <div class="list-group">
+    @for (r of movers(); track r.instrumentId) {
+      <button type="button" class="list-item" (click)="open.emit(r.instrumentId)">
+        <app-security-row [row]="r" [currency]="currency()" />
+      </button>
+    }
+  </div>
+}

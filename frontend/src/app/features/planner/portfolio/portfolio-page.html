@@ -1,14 +1,27 @@
 @let t = i18n.t().planner;
 @let p = t.portfolioPage;
-<section class="intro">
-  <div>
-    <p class="eyebrow">{{ t.eyebrow }}</p>
-    <h1>{{ p.title }}</h1>
-    <p class="lede">{{ p.lede }}</p>
+<section class="app-head">
+  <div class="app-head__actions">
+    @if (hasInvestmentAccount()) {
+      <a class="link-button" routerLink="/planner/portfolio/import">{{ p.importShort }}</a>
+      <button
+        type="button"
+        class="icon-button"
+        [attr.aria-label]="p.addHolding"
+        (click)="quickAdd()"
+      >
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path
+            d="M10 4v12M4 10h12"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </svg>
+      </button>
+    }
   </div>
-  @if (hasInvestmentAccount()) {
-    <a class="btn btn--secondary" routerLink="/planner/portfolio/import">{{ p.import }}</a>
-  }
+  <h1>{{ p.title }}</h1>
 </section>
 
 @if (failed()) {
@@ -24,373 +37,515 @@
 } @else {
   @let pf = portfolio.value()!;
   @let cur = currency();
-  @if (pf.accounts.length > 0) {
-    @let tot = totals();
-    <section class="card hero" [attr.aria-label]="p.value">
-      <span class="hero__label">{{ p.value }}</span>
-      <strong class="hero__value">{{ pf.value | money: false : cur }}</strong>
-      <span class="hero__sub">
-        @if (pf.dayChange !== 0) {
-          <span [class.up]="pf.dayChange > 0">{{ p.dayChange(signed(pf.dayChange)) }}</span>
-          ·
-        }
-        @if (tot.pricesAsOf) {
-          {{ p.pricesAsOf(i18n.date(tot.pricesAsOf)) }}
-        }
-      </span>
-      <div class="kpis">
-        <div class="kpi">
-          <span class="kpi__label">{{ p.gain }}</span>
-          <strong>{{ signed(tot.gain) }}</strong>
-        </div>
-        <div class="kpi">
-          <span class="kpi__label">{{ p.growth }}</span>
-          <strong>{{ signed(tot.growth) }}</strong>
-          <small>{{ p.growthHint }}</small>
-        </div>
-        <div class="kpi">
-          <span class="kpi__label">{{ p.dividends }}</span>
-          <strong>{{ tot.dividends | money: false : cur }}</strong>
-        </div>
-        @if (tot.cash !== 0) {
-          <div class="kpi">
-            <span class="kpi__label">{{ p.cash }}</span>
-            <strong>{{ tot.cash | money: false : cur }}</strong>
-          </div>
-        }
-      </div>
-    </section>
-    <app-portfolio-history [version]="version()" />
-  } @else {
-    <section class="card empty">
-      <h2>{{ p.phoneTitle }}</h2>
-      <p>{{ p.phoneText }}</p>
-    </section>
+  @let hasData = pf.accounts.length > 0;
+  @let tot = totals();
+  @if (hasData) {
+    <div class="tabs" role="tablist" [attr.aria-label]="p.title">
+      @for (k of tabKeys; track k) {
+        <button
+          type="button"
+          role="tab"
+          [attr.aria-selected]="tab() === k"
+          [class.active]="tab() === k"
+          (click)="tab.set(k)"
+        >
+          {{ p.tabs[k] }}
+        </button>
+      }
+    </div>
   }
 
   @if (error(); as message) {
     <p class="alert" role="alert">{{ message }}</p>
   }
 
-  @if (cards().length > 0) {
-    <div class="accounts-head">
-      <h2>{{ p.history.accountsTitle }}</h2>
-      <p class="muted">{{ p.history.accountsHint }}</p>
-    </div>
-  }
-  @for (c of cards(); track c.account.id) {
-    @let acc = c.data;
-    @let open = isOpen(c.account.id, acc);
-    <section class="card account" [class.account--open]="open">
-      <button
-        type="button"
-        class="account__toggle"
-        [attr.aria-expanded]="open"
-        (click)="toggle(c.account.id, open)"
-      >
-        <span class="account__name">
-          <strong>{{ c.account.name }}</strong>
-          @if (acc) {
-            <small class="muted">
-              {{ p.transactionCount(acc.transactionCount) }}
-              @if (acc.cash !== 0) {
-                · {{ p.cash }} {{ acc.cash | money: false : cur }}
-              }
-            </small>
-          }
-        </span>
-        @if (acc) {
-          <span class="account__value">{{ acc.value | money: false : cur }}</span>
-        }
-        <svg class="account__chevron" viewBox="0 0 20 20" aria-hidden="true">
-          <path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" />
-        </svg>
-      </button>
-      @if (open) {
-        <div class="account__actions">
-          <button
-            type="button"
-            class="btn btn--primary btn--small"
-            (click)="startAdd(c.account.id)"
-          >
-            + {{ p.addHolding }}
-          </button>
-          <a class="link-button" [routerLink]="['/planner/portfolio', c.account.id]">
-            {{ p.transactions }} ({{ acc?.transactionCount ?? 0 }})
-          </a>
-        </div>
-
-        @if (adding()?.accountId === c.account.id) {
-          @let draft = adding()!;
-          <form class="holding-form" (submit)="saveAdd($event)">
-            <div class="form-field">
-              <span>{{ p.chooseInstrument }}</span>
-              @if (draft.instrument; as chosen) {
-                <div class="chosen">
-                  <strong>{{ chosen.label }}</strong>
-                  <button
-                    type="button"
-                    class="link-button"
-                    (click)="patchAdding({ instrument: null })"
-                  >
-                    {{ t.transactionsPage.change }}
-                  </button>
-                </div>
-                @if (chosen.symbol && !chosen.id) {
-                  @if (quote.value(); as q) {
-                    <small class="quote">{{
-                      p.priceNow(i18n.number(q.price, 2) + ' ' + q.currency, i18n.date(q.date))
-                    }}</small>
-                  } @else if (quote.error()) {
-                    <small class="quote quote--missing">{{ p.noQuote }}</small>
-                  }
+  @if (hasData && tab() === 'development') {
+    <app-development-tab
+      [portfolio]="pf"
+      [unrealized]="tot.gain"
+      [cash]="tot.cash"
+      [pricesAsOf]="tot.pricesAsOf"
+      (open)="openSheet($event)"
+      (seeAll)="tab.set('securities')"
+    />
+  } @else if (hasData && tab() === 'securities') {
+    <app-securities-tab (open)="openSheet($event)" />
+  } @else {
+    @if (!hasData) {
+      <section class="card empty">
+        <h2>{{ p.phoneTitle }}</h2>
+        <p>{{ p.phoneText }}</p>
+      </section>
+    }
+    <p class="muted accounts-hint">{{ p.history.accountsHint }}</p>
+    @for (c of cards(); track c.account.id) {
+      @let acc = c.data;
+      @let open = isOpen(c.account.id, acc);
+      <section class="card account" [class.account--open]="open">
+        <button
+          type="button"
+          class="account__toggle"
+          [attr.aria-expanded]="open"
+          (click)="toggle(c.account.id, open)"
+        >
+          <span class="account__name">
+            <strong>{{ c.account.name }}</strong>
+            @if (acc) {
+              <small class="muted">
+                {{ p.transactionCount(acc.transactionCount) }}
+                @if (acc.cash !== 0) {
+                  · {{ p.cash }} {{ acc.cash | money: false : cur }}
                 }
-              } @else {
-                <app-instrument-picker
-                  [known]="known(acc)"
-                  (picked)="patchAdding({ instrument: $event })"
-                />
-              }
-            </div>
-            <div class="holding-form__row">
-              <label class="form-field">
-                <span>{{ p.ownedNow }}</span>
-                <input
-                  type="text"
-                  inputmode="decimal"
-                  appDecimal
-                  required
-                  [value]="draft.quantity"
-                  (input)="patchAdding({ quantity: $any($event.target).value })"
-                />
-              </label>
-              <label class="form-field">
-                <span>{{ p.avgPrice(addingCurrency()) }}</span>
-                <input
-                  type="text"
-                  inputmode="decimal"
-                  appDecimal
-                  required
-                  [value]="draft.price"
-                  (input)="patchAdding({ price: $any($event.target).value })"
-                />
-              </label>
-            </div>
-            <small class="hint">{{ p.avgPriceHint }}</small>
-            <label class="form-field">
-              <span>{{ p.purchaseDate }}</span>
-              <input
-                type="date"
-                [max]="today"
-                [value]="draft.date"
-                (input)="patchAdding({ date: $any($event.target).value })"
-              />
-            </label>
-            <small class="hint">{{ p.purchaseDateHint }}</small>
-            <div class="holding-form__buttons">
-              <button
-                type="submit"
-                class="btn btn--primary"
-                [disabled]="
-                  busy() || !draft.instrument || !draft.quantity.trim() || !draft.price.trim()
-                "
-              >
-                {{ t.save }}
-              </button>
-              <button type="button" class="link-button" (click)="adding.set(null)">
-                {{ t.cancel }}
-              </button>
-            </div>
-          </form>
-        }
-
-        @if (!acc || acc.positions.length === 0) {
-          @if (adding()?.accountId !== c.account.id) {
-            <p class="muted">{{ acc ? p.noPositions : p.emptyAccount }}</p>
+              </small>
+            }
+          </span>
+          @if (acc) {
+            <span class="account__value">{{ acc.value | money: false : cur }}</span>
           }
-        } @else {
-          <div class="table-scroll">
-            <table class="data-table positions">
-              <thead>
-                <tr>
-                  <th>{{ p.name }}</th>
-                  <th class="num hide-sm">{{ p.quantity }}</th>
-                  <th class="num hide-sm">{{ p.price }}</th>
-                  <th class="num">{{ p.valueCol }}</th>
-                  <th class="num">{{ p.gainCol }}</th>
-                  <th class="num hide-sm">{{ p.weight }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (pos of acc.positions; track pos.instrumentId) {
-                  @let counting_ =
-                    counting()?.instrumentId === pos.instrumentId &&
-                    counting()?.accountId === c.account.id;
-                  <tr [class.open]="counting_">
-                    <td class="security">
-                      <button
-                        type="button"
-                        class="security__button"
-                        [attr.aria-label]="p.editCount + ': ' + pos.name"
-                        (click)="counting_ ? counting.set(null) : startCount(c.account.id, pos)"
-                      >
-                        <strong>{{ pos.name }}</strong>
-                        <small>
-                          <span class="show-sm">{{ i18n.number(pos.quantity, 4) }} stk. ·</span>
-                          {{ pos.symbol ?? pos.isin }}
-                          @if (pos.priceMissing) {
-                            <span class="badge" [title]="p.noPriceHint">{{ p.noPrice }}</span>
-                          }
-                        </small>
-                      </button>
-                    </td>
-                    <td class="num hide-sm">{{ i18n.number(pos.quantity, 4) }}</td>
-                    <td class="num hide-sm nowrap">
-                      @if (pos.price !== null) {
-                        {{ i18n.number(pos.price, 2) }} <small>{{ pos.currency }}</small>
-                      } @else {
-                        –
-                      }
-                    </td>
-                    <td class="num nowrap">{{ pos.value | money: false : cur }}</td>
-                    <td class="num nowrap" [class.up]="pos.gain > 0" [class.down]="pos.gain < 0">
-                      {{ signed(pos.gain) }}
-                      @if (pos.gainPct !== null) {
-                        <small>{{ signedPct(pos.gainPct) }}</small>
-                      }
-                    </td>
-                    <td class="num hide-sm">
-                      <span class="weight">
-                        <span class="weight__bar"
-                          ><span [style.width.%]="pos.weightPct"></span
-                        ></span>
-                        {{ i18n.percent(pos.weightPct, 1) }}
-                      </span>
-                    </td>
+          <svg class="account__chevron" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" />
+          </svg>
+        </button>
+        @if (open) {
+          <div class="account__actions">
+            <button
+              type="button"
+              class="btn btn--primary btn--small"
+              (click)="startAdd(c.account.id)"
+            >
+              + {{ p.addHolding }}
+            </button>
+            <a class="link-button" [routerLink]="['/planner/portfolio', c.account.id]">
+              {{ p.transactions }} ({{ acc?.transactionCount ?? 0 }})
+            </a>
+          </div>
+
+          @if (adding()?.accountId === c.account.id) {
+            @let draft = adding()!;
+            <form class="holding-form" (submit)="saveAdd($event)">
+              <div class="form-field">
+                <span>{{ p.chooseInstrument }}</span>
+                @if (draft.instrument; as chosen) {
+                  <div class="chosen">
+                    <strong>{{ chosen.label }}</strong>
+                    <button
+                      type="button"
+                      class="link-button"
+                      (click)="patchAdding({ instrument: null })"
+                    >
+                      {{ t.transactionsPage.change }}
+                    </button>
+                  </div>
+                  @if (chosen.symbol && !chosen.id) {
+                    @if (quote.value(); as q) {
+                      <small class="quote">{{
+                        p.priceNow(i18n.number(q.price, 2) + ' ' + q.currency, i18n.date(q.date))
+                      }}</small>
+                    } @else if (quote.error()) {
+                      <small class="quote quote--missing">{{ p.noQuote }}</small>
+                    }
+                  }
+                } @else {
+                  <app-instrument-picker
+                    [known]="known(acc)"
+                    (picked)="patchAdding({ instrument: $event })"
+                  />
+                }
+              </div>
+              <div class="holding-form__row">
+                <label class="form-field">
+                  <span>{{ p.ownedNow }}</span>
+                  <input
+                    type="text"
+                    inputmode="decimal"
+                    appDecimal
+                    required
+                    [value]="draft.quantity"
+                    (input)="patchAdding({ quantity: $any($event.target).value })"
+                  />
+                </label>
+                <label class="form-field">
+                  <span>{{ p.avgPrice(addingCurrency()) }}</span>
+                  <input
+                    type="text"
+                    inputmode="decimal"
+                    appDecimal
+                    required
+                    [value]="draft.price"
+                    (input)="patchAdding({ price: $any($event.target).value })"
+                  />
+                </label>
+              </div>
+              <small class="hint">{{ p.avgPriceHint }}</small>
+              <label class="form-field">
+                <span>{{ p.purchaseDate }}</span>
+                <input
+                  type="date"
+                  [max]="today"
+                  [value]="draft.date"
+                  (input)="patchAdding({ date: $any($event.target).value })"
+                />
+              </label>
+              <small class="hint">{{ p.purchaseDateHint }}</small>
+              <div class="holding-form__buttons">
+                <button
+                  type="submit"
+                  class="btn btn--primary"
+                  [disabled]="
+                    busy() || !draft.instrument || !draft.quantity.trim() || !draft.price.trim()
+                  "
+                >
+                  {{ t.save }}
+                </button>
+                <button type="button" class="link-button" (click)="adding.set(null)">
+                  {{ t.cancel }}
+                </button>
+              </div>
+            </form>
+          }
+
+          @if (!acc || acc.positions.length === 0) {
+            @if (adding()?.accountId !== c.account.id) {
+              <p class="muted">{{ acc ? p.noPositions : p.emptyAccount }}</p>
+            }
+          } @else {
+            <div class="table-scroll">
+              <table class="data-table positions">
+                <thead>
+                  <tr>
+                    <th>{{ p.name }}</th>
+                    <th class="num hide-sm">{{ p.quantity }}</th>
+                    <th class="num hide-sm">{{ p.price }}</th>
+                    <th class="num">{{ p.valueCol }}</th>
+                    <th class="num">{{ p.gainCol }}</th>
+                    <th class="num hide-sm">{{ p.weight }}</th>
                   </tr>
-                  @if (counting_) {
-                    @let draft = counting()!;
-                    <tr class="count-row">
-                      <td colspan="6">
-                        <form class="holding-form" (submit)="saveCount($event)">
-                          @if (draft.mode === 'gak') {
-                            <label class="form-field">
-                              <span>{{ p.avgPrice(draft.currency ?? '') }}</span>
-                              <input
-                                type="text"
-                                inputmode="decimal"
-                                appDecimal
-                                [value]="draft.average"
-                                (input)="patchCounting({ average: $any($event.target).value })"
-                              />
-                            </label>
-                            <small class="hint">{{ p.correctAverageHint }}</small>
-                          } @else {
-                            <div class="holding-form__row">
-                              <label class="form-field">
-                                <span>{{
-                                  draft.mode === 'buy' ? p.boughtQuantity : p.soldQuantity
-                                }}</span>
-                                <input
-                                  type="text"
-                                  inputmode="decimal"
-                                  appDecimal
-                                  required
-                                  [value]="draft.tradeQuantity"
-                                  (input)="
-                                    patchCounting({ tradeQuantity: $any($event.target).value })
-                                  "
-                                />
-                              </label>
-                              <label class="form-field">
-                                <span>{{ p.tradePrice(draft.currency ?? '') }}</span>
-                                <input
-                                  type="text"
-                                  inputmode="decimal"
-                                  appDecimal
-                                  [value]="draft.tradePrice"
-                                  (input)="patchCounting({ tradePrice: $any($event.target).value })"
-                                />
-                              </label>
-                            </div>
-                            <label class="form-field">
-                              <span>{{ p.tradeDate }}</span>
-                              <input
-                                type="date"
-                                [max]="today"
-                                [value]="draft.tradeDate"
-                                (input)="patchCounting({ tradeDate: $any($event.target).value })"
-                              />
-                            </label>
-                            <small class="hint">{{ p.tradeHint(draft.quantityWas) }}</small>
-                          }
-                          <div class="holding-form__buttons">
-                            <button type="submit" class="btn btn--primary" [disabled]="busy()">
-                              {{ t.save }}
-                            </button>
-                            <button type="button" class="link-button" (click)="counting.set(null)">
-                              {{ t.cancel }}
-                            </button>
-                            @if (draft.mode === 'gak') {
-                              <button
-                                type="button"
-                                class="link-button"
-                                (click)="patchCounting({ mode: 'buy' })"
-                              >
-                                {{ p.buy }}
-                              </button>
-                              <button
-                                type="button"
-                                class="link-button"
-                                (click)="patchCounting({ mode: 'sell' })"
-                              >
-                                {{ p.sell }}
-                              </button>
+                </thead>
+                <tbody>
+                  @for (pos of acc.positions; track pos.instrumentId) {
+                    @let counting_ =
+                      counting()?.instrumentId === pos.instrumentId &&
+                      counting()?.accountId === c.account.id;
+                    <tr [class.open]="counting_">
+                      <td class="security">
+                        <button
+                          type="button"
+                          class="security__button"
+                          [attr.aria-label]="p.editCount + ': ' + pos.name"
+                          (click)="counting_ ? counting.set(null) : startCount(c.account.id, pos)"
+                        >
+                          <strong>{{ pos.name }}</strong>
+                          <small>
+                            <span class="show-sm">{{ i18n.number(pos.quantity, 4) }} stk. ·</span>
+                            {{ pos.symbol ?? pos.isin }}
+                            @if (pos.priceMissing) {
+                              <span class="badge" [title]="p.noPriceHint">{{ p.noPrice }}</span>
                             }
-                            @if (editing()?.instrumentId === pos.instrumentId) {
-                              <span class="symbol-inline">
-                                <input
-                                  type="text"
-                                  maxlength="32"
-                                  [attr.aria-label]="p.symbolLabel"
-                                  [placeholder]="p.symbolLabel"
-                                  [value]="editing()!.symbol"
-                                  (input)="
-                                    editing.set({
-                                      instrumentId: pos.instrumentId,
-                                      symbol: $any($event.target).value,
-                                    })
-                                  "
-                                />
-                                <button
-                                  type="button"
-                                  class="link-button"
-                                  [disabled]="busy()"
-                                  (click)="saveSymbol($event)"
-                                >
-                                  {{ t.save }}
-                                </button>
-                              </span>
-                            } @else {
-                              <button
-                                type="button"
-                                class="link-button ticker"
-                                (click)="startEdit(pos)"
-                              >
-                                {{ p.setSymbol }}
-                              </button>
-                            }
-                          </div>
-                        </form>
+                          </small>
+                        </button>
+                      </td>
+                      <td class="num hide-sm">{{ i18n.number(pos.quantity, 4) }}</td>
+                      <td class="num hide-sm nowrap">
+                        @if (pos.price !== null) {
+                          {{ i18n.number(pos.price, 2) }} <small>{{ pos.currency }}</small>
+                        } @else {
+                          –
+                        }
+                      </td>
+                      <td class="num nowrap">{{ pos.value | money: false : cur }}</td>
+                      <td class="num nowrap" [class.up]="pos.gain > 0" [class.down]="pos.gain < 0">
+                        {{ signed(pos.gain) }}
+                        @if (pos.gainPct !== null) {
+                          <small>{{ signedPct(pos.gainPct) }}</small>
+                        }
+                      </td>
+                      <td class="num hide-sm">
+                        <span class="weight">
+                          <span class="weight__bar"
+                            ><span [style.width.%]="pos.weightPct"></span
+                          ></span>
+                          {{ i18n.percent(pos.weightPct, 1) }}
+                        </span>
                       </td>
                     </tr>
+                    @if (counting_) {
+                      <tr class="count-row">
+                        <td colspan="6">
+                          <ng-container
+                            *ngTemplateOutlet="countForm; context: { $implicit: pos }"
+                          />
+                        </td>
+                      </tr>
+                    }
                   }
-                }
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      </section>
+    }
+  }
+
+  @if (sheet(); as sh) {
+    <div class="sheet-backdrop" (click)="closeSheet()" aria-hidden="true"></div>
+    <section class="sheet" role="dialog" aria-modal="true" [attr.aria-label]="sh.name">
+      <div class="sheet__grab" aria-hidden="true"></div>
+      <button type="button" class="sheet__close" [attr.aria-label]="t.close" (click)="closeSheet()">
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path
+            d="M5 5l10 10M15 5L5 15"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </svg>
+      </button>
+      <div class="sheet__title">
+        <span class="sheet__logo" [style.background]="sh.logo.color" aria-hidden="true">{{
+          sh.logo.letters
+        }}</span>
+        <div>
+          <h2>{{ sh.name }}</h2>
+          <small class="muted">
+            {{ sh.symbol }}
+            @if (sh.price !== null) {
+              · {{ i18n.number(sh.price, 2) }} {{ sh.currency }}
+            }
+          </small>
+        </div>
+      </div>
+
+      <strong class="sheet__value">{{ sh.value | money: false : cur }}</strong>
+      @if (sh.period; as r) {
+        <span class="sheet__pill" [class.up]="r.gain >= 0.5" [class.down]="r.gain <= -0.5">
+          {{ signed(r.gain) }}
+          @if (r.gainPct !== null) {
+            · {{ signedPct(r.gainPct) }}
+          }
+          · {{ periodLabel() }}
+        </span>
+      }
+
+      <div class="sheet__chart">
+        @if (prices.value(); as pts) {
+          @if (pts.length > 1) {
+            <app-line-chart
+              [dates]="priceDates()"
+              [series]="priceSeries()"
+              [format]="formatPrice"
+              [fitData]="true"
+              [legend]="false"
+              [ariaLabel]="p.price"
+            />
+          } @else {
+            <p class="muted">{{ p.noPriceHistory }}</p>
+          }
+        }
+      </div>
+
+      <div class="sheet__kv">
+        <div>
+          <span>{{ p.quantity }}</span>
+          <strong>{{ i18n.number(sh.quantity, 4) }}</strong>
+        </div>
+        <div>
+          <span>{{ p.costCol }}</span>
+          <strong>{{ sh.cost | money: false : cur }}</strong>
+        </div>
+        <div>
+          <span>{{ p.gain }}</span>
+          <strong [class.up]="sh.gain > 0" [class.down]="sh.gain < 0">{{ signed(sh.gain) }}</strong>
+        </div>
+        <div>
+          <span>{{ p.history.dividendsInPeriod }}</span>
+          <strong>{{ sh.period?.dividends ?? 0 | money: false : cur }}</strong>
+        </div>
+      </div>
+
+      @if (sh.holdings.length > 0) {
+        <h3 class="sheet__section">{{ p.byAccount }}</h3>
+        @for (hd of sh.holdings; track hd.accountId) {
+          @let editingHere =
+            counting()?.instrumentId === sh.instrumentId && counting()?.accountId === hd.accountId;
+          <div class="sheet__account">
+            <div class="sheet__account-row">
+              <span>
+                <strong>{{ hd.accountName }}</strong>
+                <small class="muted">{{
+                  p.history.pieces(i18n.number(hd.position.quantity, 4))
+                }}</small>
+              </span>
+              <span class="num">
+                <strong>{{ hd.position.value | money: false : cur }}</strong>
+                <small [class.up]="hd.position.gain > 0" [class.down]="hd.position.gain < 0">{{
+                  signed(hd.position.gain)
+                }}</small>
+              </span>
+            </div>
+            @if (!editingHere && sh.holdings.length > 1) {
+              <div class="sheet__account-actions">
+                <button
+                  type="button"
+                  class="link-button"
+                  (click)="startTrade(hd.accountId, hd.position, 'buy')"
+                >
+                  {{ p.buy }}
+                </button>
+                <button
+                  type="button"
+                  class="link-button"
+                  (click)="startTrade(hd.accountId, hd.position, 'sell')"
+                >
+                  {{ p.sell }}
+                </button>
+                <button
+                  type="button"
+                  class="link-button"
+                  (click)="startCount(hd.accountId, hd.position)"
+                >
+                  {{ p.correctGak }}
+                </button>
+              </div>
+            }
+            @if (editingHere) {
+              @let pos = hd.position;
+              <ng-container *ngTemplateOutlet="countForm; context: { $implicit: pos }" />
+            }
           </div>
         }
+        @if (sh.holdings.length === 1 && counting()?.instrumentId !== sh.instrumentId) {
+          @let only = sh.holdings[0];
+          <div class="sheet__buttons">
+            <button
+              type="button"
+              class="btn btn--primary"
+              (click)="startTrade(only.accountId, only.position, 'buy')"
+            >
+              {{ p.buy }}
+            </button>
+            <button
+              type="button"
+              class="btn btn--secondary"
+              (click)="startTrade(only.accountId, only.position, 'sell')"
+            >
+              {{ p.sell }}
+            </button>
+          </div>
+          <button
+            type="button"
+            class="link-button sheet__gak"
+            (click)="startCount(only.accountId, only.position)"
+          >
+            {{ p.correctGak }}
+          </button>
+        }
+      } @else {
+        <p class="muted">{{ p.soldAll }}</p>
+      }
+      @if (error(); as message) {
+        <p class="alert" role="alert">{{ message }}</p>
       }
     </section>
   }
 }
+
+<ng-template #countForm let-pos>
+  @let t = i18n.t().planner;
+  @let p = t.portfolioPage;
+  @let draft = counting()!;
+  <form class="holding-form" (submit)="saveCount($event)">
+    @if (draft.mode === 'gak') {
+      <label class="form-field">
+        <span>{{ p.avgPrice(draft.currency ?? '') }}</span>
+        <input
+          type="text"
+          inputmode="decimal"
+          appDecimal
+          [value]="draft.average"
+          (input)="patchCounting({ average: $any($event.target).value })"
+        />
+      </label>
+      <small class="hint">{{ p.correctAverageHint }}</small>
+    } @else {
+      <div class="holding-form__row">
+        <label class="form-field">
+          <span>{{ draft.mode === 'buy' ? p.boughtQuantity : p.soldQuantity }}</span>
+          <input
+            type="text"
+            inputmode="decimal"
+            appDecimal
+            required
+            [value]="draft.tradeQuantity"
+            (input)="patchCounting({ tradeQuantity: $any($event.target).value })"
+          />
+        </label>
+        <label class="form-field">
+          <span>{{ p.tradePrice(draft.currency ?? '') }}</span>
+          <input
+            type="text"
+            inputmode="decimal"
+            appDecimal
+            [value]="draft.tradePrice"
+            (input)="patchCounting({ tradePrice: $any($event.target).value })"
+          />
+        </label>
+      </div>
+      <label class="form-field">
+        <span>{{ p.tradeDate }}</span>
+        <input
+          type="date"
+          [max]="today"
+          [value]="draft.tradeDate"
+          (input)="patchCounting({ tradeDate: $any($event.target).value })"
+        />
+      </label>
+      <small class="hint">{{ p.tradeHint(draft.quantityWas) }}</small>
+    }
+    <div class="holding-form__buttons">
+      <button type="submit" class="btn btn--primary" [disabled]="busy()">
+        {{ t.save }}
+      </button>
+      <button type="button" class="link-button" (click)="counting.set(null)">
+        {{ t.cancel }}
+      </button>
+      @if (draft.mode === 'gak') {
+        <button type="button" class="link-button" (click)="patchCounting({ mode: 'buy' })">
+          {{ p.buy }}
+        </button>
+        <button type="button" class="link-button" (click)="patchCounting({ mode: 'sell' })">
+          {{ p.sell }}
+        </button>
+      }
+      @if (editing()?.instrumentId === pos.instrumentId) {
+        <span class="symbol-inline">
+          <input
+            type="text"
+            maxlength="32"
+            [attr.aria-label]="p.symbolLabel"
+            [placeholder]="p.symbolLabel"
+            [value]="editing()!.symbol"
+            (input)="
+              editing.set({
+                instrumentId: pos.instrumentId,
+                symbol: $any($event.target).value,
+              })
+            "
+          />
+          <button
+            type="button"
+            class="link-button"
+            [disabled]="busy()"
+            (click)="saveSymbol($event)"
+          >
+            {{ t.save }}
+          </button>
+        </span>
+      } @else {
+        <button type="button" class="link-button ticker" (click)="startEdit(pos)">
+          {{ p.setSymbol }}
+        </button>
+      }
+    </div>
+  </form>
+</ng-template>

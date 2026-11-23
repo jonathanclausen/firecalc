@@ -272,6 +272,14 @@ export interface SecurityPeriod {
   gain: number;
   /** Value at the start plus what went in, the base for a percentage. */
   invested: number;
+  /** Dividends paid in the period, after withholding tax. */
+  dividends: number;
+}
+
+/** A daily close in the security's own currency. */
+export interface PricePoint {
+  date: string;
+  close: number;
 }
 
 export interface AccountPeriod {

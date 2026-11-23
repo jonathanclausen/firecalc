@@ -1,0 +1,118 @@
+@let h = i18n.t().planner.portfolioPage.history;
+@let tot = totals();
+<app-period-picker />
+
+<div class="bar">
+  <div class="gain">
+    <span>{{ h.gainIn(period.label()) }}</span>
+    @if (tot) {
+      <strong [class]="tone(tot.gain)">{{ signedMoney(tot.gain) }}</strong>
+    }
+  </div>
+  <div class="switch" role="radiogroup" [attr.aria-label]="h.viewAs">
+    <button
+      type="button"
+      role="radio"
+      [attr.aria-checked]="view() === 'list'"
+      [class.active]="view() === 'list'"
+      (click)="view.set('list')"
+    >
+      {{ h.list }}
+    </button>
+    <button
+      type="button"
+      role="radio"
+      [attr.aria-checked]="view() === 'map'"
+      [class.active]="view() === 'map'"
+      (click)="view.set('map')"
+    >
+      {{ h.map }}
+    </button>
+  </div>
+</div>
+
+@if (accounts().length > 1) {
+  <label class="account-pick">
+    <span class="visually-hidden">{{ h.accountFilter }}</span>
+    <select [value]="selected() ?? ''" (change)="pickAccount($any($event.target).value)">
+      <option value="">{{ h.allAccounts }}</option>
+      @for (a of accounts(); track a.accountId) {
+        <option [value]="a.accountId">{{ a.name }}</option>
+      }
+    </select>
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" />
+    </svg>
+  </label>
+}
+
+<div class="content" [class.content--loading]="period.history.isLoading()">
+  @if (period.history.error()) {
+    <p class="alert" role="alert">{{ h.error }}</p>
+  } @else if (!history()) {
+    <p class="muted">{{ i18n.t().planner.loading }}</p>
+  } @else if (rows().length === 0) {
+    <p class="muted">{{ h.noHoldings }}</p>
+  } @else if (view() === 'list') {
+    @if (held().length) {
+      <div class="list-group">
+        @for (r of held(); track r.instrumentId) {
+          <button type="button" class="list-item" (click)="open.emit(r.instrumentId)">
+            <app-security-row [row]="r" [currency]="currency()" />
+          </button>
+        }
+      </div>
+    }
+    @if (sold().length) {
+      <h2 class="group-title">{{ h.soldInPeriod }}</h2>
+      <div class="list-group">
+        @for (r of sold(); track r.instrumentId) {
+          <button type="button" class="list-item" (click)="open.emit(r.instrumentId)">
+            <app-security-row [row]="r" [currency]="currency()" />
+          </button>
+        }
+      </div>
+    }
+    @if (tot?.other; as o) {
+      <p class="other">
+        {{ h.otherHint }}: <span [class]="tone(o.gain)">{{ signedMoney(o.gain) }}</span>
+      </p>
+    }
+  } @else {
+    <div class="map" role="list" [style.aspect-ratio]="aspect()">
+      @for (t of tiles(); track t.item.instrumentId) {
+        <button
+          type="button"
+          role="listitem"
+          class="tile"
+          [class.tile--dark]="tileDark(t.item)"
+          [style.left.%]="t.x"
+          [style.top.%]="t.y"
+          [style.width.%]="t.w"
+          [style.height.%]="t.h"
+          [style.background]="tileColor(t.item)"
+          (click)="open.emit(t.item.instrumentId)"
+        >
+          <strong>{{ t.item.name }}</strong>
+          @if (t.item.gainPct !== null) {
+            <span>{{ signedPct(t.item.gainPct) }}</span>
+          }
+          @if (t.w * aspect() > 30 && t.h > 14) {
+            <span>{{ signedMoney(t.item.gain) }}</span>
+          }
+        </button>
+      }
+    </div>
+    <p class="legend muted">{{ h.mapHint }}</p>
+    @if (sold().length) {
+      <h2 class="group-title">{{ h.soldInPeriod }}</h2>
+      <div class="list-group">
+        @for (r of sold(); track r.instrumentId) {
+          <button type="button" class="list-item" (click)="open.emit(r.instrumentId)">
+            <app-security-row [row]="r" [currency]="currency()" />
+          </button>
+        }
+      </div>
+    }
+  }
+</div>

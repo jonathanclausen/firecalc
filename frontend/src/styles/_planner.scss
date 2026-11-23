@@ -366,3 +366,45 @@
     outline-offset: 2px;
   }
 }
+
+/* App-style inset list: rounded group of tappable rows separated by hairlines. */
+.planner .list-group {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-card);
+}
+
+.planner .list-item {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  position: relative;
+
+  & + .list-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 66px;
+    height: 1px;
+    background: var(--border);
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: var(--surface-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent-ring);
+    outline-offset: -2px;
+  }
+}
