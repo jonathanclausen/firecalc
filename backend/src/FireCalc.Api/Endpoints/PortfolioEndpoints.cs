@@ -20,6 +20,7 @@ public static class PortfolioEndpoints
     public record SaveTransactionRequest(DateOnly? Date, TransactionType? Type, InstrumentRef? Instrument, decimal? Quantity, decimal? Price, decimal? Amount, string? Note);
 
     public record InstrumentDto(Guid Id, string Name, string? Isin, string? Symbol, string? Currency);
+    public record PricePointDto(DateOnly Date, decimal Close);
     public record QuoteDto(string Symbol, string Currency, decimal Price, DateOnly Date);
     public record UpdateInstrumentRequest(string? Symbol, string? Name);
 
@@ -284,6 +285,26 @@ public static class PortfolioEndpoints
         });
 
         // Lets the user fix which price symbol an instrument uses when the automatic match is wrong.
+        // Daily closes of a security the user holds or held, in its own currency, for its chart.
+        api.MapGet("/instruments/{id:guid}/prices", async (Guid id, DateOnly? from, DateOnly? to, ClaimsPrincipal principal, FireCalcDbContext db, CancellationToken ct) =>
+        {
+            var user = await db.GetOrCreateUserAsync(principal, ct);
+            var used = await db.Transactions.AnyAsync(t => t.InstrumentId == id && db.Accounts.Any(a => a.Id == t.AccountId && a.UserId == user.Id), ct);
+            if (!used) return Results.NotFound();
+            var end = to ?? DateOnly.FromDateTime(DateTime.UtcNow);
+            var start = from ?? end.AddYears(-1);
+            var closes = await db.InstrumentPrices.AsNoTracking()
+                .Where(p => p.InstrumentId == id && p.Date >= start && p.Date <= end)
+                .OrderBy(p => p.Date)
+                .Select(p => new PricePointDto(p.Date, p.Close))
+                .ToListAsync(ct);
+            // Long periods are thinned to about 300 points, always keeping the last.
+            var step = Math.Max(1, (int)Math.Ceiling(closes.Count / 300.0));
+            var kept = closes.Where((_, i) => i % step == 0).ToList();
+            if (closes.Count > 0 && kept[^1] != closes[^1]) kept.Add(closes[^1]);
+            return Results.Ok(kept);
+        });
+
         api.MapPut("/instruments/{id:guid}", async (Guid id, UpdateInstrumentRequest req, ClaimsPrincipal principal, FireCalcDbContext db, PriceService prices, CancellationToken ct) =>
         {
             var user = await db.GetOrCreateUserAsync(principal, ct);

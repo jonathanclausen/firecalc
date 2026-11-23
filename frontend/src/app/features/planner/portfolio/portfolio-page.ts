@@ -1,5 +1,6 @@
 import { HttpErrorResponse, httpResource } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import {
   Account,
@@ -8,20 +9,34 @@ import {
   PlannerApi,
   Portfolio,
   Position,
+  PricePoint,
 } from '../../../core/api/planner-api';
 import { I18n } from '../../../core/i18n/i18n';
 import type { Lang } from '../../../core/i18n/translations';
 import { CurrencySettings } from '../../../core/settings/currency';
 import { MoneyPipe } from '../../../shared/money.pipe';
 import { InstrumentChoice, InstrumentPicker } from './instrument-picker';
-import { PortfolioHistoryCard } from './history/portfolio-history';
+import { LineChart, LineSeries } from './history/line-chart';
+import { DevelopmentTab } from './overview/development-tab';
+import { PortfolioPeriod, logo, securityRows } from './overview/portfolio-period';
+import { SecuritiesTab } from './overview/securities-tab';
 import { DecimalInput } from '../../../shared/decimal-input';
 import { formatDecimal, parseDecimal } from '../../../shared/parse-decimal';
 
 /** Holdings per investment account, valued with the latest stored prices (/planner/portfolio). */
 @Component({
   selector: 'app-portfolio-page',
-  imports: [RouterLink, MoneyPipe, InstrumentPicker, DecimalInput, PortfolioHistoryCard],
+  imports: [
+    RouterLink,
+    MoneyPipe,
+    InstrumentPicker,
+    DecimalInput,
+    NgTemplateOutlet,
+    LineChart,
+    DevelopmentTab,
+    SecuritiesTab,
+  ],
+  providers: [PortfolioPeriod],
   templateUrl: './portfolio-page.html',
   styleUrl: './portfolio-page.scss',
 })
@@ -50,8 +65,102 @@ export class PortfolioPage {
       .map((account) => ({ account, data: valued.get(account.id) ?? null }));
   });
 
-  /** Bumped after every change, so the performance card fetches its history again. */
-  protected readonly version = signal(0);
+  protected readonly period = inject(PortfolioPeriod);
+  protected readonly periodLabel = this.period.label;
+
+  protected readonly tabKeys = ['development', 'securities', 'accounts'] as const;
+  protected readonly tab = signal<(typeof this.tabKeys)[number]>('development');
+
+  /** The security whose detail sheet is open. */
+  protected readonly sheetId = signal<string | null>(null);
+
+  /** Everything the detail sheet shows: the holding in each account and how it did in the period. */
+  protected readonly sheet = computed(() => {
+    const id = this.sheetId();
+    const pf = this.portfolio.value();
+    if (!id || !pf) return null;
+    const holdings = pf.accounts.flatMap((a) =>
+      a.positions
+        .filter((pos) => pos.instrumentId === id && pos.quantity > 0)
+        .map((pos) => ({ accountId: a.accountId, accountName: a.accountName, position: pos })),
+    );
+    const h = this.period.history.value();
+    const row = h ? (securityRows(h, null).find((r) => r.instrumentId === id) ?? null) : null;
+    const first = holdings[0]?.position;
+    const name = first?.name ?? row?.name;
+    if (!name) return null;
+    return {
+      instrumentId: id,
+      name,
+      symbol: first?.symbol ?? first?.isin ?? row?.symbol ?? null,
+      currency: first?.currency ?? null,
+      price: first?.price ?? null,
+      logo: logo(name, first?.symbol ?? row?.symbol ?? null),
+      holdings,
+      quantity: holdings.reduce((s, x) => s + x.position.quantity, 0),
+      value: holdings.reduce((s, x) => s + x.position.value, 0),
+      cost: holdings.reduce((s, x) => s + x.position.costBasis, 0),
+      gain: holdings.reduce((s, x) => s + x.position.gain, 0),
+      period: row,
+    };
+  });
+
+  /** The open security's closes over the period on screen. */
+  protected readonly prices = httpResource<PricePoint[]>(() => {
+    const id = this.sheetId();
+    const h = this.period.history.value();
+    if (!id) return undefined;
+    const params: Record<string, string> = {};
+    if (h) {
+      params['from'] = h.from;
+      params['to'] = h.to;
+    }
+    return { url: `/api/instruments/${id}/prices`, params };
+  });
+  protected readonly priceDates = computed(() => (this.prices.value() ?? []).map((x) => x.date));
+  protected readonly priceSeries = computed<LineSeries[]>(() => [
+    {
+      key: 'value',
+      label: this.i18n.t().planner.portfolioPage.price,
+      values: (this.prices.value() ?? []).map((x) => x.close),
+    },
+  ]);
+  protected readonly formatPrice = (value: number) =>
+    this.i18n.number(value, value < 100 ? 2 : 0) + ' ' + (this.sheet()?.currency ?? '');
+
+  protected openSheet(instrumentId: string) {
+    this.counting.set(null);
+    this.error.set(null);
+    this.sheetId.set(instrumentId);
+  }
+
+  protected closeSheet() {
+    this.sheetId.set(null);
+    this.counting.set(null);
+  }
+
+  @HostListener('document:keydown.escape')
+  protected onEscape() {
+    if (this.sheetId()) this.closeSheet();
+  }
+
+  /** "+" in the header: add a security, in the only account or in the one picked on the Konti tab. */
+  protected quickAdd() {
+    this.closeSheet();
+    this.tab.set('accounts');
+    const investment = this.cards();
+    if (investment.length === 1) {
+      const id = investment[0].account.id;
+      this.expanded.update((e) => ({ ...e, [id]: true }));
+      this.startAdd(id);
+    }
+  }
+
+  /** Opens the buy or sell form for a holding. */
+  protected startTrade(accountId: string, p: Position, mode: 'buy' | 'sell') {
+    this.startCount(accountId, p);
+    this.patchCounting({ mode });
+  }
 
   /** Accounts opened or closed by hand; otherwise an account is open only while it has no holdings. */
   private readonly expanded = signal<Record<string, boolean>>({});
@@ -245,7 +354,7 @@ export class PortfolioPage {
       this.adding.set(null);
       this.counting.set(null);
       this.portfolio.reload();
-      this.version.update((v) => v + 1);
+      this.period.refresh();
     } catch (e) {
       const errors = e instanceof HttpErrorResponse && e.status === 400 ? e.error?.errors : null;
       this.error.set(
@@ -284,7 +393,7 @@ export class PortfolioPage {
       await this.api.updateInstrument(draft.instrumentId, { symbol: draft.symbol.trim() || null });
       this.editing.set(null);
       this.portfolio.reload();
-      this.version.update((v) => v + 1);
+      this.period.refresh();
     } catch {
       this.error.set(this.i18n.t().planner.error);
     } finally {

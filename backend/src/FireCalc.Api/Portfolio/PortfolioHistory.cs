@@ -19,7 +19,7 @@ public record HistoryPoint(DateOnly Date, decimal Value, decimal NetDeposits, de
 /// </summary>
 public record SecurityPeriod(
     Guid AccountId, Guid InstrumentId, string Name, string? Symbol,
-    decimal Quantity, decimal Value, decimal Gain, decimal Invested);
+    decimal Quantity, decimal Value, decimal Gain, decimal Invested, decimal Dividends);
 
 /// <summary>
 /// One account over the period. <see cref="Gain"/> is measured like the combined one (value change less money
@@ -176,7 +176,7 @@ public sealed class PortfolioHistory(FireCalcDbContext db, PriceService prices)
 
         private sealed class Flow
         {
-            public decimal StartValue, EndValue, In, Out, Quantity;
+            public decimal StartValue, EndValue, In, Out, Quantity, Dividends;
             public bool Seen;
         }
 
@@ -216,6 +216,7 @@ public sealed class PortfolioHistory(FireCalcDbContext db, PriceService prices)
                     security.Seen = true;
                     // Money paid for the security goes in; money it paid back (sales, dividends) comes out.
                     var cash = -t.Amount;
+                    if (t.Type is TransactionType.Dividend or TransactionType.Tax) security.Dividends += t.Amount;
                     if (cash > 0) security.In += cash; else security.Out -= cash;
                 }
                 foreach (var (t, w) in ins) Security(group.Key, t.InstrumentId!.Value).In += w;
@@ -257,7 +258,7 @@ public sealed class PortfolioHistory(FireCalcDbContext db, PriceService prices)
                     var f = kv.Value;
                     return new SecurityPeriod(kv.Key.Account, kv.Key.Instrument, name, symbol, f.Quantity,
                         Math.Round(f.EndValue, 2), Math.Round(f.EndValue - f.StartValue - f.In + f.Out, 2),
-                        Math.Round(f.StartValue + f.In, 2));
+                        Math.Round(f.StartValue + f.In, 2), Math.Round(f.Dividends, 2));
                 })
                 .OrderByDescending(x => x.Value)
                 .ToList();

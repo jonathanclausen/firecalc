@@ -594,6 +594,7 @@ public class PortfolioTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
         // Nordnet PER: 1,000 → 1,500 plus 30 dividend.
         Assert.Equal(530m, Row(a, "PER.CO").GetProperty("gain").GetDecimal());
+        Assert.Equal(30m, Row(a, "PER.CO").GetProperty("dividends").GetDecimal());
         Assert.Equal(1000m, Row(a, "PER.CO").GetProperty("invested").GetDecimal());
         // Saxo PER: 500 at the start, 600 bought, worth 1,500 at the end.
         Assert.Equal(400m, Row(b, "PER.CO").GetProperty("gain").GetDecimal());
@@ -613,5 +614,12 @@ public class PortfolioTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(combined, accounts.Sum(x => x.GetProperty("gain").GetDecimal()));
         Assert.Equal(1030m, combined);
         Assert.Contains(accounts, x => x.GetProperty("name").GetString() == "Saxo");
+
+        // The security's own price chart.
+        var perId = rows.First(r => r.GetProperty("symbol").GetString() == "PER.CO").GetProperty("instrumentId").GetString();
+        var prices = await client.GetFromJsonAsync<JsonElement>($"/api/instruments/{perId}/prices?from={d0:yyyy-MM-dd}&to={d0.AddDays(4):yyyy-MM-dd}");
+        Assert.Equal([100m, 120m, 150m], prices.EnumerateArray().Select(x => x.GetProperty("close").GetDecimal()).ToArray());
+        var stranger = NewOwner();
+        Assert.Equal(HttpStatusCode.NotFound, (await stranger.GetAsync($"/api/instruments/{perId}/prices")).StatusCode);
     }
 }
