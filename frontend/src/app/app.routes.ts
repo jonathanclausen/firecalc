@@ -4,7 +4,7 @@ export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'compound-interest',
+    loadComponent: () => import('./features/landing/landing-page').then((m) => m.LandingPage),
   },
   {
     path: 'compound-interest',

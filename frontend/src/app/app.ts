@@ -34,6 +34,9 @@ export class App {
    * so the public header and footer step aside.
    */
   protected readonly appShell = computed(
-    () => this.auth.signedIn() && /^\/planner(\/|\?|$)/.test(this.url()),
+    () =>
+      (this.auth.signedIn() && /^\/planner(\/|\?|$)/.test(this.url())) ||
+      // The front page draws its own header and footer.
+      /^\/(\?|#|$)/.test(this.url()),
   );
 }
