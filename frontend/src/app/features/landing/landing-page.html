@@ -1,0 +1,271 @@
+@let t = i18n.t().landing;
+<div class="landing">
+  <header class="wrap bar">
+    <a class="logo" routerLink="/"><span class="ball" aria-hidden="true"></span>{{ brand }}</a>
+    <nav [attr.aria-label]="i18n.t().nav.main">
+      <a href="#how">{{ t.nav.how }}</a>
+      <a routerLink="/compound-interest">{{ t.nav.calculators }}</a>
+    </nav>
+    <div class="right">
+      <app-lang-switch class="hide-sm" />
+      @if (auth.signedIn()) {
+        <a class="pill light" routerLink="/planner">{{ t.nav.myFinances }}</a>
+      } @else {
+        <a class="pill light" routerLink="/planner">{{ t.nav.signIn }}</a>
+      }
+    </div>
+  </header>
+
+  <main class="wrap hero">
+    <div class="snow" aria-hidden="true"></div>
+    <span class="sticker">❄ {{ t.sticker }}</span>
+    <h1>
+      {{ t.titleLead }}<br />
+      <span class="roll"
+        >{{ t.titleRoll
+        }}<svg class="scribble" viewBox="0 0 300 30" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M4 20C60 6 120 28 180 14S270 8 296 18" /></svg
+        ><span class="ball roll-ball" aria-hidden="true"></span
+      ></span>
+    </h1>
+
+    <div class="mascot-wrap">
+      <app-mascot [label]="t.mascotLabel" />
+      <div class="bubble hand">{{ t.bubble }}</div>
+    </div>
+
+    <p class="madlib">
+      {{ t.madlib.have }}
+      <label class="chip"
+        ><span class="visually-hidden">{{ t.madlib.startLabel }}</span
+        ><input
+          #s
+          inputmode="numeric"
+          [value]="format(start())"
+          (input)="update('start', s.value)"
+          (blur)="tidy(s, 'start')"
+        />
+        kr.</label
+      >{{ t.madlib.save }}
+      <label class="chip"
+        ><span class="visually-hidden">{{ t.madlib.monthlyLabel }}</span
+        ><input
+          #m
+          inputmode="numeric"
+          [value]="format(monthly())"
+          (input)="update('monthly', m.value)"
+          (blur)="tidy(m, 'monthly')"
+        />
+        kr.</label
+      >
+      {{ t.madlib.perMonth }}
+      <label class="chip"
+        ><span class="visually-hidden">{{ t.madlib.yearsLabel }}</span
+        ><input
+          #y
+          class="short"
+          inputmode="numeric"
+          [value]="format(years())"
+          (input)="update('years', y.value)"
+          (blur)="tidy(y, 'years')"
+        />
+        {{ t.madlib.years }}</label
+      >{{ t.madlib.then }}
+      <strong class="big" aria-live="polite">{{
+        result().finalBalance | money: true : 'DKK'
+      }}</strong>
+    </p>
+
+    @let c = chart();
+    <div
+      class="chart"
+      role="img"
+      [attr.aria-label]="t.chartLabel(result().finalBalance | money: true : 'DKK')"
+    >
+      <svg [attr.viewBox]="c.viewBox" preserveAspectRatio="none" aria-hidden="true">
+        <path class="area-total" [attr.d]="c.total" />
+        <path class="area-deposits" [attr.d]="c.deposits" />
+        <path class="edge" [attr.d]="c.edge" />
+      </svg>
+      @for (b of c.balls; track $index) {
+        <span
+          class="ball rider"
+          aria-hidden="true"
+          [style.width.px]="b.size"
+          [style.height.px]="b.size"
+          [style.left]="'calc(' + b.left + '% - ' + b.size / 2 + 'px)'"
+          [style.top]="'calc(' + b.top + '% - ' + b.size * 0.9 + 'px)'"
+        ></span>
+      }
+      @if (c.crossover; as x) {
+        <p class="ann hand crossover" [style.left]="'calc(' + x.left + '% - 250px)'">
+          <svg viewBox="0 0 70 60" aria-hidden="true">
+            <path d="M10 6C30 10 46 26 52 52M42 44l10 10 6-14" />
+          </svg>
+          {{ t.crossover(x.year) }}
+        </p>
+      }
+      <p class="ann hand share">{{ t.interestShare(i18n.percent(interestShare(), 0)) }}</p>
+    </div>
+    <p class="assumption">{{ t.assumption }}</p>
+
+    <div class="ctas">
+      @if (auth.signedIn()) {
+        <a class="pill dark" routerLink="/planner">{{ t.ctaOpen }}</a>
+      } @else {
+        <a class="pill dark" routerLink="/planner">{{ t.ctaStart }}</a>
+      }
+      <a class="pill light" routerLink="/compound-interest">{{ t.ctaCalculator }}</a>
+      <span class="hand">{{ t.ctaNote }}</span>
+    </div>
+  </main>
+
+  <div class="ticker" aria-hidden="true">
+    <span>
+      @for (item of ticker(); track $index) {
+        {{ item }}<i class="ball"></i>
+      }
+    </span>
+  </div>
+
+  <section class="wrap" id="how">
+    <h2>
+      {{ t.realTitleA }} <em>{{ t.realTitleEm }}</em> {{ t.realTitleB }}
+    </h2>
+    <p class="sub">{{ t.realSub }}</p>
+    <div class="real">
+      <div class="browser">
+        <div class="top" aria-hidden="true">
+          <i></i><i></i><i></i><span>/planner/portfolio</span>
+        </div>
+        <img
+          src="landing/desktop.webp"
+          width="1280"
+          height="750"
+          loading="lazy"
+          [alt]="t.realDesktopAlt"
+        />
+      </div>
+      <div class="phone">
+        <img
+          src="landing/phone.webp"
+          width="390"
+          height="645"
+          loading="lazy"
+          [alt]="t.realPhoneAlt"
+        />
+        <app-mascot class="peek" [calm]="true" [label]="t.mascotLabel" />
+      </div>
+      <span class="hand note-desktop">{{ t.realNoteDesktop }}</span>
+      <span class="hand note-phone">{{ t.realNotePhone }}</span>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <h2>
+      {{ t.featuresTitleA }} <em>{{ t.featuresTitleEm }}</em>
+    </h2>
+    <p class="sub">{{ t.featuresSub }}</p>
+    <div class="bento">
+      <div class="tile">
+        <span class="stk">{{ t.accounts.sticker }}</span>
+        <h3>{{ t.accounts.title }}</h3>
+        <p>{{ t.accounts.text }}</p>
+        @for (r of t.accounts.rows; track r.tag) {
+          <div class="row">
+            <span class="tag">{{ r.tag }}</span>
+            <div>
+              {{ r.name }}<small>{{ r.sub }}</small>
+            </div>
+            <div class="v">
+              {{ r.value }}<small>{{ r.change }}</small>
+            </div>
+          </div>
+        }
+      </div>
+      <div class="tile ink">
+        <span class="stk light">{{ t.import.sticker }}</span>
+        <h3>{{ t.import.title }}</h3>
+        <p>{{ t.import.text }}</p>
+        <div class="drop">
+          <span class="hand">{{ t.import.drop }}</span
+          >{{ t.import.dropSub }}
+        </div>
+        <div class="imp">
+          📄 {{ t.import.file }}<span>{{ t.import.trades }}</span>
+        </div>
+      </div>
+      <div class="tile">
+        <span class="stk light">{{ t.home.sticker }}</span>
+        <h3>{{ t.home.title }}</h3>
+        <p>{{ t.home.text }}</p>
+        <div class="bars" aria-hidden="true">
+          @for (e of equity; track $index) {
+            <div>
+              <span class="eq" [style.height.%]="e"></span
+              ><span class="ln" [style.height.%]="100 - e"></span>
+            </div>
+          }
+        </div>
+        <div class="gl">
+          <span>2024</span><span>{{ t.home.legend }}</span
+          ><span>2036</span>
+        </div>
+      </div>
+      <div class="tile">
+        <span class="stk">{{ t.goal.sticker }}</span>
+        <h3>{{ t.goal.title }}</h3>
+        <p>{{ t.goal.text }}</p>
+        <div class="goal" aria-hidden="true"><i></i></div>
+        <div class="gl">
+          <span>{{ t.goal.now }}</span
+          ><span>{{ t.goal.progress }}</span
+          ><span>{{ t.goal.target }}</span>
+        </div>
+        <p class="hand goal-note">{{ t.goal.note }}</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="dark-band">
+    <div class="wrap">
+      <p class="q">
+        {{ t.quoteA }}<br />{{ t.quoteB }}<br /><em>{{ t.quoteEm }}</em>
+      </p>
+      <span class="hand">{{ t.quoteNote }}</span>
+    </div>
+    <span class="ball big-ball" aria-hidden="true"></span>
+  </div>
+
+  <section class="wrap">
+    <h2>{{ t.stepsTitle }}</h2>
+    <p class="sub">{{ t.stepsSub }}</p>
+    <ol class="steps">
+      @for (s of t.steps; track $index) {
+        <li>
+          <span class="n">0{{ $index + 1 }}</span>
+          <h3>{{ s.title }}</h3>
+          <p>{{ s.text }}</p>
+        </li>
+      }
+    </ol>
+  </section>
+
+  <div class="wrap">
+    <div class="cta">
+      <h2>{{ t.finalTitle }}</h2>
+      <p>{{ t.finalText }}</p>
+      <a class="pill" routerLink="/planner">{{ auth.signedIn() ? t.ctaOpen : t.finalCta }}</a>
+      <span class="hand">{{ t.finalNote }}</span>
+      <app-mascot class="cta-mascot" [label]="t.mascotLabel" />
+    </div>
+  </div>
+
+  <div class="wordmark" aria-hidden="true">{{ brand.toLowerCase() }}</div>
+  <footer class="wrap">
+    <span
+      >{{ t.footerTools }}: <a routerLink="/compound-interest">{{ t.compoundInterest }}</a></span
+    >
+    <span>{{ i18n.t().footer }}</span>
+  </footer>
+</div>
